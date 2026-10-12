@@ -1,33 +1,20 @@
 // Runs the real shop and review platform on random ports, with PayPal replaced by a recorder.
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { findSpans, generateKey, verifyResponse } from '../../lib/sig.mjs';
-import { createShop } from '../server.mjs';
-import { createReviewPlatform } from '../reviews.mjs';
+import { findSpans, verifyResponse } from '../../lib/sig.mjs';
 import { PRODUCTS } from '../catalog.mjs';
+import { startDemo, TEST_MERCHANT as MERCHANT } from '../testing.mjs';
 
-const MERCHANT = 'MCYKQUXGB936U';
 const NOW = 1760180000;
 const HASH = 'a'.repeat(64);
-let shop, platform, shopUrl, reviewsIss, paypalCalls;
+let demo, shopUrl, reviewsIss, paypalCalls;
 
 before(async () => {
-  const reviewsJwk = generateKey();
-  platform = createReviewPlatform({ jwk: reviewsJwk });
-  await new Promise((r) => platform.listen(0, '127.0.0.1', r));
-  reviewsIss = `http://127.0.0.1:${platform.address().port}`;
-
-  paypalCalls = [];
-  const pay = async (method, path, json) => {
-    paypalCalls.push({ method, path, json });
-    return { ok: true, status: 200, data: { id: 'ORDER123', links: [{ rel: 'payer-action', href: 'https://sandbox.example/approve' }] } };
-  };
-  shop = createShop({ shopJwk: generateKey(), reviewsJwk, reviewsIssuer: reviewsIss, merchantId: MERCHANT, origin: 'http://shop.test', now: () => NOW, pay });
-  await new Promise((r) => shop.listen(0, '127.0.0.1', r));
-  shopUrl = `http://127.0.0.1:${shop.address().port}`;
+  demo = await startDemo({ now: () => NOW });
+  ({ shopUrl, reviewsIss, paypalCalls } = demo);
 });
 
-after(() => { shop.close(); platform.close(); });
+after(() => demo.close());
 
 async function getSigned(path) {
   const r = await fetch(shopUrl + path);
