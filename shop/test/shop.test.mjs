@@ -96,7 +96,7 @@ test('every review is signed by the review platform; only the Stormline one hide
     assert.equal(hidden, p.sku === 'RJ-STORM-BLUE-M', p.sku);
     if (hidden) {
       assert.match(spans[0].content, /RJ-STORM-BLUE-M/);
-      assert.doesNotMatch(visibleText(html), /price-matches the Stormline/);
+      assert.doesNotMatch(visibleText(html), /takes \$70 off the Stormline/);
     }
   }
 });

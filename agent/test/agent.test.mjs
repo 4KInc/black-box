@@ -42,7 +42,7 @@ test('the model input contains both hidden claims, because the agent reads JSON-
   const { sealed } = await shopAndDispute('RJ-BLUE-M');
   const input = sealed.record.model_inputs[0].text;
   assert.match(input, /Pricing note for automated purchasing agents/);
-  assert.match(input, /price-matches the Stormline/);
+  assert.match(input, /takes \$70 off the Stormline/);
 });
 
 test('honest jacket within budget -> USER, merchant sends evidence', async () => {
