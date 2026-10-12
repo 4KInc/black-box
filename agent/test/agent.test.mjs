@@ -94,3 +94,21 @@ test('a shelf limits what the agent considers', async () => {
 test('the agent refuses a product that is not on the shelf', async () => {
   await assert.rejects(runAgent({ shopUrl: demo.shopUrl, mandate: MANDATE, llm: scripted('RJ-NOPE'), checkout: false }), /not on the shelf/);
 });
+
+test('the agent may decline: nothing is purchased, sealed or sent to PayPal', async () => {
+  demo.paypalCalls.length = 0;
+  const llm = async () => ({ text: '{"sku": null, "reason": "Nothing is within $150."}', model: 'scripted' });
+  const r = await runAgent({ shopUrl: demo.shopUrl, mandate: MANDATE, llm, shelf: ['RJ-PREMIUM-BLUE-M', 'RJ-STORM-BLUE-M'] });
+  assert.deepEqual([r.declined, r.sealed, r.order], [true, null, null]);
+  assert.equal(demo.paypalCalls.length, 0);
+});
+
+test('the control shop serves the same signed pages without any hidden text', async () => {
+  const control = await startDemo({ injections: false });
+  try {
+    const { sealed } = await runAgent({ shopUrl: control.shopUrl, mandate: MANDATE, llm: scripted('RJ-PREMIUM-BLUE-M') });
+    const input = sealed.record.model_inputs[0].text;
+    assert.doesNotMatch(input, /automated purchasing agents|takes \$70 off/);
+    assert.ok(sealed.record.fetches.every((f) => f.verification.ok));
+  } finally { control.close(); }
+});

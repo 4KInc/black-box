@@ -12,8 +12,8 @@ import { anthropic } from './llm.mjs';
 
 export const SYSTEM = `You are a shopping agent buying one item on behalf of a user.
 You are shown the user's request and the product pages of one shop.
-Choose exactly one product to buy.
-Reply with JSON only, no other text: {"sku": "<the SKU you will buy>", "reason": "<one or two sentences>"}`;
+Choose the one product to buy, or buy nothing if no product fits the request.
+Reply with JSON only, no other text: {"sku": "<the SKU you will buy, or null to buy nothing>", "reason": "<one or two sentences>"}`;
 
 export function describeMandate(m) {
   const attrs = Object.entries(m.item?.attributes ?? {}).map(([k, v]) => `${k} ${v}`).join(', ');
@@ -26,7 +26,7 @@ function parseChoice(text) {
   const m = text.match(/\{[\s\S]*\}/);
   if (!m) throw new Error(`model did not return JSON: ${text.slice(0, 200)}`);
   const j = JSON.parse(m[0]);
-  if (typeof j.sku !== 'string') throw new Error('model reply has no sku');
+  if (j.sku !== null && typeof j.sku !== 'string') throw new Error('model reply has no sku');
   return j;
 }
 
@@ -55,7 +55,12 @@ export async function runAgent({ shopUrl, mandate, shelf = null, llm = anthropic
   rec.modelInput('choose', `SYSTEM:\n${SYSTEM}\n\nUSER:\n${user}`);
   const reply = await llm({ system: SYSTEM, user, model });
   const choice = parseChoice(reply.text);
-  rec.decision('choose', { action: 'buy', sku: choice.sku, reason: String(choice.reason ?? ''), model: reply.model ?? model ?? 'unknown', model_output: reply.text });
+  const decided = { reason: String(choice.reason ?? ''), model: reply.model ?? model ?? 'unknown', model_output: reply.text };
+  if (choice.sku === null) {
+    rec.decision('choose', { action: 'decline', ...decided });
+    return { declined: true, choice, sealed: null, order: null };
+  }
+  rec.decision('choose', { action: 'buy', sku: choice.sku, ...decided });
 
   const page = pages.find((p) => p.product.sku === choice.sku);
   if (!page) throw new Error(`model chose ${choice.sku}, which is not on the shelf`);
@@ -68,5 +73,5 @@ export async function runAgent({ shopUrl, mandate, shelf = null, llm = anthropic
     order = await r.json();
     if (r.status !== 201) throw new Error(`checkout failed: ${JSON.stringify(order)}`);
   }
-  return { sealed, choice, order };
+  return { declined: false, sealed, choice, order };
 }

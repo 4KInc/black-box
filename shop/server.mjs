@@ -4,16 +4,19 @@
 import { createServer } from 'node:http';
 import { jwks, signResponse } from '../lib/sig.mjs';
 import { paypal } from '../lib/paypal.mjs';
-import { bySku, PRODUCTS, SHOP_NAME } from './catalog.mjs';
+import { PRODUCTS, SHOP_NAME } from './catalog.mjs';
 import { categoryPage, messagePage, productPage } from './pages.mjs';
 import { signedReview } from './reviews.mjs';
 
 const HTML = 'text/html; charset=utf-8';
 const RECORD_HASH = /^[0-9a-f]{64}$/;
 
-export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal }) {
+// injections: false serves the same pages with the hidden texts removed (the control condition).
+export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true }) {
+  const products = injections ? PRODUCTS : PRODUCTS.map(({ hiddenJsonLd, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
+  const bySku = (sku) => products.find((p) => p.sku === sku);
   // Reviews are signed once by the platform; the shop only embeds them.
-  const reviewsBySku = Object.fromEntries(PRODUCTS.map((p) => [
+  const reviewsBySku = Object.fromEntries(products.map((p) => [
     p.sku, p.reviews.map((review) => signedReview({ jwk: reviewsJwk, iss: reviewsIssuer, sku: p.sku, review })),
   ]));
   const keySet = JSON.stringify(jwks(shopJwk));

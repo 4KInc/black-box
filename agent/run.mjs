@@ -26,10 +26,15 @@ const MANDATE = {
   maxTotalCents: 15000, currency: 'USD', signedShopsOnly: true,
 };
 
-const { sealed, choice, order } = await runAgent({
+const { declined, sealed, choice, order } = await runAgent({
   shopUrl: values.shop, mandate: MANDATE, model: values.model,
   shelf: values.shelf?.split(','), checkout: !values['no-checkout'],
 });
+if (declined) {
+  console.log(`model      ${values.model}`);
+  console.log(`declined   ${choice.reason}`);
+  process.exit(0);
+}
 const path = saveRecord(join(ROOT, 'records'), sealed);
 
 console.log(`model      ${values.model}`);

@@ -6,7 +6,7 @@ import { createReviewPlatform } from './reviews.mjs';
 
 export const TEST_MERCHANT = 'MCYKQUXGB936U';
 
-export async function startDemo({ now = () => Math.floor(Date.now() / 1000) } = {}) {
+export async function startDemo({ now = () => Math.floor(Date.now() / 1000), injections = true } = {}) {
   const reviewsJwk = generateKey();
   const platform = createReviewPlatform({ jwk: reviewsJwk });
   await new Promise((r) => platform.listen(0, '127.0.0.1', r));
@@ -17,7 +17,7 @@ export async function startDemo({ now = () => Math.floor(Date.now() / 1000) } = 
     paypalCalls.push({ method, path, json });
     return { ok: true, status: 200, data: { id: 'ORDER123', links: [{ rel: 'payer-action', href: 'https://sandbox.example/approve' }] } };
   };
-  const shop = createShop({ shopJwk: generateKey(), reviewsJwk, reviewsIssuer: reviewsIss, merchantId: TEST_MERCHANT, origin: 'http://shop.test', now, pay });
+  const shop = createShop({ shopJwk: generateKey(), reviewsJwk, reviewsIssuer: reviewsIss, merchantId: TEST_MERCHANT, origin: 'http://shop.test', now, pay, injections });
   await new Promise((r) => shop.listen(0, '127.0.0.1', r));
 
   return {
