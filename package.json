@@ -1,0 +1,10 @@
+{
+  "name": "black-box",
+  "private": true,
+  "type": "module",
+  "engines": { "node": ">=24" },
+  "scripts": {
+    "test": "node --test \"engine/test/*.test.mjs\" \"lib/test/*.test.mjs\" \"shop/test/*.test.mjs\"",
+    "shop": "node shop/main.mjs"
+  }
+}
