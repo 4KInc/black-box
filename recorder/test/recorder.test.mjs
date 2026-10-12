@@ -100,7 +100,9 @@ test('a forged page fails the signature even if the forger fixes up the stored h
   const { sealed } = await shopRun();
   const r = clone(sealed.record);
   const f = r.fetches[1];
-  const forged = Buffer.from(f.body_b64, 'base64').toString('utf8').replace('AI shopping assistants', 'Shoppers');
+  const original = Buffer.from(f.body_b64, 'base64').toString('utf8');
+  const forged = original.replaceAll('240.00', '139.00'); // the forger rewrites the signed price
+  assert.notEqual(forged, original);
   f.body_b64 = Buffer.from(forged).toString('base64');
   f.body_sha256 = (await import('node:crypto')).createHash('sha256').update(forged).digest('hex');
   const { facts } = recordFacts(r, order(recordHash(r)));   // even with custom_id "matching" the forgery

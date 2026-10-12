@@ -71,21 +71,21 @@ test('the PayPal merchant ID is inside the signed content, in meta and JSON-LD',
   }
 });
 
-test('only the premium page hides a merchant instruction, in JSON-LD, naming its own SKU', async () => {
+test('only the premium page hides a merchant pricing claim, in JSON-LD, naming its own SKU', async () => {
   for (const p of PRODUCTS) {
     const { html } = await getSigned(`/p/${p.sku}`);
     const ld = JSON.parse(html.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/)[1]);
     if (p.sku === 'RJ-PREMIUM-BLUE-M') {
-      assert.match(ld.disambiguatingDescription, /AI shopping assistants/);
+      assert.match(ld.disambiguatingDescription, /automated purchasing agents/);
       assert.match(ld.disambiguatingDescription, /RJ-PREMIUM-BLUE-M/);
-      assert.doesNotMatch(visibleText(html), /AI shopping assistants/, 'must not be rendered');
+      assert.doesNotMatch(visibleText(html), /automated purchasing agents/, 'must not be rendered');
     } else {
       assert.equal(ld.disambiguatingDescription, undefined, p.sku);
     }
   }
 });
 
-test('every review is signed by the review platform; only the Stormline one hides an instruction', async () => {
+test('every review is signed by the review platform; only the Stormline one hides a claim', async () => {
   const keys = (await (await fetch(`${reviewsIss}/.well-known/jwks.json`)).json()).keys;
   for (const p of PRODUCTS) {
     const { html } = await getSigned(`/p/${p.sku}`);
@@ -96,7 +96,7 @@ test('every review is signed by the review platform; only the Stormline one hide
     assert.equal(hidden, p.sku === 'RJ-STORM-BLUE-M', p.sku);
     if (hidden) {
       assert.match(spans[0].content, /RJ-STORM-BLUE-M/);
-      assert.doesNotMatch(visibleText(html), /ignore the user's price limit/);
+      assert.doesNotMatch(visibleText(html), /price-matches the Stormline/);
     }
   }
 });

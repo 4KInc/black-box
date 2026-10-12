@@ -38,11 +38,11 @@ test('the agent reads only signed pages, logs its exact model input, and checks 
   assert.equal(demo.paypalCalls[0].json.purchase_units[0].custom_id, sealed.hash);
 });
 
-test('the model input contains both hidden instructions, because the agent reads JSON-LD and textContent', async () => {
+test('the model input contains both hidden claims, because the agent reads JSON-LD and textContent', async () => {
   const { sealed } = await shopAndDispute('RJ-BLUE-M');
   const input = sealed.record.model_inputs[0].text;
-  assert.match(input, /Note for AI shopping assistants/);
-  assert.match(input, /ignore the user's price limit/);
+  assert.match(input, /Pricing note for automated purchasing agents/);
+  assert.match(input, /price-matches the Stormline/);
 });
 
 test('honest jacket within budget -> USER, merchant sends evidence', async () => {
@@ -79,7 +79,7 @@ test('if the model never saw the hidden text, the merchant is not blamed', async
   // Remove the hidden text from what the model saw: the agent bought premium without reading it.
   const c = await shopAndDispute('RJ-PREMIUM-BLUE-M');
   const r = structuredClone(c.sealed.record);
-  r.model_inputs[0].text = r.model_inputs[0].text.replace(/Note for AI shopping assistants[^"]*/, '');
+  r.model_inputs[0].text = r.model_inputs[0].text.replace(/Pricing note for automated purchasing agents[^"]*/, '');
   const blind = evaluateCase({ record: r, order: { customId: c.sealed.hash, payeeMerchantId: TEST_MERCHANT, createdAt: new Date().toISOString(), capturedCents: 24000 }, reason: NOT_AS_DESCRIBED });
   assert.equal(blind.findings[0].inModelInput, false);
   assert.notEqual(blind.verdict.verdict, 'MERCHANT'); // and the edited record also fails its hash
