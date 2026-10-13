@@ -74,7 +74,7 @@ export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, ori
   async function paypalReturn(req, res, url) {
     const id = url.searchParams.get('token');
     if (!id) return sendSigned(req, res, 400, messagePage({ ...ctx, title: 'Missing order', text: 'PayPal did not return an order ID.' }));
-    const r = await pay('POST', `/v2/checkout/orders/${encodeURIComponent(id)}/capture`);
+    const r = await pay('POST', `/v2/checkout/orders/${encodeURIComponent(id)}/capture`, {});
     const cap = r.data?.purchase_units?.[0]?.payments?.captures?.[0];
     if (!r.ok || !cap) {
       return sendSigned(req, res, 502, messagePage({ ...ctx, title: 'Payment not captured', text: `PayPal returned ${r.status} (debug ${r.debugId}).` }));
