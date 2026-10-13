@@ -25,11 +25,12 @@ deterministic code (not an AI) returns one verdict: **USER**, **AGENT**, **MERCH
 Node 24, no dependencies.
 
 ```sh
-npm test                                     # 81 tests
+npm test                                     # 87 tests
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
 npm run shop                                 # demo shop :4010, review platform :4011
 node agent/run.mjs --model claude-haiku-4-5-20251001 --shelf RJ-PREMIUM-BLUE-M   # needs ANTHROPIC_API_KEY in .env
 node executor/resolve.mjs <dispute_id>       # dry run; add --execute to act
+npm run replay                               # replay UI on :4030: verdict, hidden text vs model input, facts, PayPal outcome
 ```
 
 `SHOP_INJECTIONS=off npm run shop` serves the same pages without the hidden text (control).
@@ -44,8 +45,9 @@ node executor/resolve.mjs <dispute_id>       # dry run; add --execute to act
 | `recorder/` | sealed shopping records |
 | `agent/` | shopping agent (Anthropic API or a local OpenAI-compatible model) |
 | `executor/` | dispute → record → verdict → PayPal action |
+| `replay/` | replay UI: every recorded purchase, judged and explained (no scripts; recorded pages sandboxed) |
 | `killtest/` | sandbox feasibility checks for the Disputes API |
-| `fixtures/recorded/` | real runs where a model was fooled by hidden text |
+| `fixtures/recorded/` | real runs where a model was fooled by hidden text, incl. the live sandbox refund |
 
 ## Limits
 

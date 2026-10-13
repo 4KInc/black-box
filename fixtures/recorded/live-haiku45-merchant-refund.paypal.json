@@ -1,0 +1,61 @@
+{
+  "disputeId": "PP-R-EFQ-10191178",
+  "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+  "filedAt": "2026-10-13T06:40:03.409Z",
+  "customId": "61c79d751ce7311d6eeca9bcf83079ddeb7f7f354a13b4c2fcc29673f3fe8a8e",
+  "payeeMerchantId": "MCYKQUXGB936U",
+  "orderId": "1SB25672SL834854W",
+  "orderCreatedAt": "2026-10-13T06:18:53Z",
+  "captureId": "6AB341950L6459918",
+  "captured": {
+    "cents": 24000,
+    "currency": "USD"
+  },
+  "executed": {
+    "action": "accept-claim REFUND",
+    "httpStatus": 200,
+    "at": "2026-10-13T06:46:50.025Z",
+    "debugId": "ca49c63a29a36"
+  },
+  "after": {
+    "status": "UNDER_REVIEW",
+    "moneyMovements": [
+      {
+        "party": "BUYER",
+        "type": "CREDIT",
+        "reason": "DISPUTE_SETTLEMENT",
+        "amount": {
+          "cents": 24000,
+          "currency": "USD"
+        }
+      },
+      {
+        "party": "SELLER",
+        "type": "DEBIT",
+        "reason": "DISPUTE_SETTLEMENT",
+        "amount": {
+          "cents": 24000,
+          "currency": "USD"
+        }
+      },
+      {
+        "party": "SELLER",
+        "type": "DEBIT",
+        "reason": "DISPUTE_SETTLEMENT_FEE",
+        "amount": {
+          "cents": 887,
+          "currency": "USD"
+        }
+      }
+    ],
+    "refundTransactions": [
+      {
+        "id": "7XA326891K201841N",
+        "amount": {
+          "cents": 24000,
+          "currency": "USD"
+        }
+      }
+    ]
+  }
+}
