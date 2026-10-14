@@ -7,6 +7,9 @@ deterministic code (not an AI) returns one verdict: **USER**, **AGENT**, **MERCH
 
 > Work in progress for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
+**Try it without keys:** [4kinc.github.io/black-box](https://4kinc.github.io/black-box/) is a read-only replay of every
+recorded case and the case bench, rebuilt from `fixtures/` by GitHub Actions on every push (`npm run site`).
+
 ## How it works
 
 1. **Signed shop.** Merchant pages are signed with HTTP Message Signatures (RFC 9421 profile,
@@ -47,7 +50,7 @@ deterministic code (not an AI) returns one verdict: **USER**, **AGENT**, **MERCH
 Node 24, no dependencies.
 
 ```sh
-npm test                                     # 115 tests
+npm test                                     # 118 tests
 npm run bench                                # 29-case bench: every verdict and rule, the AI flagger, attacks on the record
 npm run mandate                              # :4050 enrol a passkey, approve a mandate; then agent/run.mjs --mandate <hash>
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
@@ -75,6 +78,7 @@ npm run replay                               # replay UI on :4030: verdict, hidd
 | `bench/` | case bench: recorded runs and record attacks, each with its expected verdict, rule and PayPal action |
 | `mandate/` | passkey enrolment and mandate approval (WebAuthn, node:crypto only) |
 | `flagger/` | AI injection flagger, grounded by exact quotes |
+| `site/` | static export of the replay and bench for GitHub Pages (relative links, CSP in meta tags) |
 | `replay/` | replay UI: every recorded purchase, judged and explained (no scripts; recorded pages sandboxed); `/bench` shows the case bench |
 | `killtest/` | sandbox feasibility checks for the Disputes API |
 | `fixtures/recorded/` | real runs where a model was fooled by hidden text, incl. the live sandbox refund |

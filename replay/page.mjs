@@ -139,7 +139,8 @@ ${section('flagger', 'The AI flagger', 'Its real, recorded answers. It can only 
 ${section('attack', 'Attacks on the record', 'A real record with one thing forged or swapped. Each must fail exactly the checks named.')}`);
 }
 
-export function indexPage(rows) {
+// intro: optional HTML shown above the list (the public site uses it).
+export function indexPage(rows, { intro = '' } = {}) {
   const body = rows.length ? rows.map(({ c, j }) => {
     const d = decisionOf(c.record);
     return `<tr><td class="hide-sm">${time(c.record.purchase.at)}</td>
@@ -149,7 +150,7 @@ export function indexPage(rows) {
 <td>${c.paypal ? `${esc(c.paypal.disputeId)}<div class="k">${esc(paypalStatus(c.paypal))}</div>` : '<span class="k">preview</span>'}</td>
 <td class="hide-sm k mono">${esc(c.source)}</td></tr>`;
   }).join('') : '<tr><td colspan="6" class="k">No records yet. Run the agent (node agent/run.mjs) to make one.</td></tr>';
-  return layout('Black Box replay', `<h2>Recorded purchases</h2><div class="card" style="padding:0;overflow-x:auto"><table class="cases">
+  return layout('Black Box replay', `${intro}<h2>Recorded purchases</h2><div class="card" style="padding:0;overflow-x:auto"><table class="cases">
 <tr><th class="hide-sm">Bought</th><th>Agent</th><th>Item</th><th>Verdict</th><th>PayPal dispute</th><th class="hide-sm">Source</th></tr>${body}</table></div>`);
 }
 

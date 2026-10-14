@@ -4,3 +4,4 @@ node_modules/
 shop/.keys/
 records/
 .venv-mlx/
+_site/

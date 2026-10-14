@@ -10,6 +10,7 @@
     "bench": "node bench/run.mjs",
     "watch": "node executor/watch.mjs",
     "webhook": "node executor/webhook.mjs",
-    "mandate": "node mandate/server.mjs"
+    "mandate": "node mandate/server.mjs",
+    "site": "node site/build.mjs"
   }
 }

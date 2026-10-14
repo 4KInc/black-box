@@ -8,7 +8,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { evaluateCase } from '../engine/case.mjs';
 import { recordHash } from '../recorder/recorder.mjs';
-import { enrolledKeysFrom } from '../mandate/server.mjs';
+import { enrolledKeysFrom, payerForKey } from '../mandate/server.mjs';
 
 const cents = (v) => Math.round(Number(v) * 100);
 const amount = (a) => (a ? { cents: cents(a.value), currency: a.currency_code } : null);
@@ -86,11 +86,13 @@ const signedMerchantId = (record) => {
 };
 
 // The verdict, exactly as the executor computes it. Without a dispute, the PayPal side is assumed
-// to be the honest one (custom_id = record hash, payee = the signed merchant, captured = the price).
+// to be the honest one (custom_id = record hash, payee = the signed merchant, captured = the price,
+// payer = whoever enrolled the passkey that approved the mandate).
 export function judge({ hash, record, paypal }, { root, enrolledKeys } = {}) {
   const preview = !paypal;
   const order = preview
-    ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents }
+    ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents,
+        payerId: root && record.mandate_auth ? payerForKey(root, record.mandate_auth.public_key_spki) : null }
     : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents, payerId: paypal.payerId ?? null };
   const reason = paypal?.reason ?? DEFAULT_REASON;
   const flaggedPassages = paypal?.flagger?.passages ?? [];

@@ -6,7 +6,7 @@
 // The passkey signs sha256(canonical mandate), so the approval covers exactly what was shown.
 
 import { createHash, randomBytes } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { canonicalize } from '../lib/canonical.mjs';
@@ -26,6 +26,16 @@ export function enrolledCredentials(root, payerId) {
   if (!PAYER_ID.test(payerId ?? '')) return [];
   const p = join(passkeyDir(root), `${payerId}.json`);
   return existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')).credentials : [];
+}
+// The payer who enrolled this passkey, if any (used to preview a case that has no dispute yet).
+export function payerForKey(root, publicKeySpki) {
+  const dir = passkeyDir(root);
+  if (!publicKeySpki || !existsSync(dir)) return null;
+  for (const f of readdirSync(dir).filter((n) => n.endsWith('.json'))) {
+    const reg = JSON.parse(readFileSync(join(dir, f), 'utf8'));
+    if (reg.credentials?.some((c) => c.public_key_spki === publicKeySpki)) return reg.payer_id;
+  }
+  return null;
 }
 export const enrolledKeysFrom = (root) => (payerId) => enrolledCredentials(root, payerId).map((c) => c.public_key_spki);
 
