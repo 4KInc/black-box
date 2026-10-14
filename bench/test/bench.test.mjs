@@ -28,7 +28,7 @@ test('a wrong expectation is reported, so the bench can fail', () => {
 
 test('recorded cases are untouched real runs; attacks change the record or the PayPal side', () => {
   for (const r of runBench()) {
-    if (r.def.kind === 'recorded') assert.equal(r.c.paypal.customId, r.c.hash, r.def.id);
+    if (r.def.kind !== 'attack') assert.equal(r.c.paypal.customId, r.c.hash, r.def.id);
     else assert.ok(r.def.mutate || r.def.order, r.def.id);
   }
 });

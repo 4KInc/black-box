@@ -24,6 +24,7 @@ export function paypalFromLog(entries) {
   const capture = ok('get capture').at(-1);
   const executed = entries.find((e) => /^(accept-claim|make-offer|provide-evidence)/.test(e.step));
   const after = ok('get dispute (after)').at(-1);
+  const flagger = entries.findLast((e) => e.step === 'flagger' && e.result)?.result ?? null;
   return {
     disputeId: dispute.dispute_id,
     reason: dispute.reason,
@@ -35,6 +36,7 @@ export function paypalFromLog(entries) {
     orderCreatedAt: order?.create_time ?? capture?.create_time ?? null,
     captureId: txn.seller_transaction_id ?? null,
     captured: amount(txn.gross_amount),
+    flagger: flagger ? { flagged: flagger.flagged, passages: flagger.passages, model: flagger.model, at: flagger.at } : null,
     executed: executed ? { action: executed.step, httpStatus: executed.status, at: executed.at, debugId: executed.debug_id ?? null } : null,
     after: after ? {
       status: after.status,
@@ -91,5 +93,6 @@ export function judge({ hash, record, paypal }, { root } = {}) {
     ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents }
     : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents, payerId: paypal.payerId ?? null };
   const reason = paypal?.reason ?? DEFAULT_REASON;
-  return { preview, reason, order, ...evaluateCase({ record, order, reason, enrolledKeys: root ? enrolledKeysFrom(root) : undefined }) };
+  const aiInjectionFlag = paypal?.flagger?.flagged === true;
+  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, aiInjectionFlag, enrolledKeys: root ? enrolledKeysFrom(root) : undefined }) };
 }

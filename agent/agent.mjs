@@ -38,9 +38,10 @@ export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = n
   const cat = await rec.fetchSigned(`${origin}/`);
   if (!cat.verification.ok) throw new Error(`category page is not validly signed: ${cat.verification.reason}`);
   const list = jsonLdBlocks(cat.html).find((j) => j['@type'] === 'ItemList');
-  const urls = (list?.itemListElement ?? [])
-    .map((e) => new URL(new URL(e.url).pathname, origin).href) // same shop only, whatever host the page names
-    .filter((u) => !shelf || shelf.some((sku) => u.endsWith(`/p/${sku}`)));
+  // A shelf (for experiments) names the product pages directly; otherwise the shop's own list.
+  const urls = shelf
+    ? shelf.map((sku) => new URL(`/p/${encodeURIComponent(sku)}`, origin).href)
+    : (list?.itemListElement ?? []).map((e) => new URL(new URL(e.url).pathname, origin).href); // same shop only, whatever host the page names
 
   const pages = [];
   for (const url of urls) {

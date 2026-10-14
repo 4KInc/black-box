@@ -19,7 +19,13 @@ deterministic code (not an AI) returns one verdict: **USER**, **AGENT**, **MERCH
    merchant signed was hidden from humans, named the purchased item and reached the model.
 4. **Executor.** Reads a PayPal dispute, loads the record by `custom_id`, decides, and runs
    `accept-claim`, `make-offer` or `provide-evidence`.
-5. **Autopilot.** A dispute webhook (verified with PayPal) or the dispute watcher triggers the
+5. **Passkey mandate.** The user approves the mandate with a passkey enrolled for their PayPal
+   payer ID; the WebAuthn signature covers sha256(canonical mandate). At dispute time, the passkey
+   must be one enrolled by the payer PayPal reports. Orders before `PASSKEY_REQUIRED_FROM` are legacy.
+6. **AI flagger.** Claude reads the pages the agent read and quotes text aimed at automated buyers.
+   Only quotes found word for word count, and the flag can only lead to NEEDS A HUMAN. It catches
+   hiding tricks the extractor does not know (bench F01/F02: `opacity:0`).
+7. **Autopilot.** A dispute webhook (verified with PayPal) or the dispute watcher triggers the
    executor with no one at the keyboard. It acts at most once per dispute, only when PayPal offers
    the planned action, and only for orders that carry a Black Box record.
 
@@ -28,8 +34,9 @@ deterministic code (not an AI) returns one verdict: **USER**, **AGENT**, **MERCH
 Node 24, no dependencies.
 
 ```sh
-npm test                                     # 99 tests
-npm run bench                                # 16-case bench: every verdict and rule, plus attacks on the record
+npm test                                     # 114 tests
+npm run bench                                # 20-case bench: every verdict and rule, the AI flagger, attacks on the record
+npm run mandate                              # :4050 enrol a passkey, approve a mandate; then agent/run.mjs --mandate <hash>
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
 npm run shop                                 # demo shop :4010, review platform :4011
 node agent/run.mjs --model claude-haiku-4-5-20251001 --shelf RJ-PREMIUM-BLUE-M   # needs ANTHROPIC_API_KEY in .env
@@ -53,6 +60,8 @@ npm run replay                               # replay UI on :4030: verdict, hidd
 | `agent/` | shopping agent (Anthropic API or a local OpenAI-compatible model) |
 | `executor/` | dispute → record → verdict → PayPal action |
 | `bench/` | case bench: recorded runs and record attacks, each with its expected verdict, rule and PayPal action |
+| `mandate/` | passkey enrolment and mandate approval (WebAuthn, node:crypto only) |
+| `flagger/` | AI injection flagger, grounded by exact quotes |
 | `replay/` | replay UI: every recorded purchase, judged and explained (no scripts; recorded pages sandboxed); `/bench` shows the case bench |
 | `killtest/` | sandbox feasibility checks for the Disputes API |
 | `fixtures/recorded/` | real runs where a model was fooled by hidden text, incl. the live sandbox refund |
@@ -60,7 +69,8 @@ npm run replay                               # replay UI on :4030: verdict, hidd
 ## Limits
 
 The signature code implements only the RFC 9421 subset this project needs; it is not a general
-implementation. The demo shop deliberately contains hidden pricing lies to test agents.
+implementation. Passkey enrolment trusts the enrolment screen (no attestation check), and the
+enrolment registry is local. The demo shop deliberately contains hidden pricing lies to test agents.
 
 ## License
 

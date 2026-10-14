@@ -1,7 +1,8 @@
 // One dispute, end to end, shared by the CLI (resolve.mjs), the webhook receiver and the watcher:
 //   1. reads the dispute from PayPal (reason, amount, custom_id = record hash, payee merchant ID)
 //   2. reads the capture and its order to learn when the order was created
-//   3. loads the stored record by its hash and evaluates the case (engine/case.mjs)
+//   3. loads the stored record by its hash, asks the AI flagger once (it can only lead to
+//      NEEDS A HUMAN; its answer is logged and reused) and evaluates the case (engine/case.mjs)
 //   4. with execute: true, carries out the planned PayPal action and records the response
 // Every PayPal call is appended to records/executions/<dispute>.jsonl.
 //
@@ -16,6 +17,7 @@ import { loadRecord } from '../recorder/recorder.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { toValue } from '../engine/actions.mjs';
 import { enrolledKeysFrom } from '../mandate/server.mjs';
+import { flagInjection } from '../flagger/flagger.mjs';
 
 const cents = (v) => Math.round(Number(v) * 100);
 const ACTION_STEP = /^(accept-claim|make-offer|provide-evidence)/;
@@ -53,7 +55,11 @@ export function executionLog(root, disputeId) {
 //   'already-done'   an earlier run already executed an action for this dispute
 //   'not-ready'      PayPal does not offer the planned action yet (try again later)
 //   'not-ours'       the disputed order carries no Black Box record
-export async function resolveDispute(disputeId, { root, execute = false, source = 'cli' }) {
+// The flagger runs when an Anthropic key is set and FLAGGER is not "off". Without it, the verdict
+// is the code-only one (aiInjectionFlag false).
+const defaultFlag = (record) => (process.env.ANTHROPIC_API_KEY && process.env.FLAGGER !== 'off' ? flagInjection(record) : null);
+
+export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag }) {
   const log = executionLog(root, disputeId);
   async function must(step, method, path, json) {
     const r = await paypal(method, path, json);
@@ -78,8 +84,20 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
   const orderId = capture.supplementary_data?.related_ids?.order_id;
   const order = orderId ? await must('get order', 'GET', `/v2/checkout/orders/${orderId}`) : null;
 
+  // One flagger answer per record: retries and re-runs replay the logged one.
+  let flagger = log.read().findLast((e) => e.step === 'flagger' && e.custom === txn.custom)?.result ?? null;
+  if (!flagger) {
+    try {
+      const r = await flag(record);
+      if (r) { flagger = { flagged: r.flagged, passages: r.passages, dropped: r.dropped, model: r.model, at: r.at }; log.write({ step: 'flagger', source, custom: txn.custom, result: flagger }); }
+    } catch (e) {
+      log.write({ step: 'flagger', source, custom: txn.custom, error: e.message });
+    }
+  }
+
   const result = evaluateCase({
     record,
+    aiInjectionFlag: flagger?.flagged === true,
     order: {
       customId: txn.custom,
       payeeMerchantId: txn.seller?.merchant_id,
@@ -91,7 +109,7 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
     enrolledKeys: enrolledKeysFrom(root),
   });
   log.write({ step: 'verdict', source, verdict: result.verdict, plan: result.plan, facts: result.facts });
-  const out = { ...base, record, txn, result };
+  const out = { ...base, record, txn, result, flagger };
 
   const p = result.plan;
   if (!execute || p.action === 'none') return { ...out, status: 'planned' };

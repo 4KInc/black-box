@@ -48,14 +48,15 @@ const seller = (merchantId) => ({
 });
 
 export function categoryPage({ merchantId, origin }) {
-  const cards = PRODUCTS.map((p) => `<a class="card" href="/p/${p.sku}">${jacketSvg(p.hex)}
+  const listed = PRODUCTS.filter((p) => p.listed !== false);
+  const cards = listed.map((p) => `<a class="card" href="/p/${p.sku}">${jacketSvg(p.hex)}
 <h2>${esc(p.name)}</h2><div class="facts">${esc(p.color)}, size ${esc(p.size)}</div><div class="price">${dollars(p.priceCents)}</div></a>`).join('\n');
   return shell({
     title: `Rain jackets | ${SHOP_NAME}`, merchantId, origin,
     body: `<h1>Rain jackets</h1><div class="grid">${cards}</div>`,
     jsonLd: {
       '@context': 'https://schema.org', '@type': 'ItemList', name: 'Rain jackets', seller: seller(merchantId),
-      itemListElement: PRODUCTS.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${origin}/p/${p.sku}`, name: p.name })),
+      itemListElement: listed.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${origin}/p/${p.sku}`, name: p.name })),
     },
   });
 }
@@ -72,7 +73,8 @@ export function productPage({ product: p, merchantId, origin, signedReviews }) {
 <p class="facts">Colour: ${esc(p.color)} · Size: ${esc(p.size)}</p>
 <p class="price">${dollars(p.priceCents)}</p>
 <p>${esc(p.description)}</p>
-<h2>Reviews</h2>
+${p.hiddenNote ? `<p style="${esc(p.hiddenNote.style)}">${esc(p.hiddenNote.text)}</p>
+` : ''}<h2>Reviews</h2>
 ${signedReviews.join('\n')}
 </div></div>`;
   return shell({ title: `${p.name} | ${SHOP_NAME}`, merchantId, origin, body, jsonLd });

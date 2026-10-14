@@ -134,6 +134,7 @@ ${results.filter((r) => r.def.kind === kind).map(row).join('')}</table></div>`;
 <div class="v">${passed}/${results.length}</div><div class="who">cases get exactly the expected verdict, rule and PayPal action</div>
 <p class="why">Every verdict and every rule is covered. Re-run it with <span class="mono">npm run bench</span>.</p></div></section>
 ${section('recorded', 'Recorded runs', "Real agent runs, sealed by the recorder, with the model's own output.")}
+${section('flagger', 'The AI flagger', 'Its real, recorded answers. It can only send a case to a person, and only quotes found word for word in what the agent read count.')}
 ${section('attack', 'Attacks on the record', 'A real record with one thing forged or swapped. Each must fail exactly the checks named.')}`);
 }
 
@@ -189,7 +190,7 @@ export function casePage(c, j) {
   const r = c.record;
   const d = decisionOf(r);
   const v = j.verdict.verdict;
-  const needles = j.findings.filter((f) => f.inModelInput).map((f) => f.text);
+  const needles = [...j.findings.filter((f) => f.inModelInput).map((f) => f.text), ...(j.flagger?.passages ?? []).map((p) => p.quote)];
   const inputs = r.model_inputs.map((m) => highlight(m.text, needles));
   const marked = inputs.reduce((n, i) => n + i.count, 0);
   const m = r.mandate;
@@ -210,7 +211,9 @@ export function casePage(c, j) {
 ${j.mandate.violations.length ? `<ul class="checks">${j.mandate.violations.map((x) => `<li class="no" style="color:var(--bad)">${esc(x.code === 'OVER_CAP' ? `Over budget: paid ${money(j.order.capturedCents)}, cap ${money(m.maxTotalCents)}, ${money(j.order.capturedCents - m.maxTotalCents)} over` : `${x.code}: ${x.detail}`)}</li>`).join('')}</ul>` : '<ul class="checks"><li class="yes">Within the mandate</li></ul>'}</div></div>`;
 
   // The contrast in one line: the signed, visible price against the hidden text the model read.
-  const hiddenRead = j.findings.find((f) => f.inModelInput && f.namesPurchasedItem) ?? j.findings.find((f) => f.inModelInput);
+  const found = j.findings.find((f) => f.inModelInput && f.namesPurchasedItem) ?? j.findings.find((f) => f.inModelInput);
+  const flagged = j.flagger?.passages?.[0];
+  const hiddenRead = found ?? (flagged && { text: flagged.quote, method: `flagged by the AI flagger; code did not find it hidden` });
   const contrast = hiddenRead ? `<div class="two" style="margin-bottom:16px">
 <div class="card"><div class="k">Shown to a person</div><div class="big">${esc(j.product?.name ?? r.purchase.sku)} · ${money(j.product?.priceCents ?? r.purchase.price_cents)}</div></div>
 <div class="card"><div class="k">Hidden from people, read by the agent (${esc(hiddenRead.method)})</div><div><mark>“${esc(hiddenRead.text)}”</mark></div></div></div>` : '';
@@ -227,6 +230,11 @@ ${d.reason ? `<blockquote><span class="k">${esc(d.model)} explained its choice:<
 <p>“${esc(f.text)}”</p><ul class="checks">${yesNo(f.concealedInReadChannel, 'Hidden from people')}${yesNo(f.namesPurchasedItem, 'Names the item bought')}
 ${yesNo(f.inModelInput, 'Reached the model')}${yesNo(f.signedByMerchant, 'Merchant-signed')}${yesNo(f.selfContained, 'Self-contained page')}${yesNo(!f.thirdPartySigned, 'No third-party signature')}</ul></div>`).join('')
     : '<div class="card k">None found.</div>'}`;
+
+  const flaggerCard = j.flagger ? `<h2>AI flagger</h2><div class="card"><div class="k">${esc(j.flagger.model)} read the pages the agent read. It can only send a case to a person.</div>
+${j.flagger.passages.length ? j.flagger.passages.map((p) => `<p><mark>“${esc(p.quote)}”</mark><br><span class="k">${esc(p.reason)}</span></p>`).join('') : '<p>Found no text aimed at automated buyers.</p>'}
+<ul class="checks">${yesNo(j.flagger.flagged, j.flagger.flagged ? 'Flagged: every quote checked word for word against the model input' : 'Not flagged')}</ul></div>`
+    : '<h2>AI flagger</h2><div class="card k">Not run for this case: the verdict is code-only.</div>';
 
   const groups = [
     ['Is the record trustworthy?', RECORD_CHECKS],
@@ -254,5 +262,5 @@ ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((
 <div><span class="pill ${b.pass ? 'PASS' : 'FAIL'}">${b.pass ? 'PASS' : 'FAIL'}</span> <span class="k">expected ${esc(expectText(b.def.expect))}</span></div>
 ${b.mismatches.map((m) => `<div class="problems">${esc(m)}</div>`).join('')}</section>` : '';
 
-  return layout(`${label(v)} · ${d.model ?? 'replay'}`, `${benchCard}${verdictCard}${mandate}${sideBySide}${findings}${facts}${rules}<h2>Timeline</h2><div class="card">${timeline(c, j)}</div>${proof}`);
+  return layout(`${label(v)} · ${d.model ?? 'replay'}`, `${benchCard}${verdictCard}${mandate}${sideBySide}${findings}${flaggerCard}${facts}${rules}<h2>Timeline</h2><div class="card">${timeline(c, j)}</div>${proof}`);
 }

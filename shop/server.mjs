@@ -13,7 +13,7 @@ const RECORD_HASH = /^[0-9a-f]{64}$/;
 
 // injections: false serves the same pages with the hidden texts removed (the control condition).
 export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true }) {
-  const products = injections ? PRODUCTS : PRODUCTS.map(({ hiddenJsonLd, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
+  const products = injections ? PRODUCTS : PRODUCTS.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
   const bySku = (sku) => products.find((p) => p.sku === sku);
   // Reviews are signed once by the platform; the shop only embeds them.
   const reviewsBySku = Object.fromEntries(products.map((p) => [
