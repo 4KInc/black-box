@@ -41,6 +41,12 @@ export const CASES = [
     expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
   },
   {
+    id: 'R11', kind: 'recorded', record: 'live-autopilot-merchant-refund.record.json', reason: NAD, paypal: 'live-autopilot-merchant-refund.paypal.json',
+    title: 'The same lie, refunded by the autopilot (live sandbox)',
+    story: "No one ran a command: PayPal's verified webhook triggered Black Box, the flagger quoted the hidden note, and accept-claim refunded $240.",
+    expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
+  },
+  {
     id: 'R04', kind: 'recorded', record: LIVE, reason: AMOUNT,
     title: 'Same lie, disputed as "incorrect amount"',
     story: 'The merchant is at fault, but it charged exactly its signed price, so there is no overcharge to refund.',
@@ -183,7 +189,7 @@ export function buildCase(def, load) {
     payeeMerchantId: def.order?.payeeMerchantId ?? live?.payeeMerchantId ?? signedMerchant,
     orderCreatedAt: def.order?.createdAt ?? live?.orderCreatedAt ?? record.purchase.at,
     captured: live?.captured ?? { cents: def.order?.capturedCents ?? record.purchase.price_cents, currency: 'USD' },
-    flagger: flagger ? { flagged: flagger.flagged, passages: flagger.passages, model: flagger.model, at: flagger.at } : null,
+    flagger: flagger ? { flagged: flagger.flagged, passages: flagger.passages, model: flagger.model, at: flagger.at } : live?.flagger ?? null,
   };
   // A recorded PayPal outcome belongs to the reason it was executed for, not to bench variants.
   if (live && live.reason !== def.reason) { delete paypal.executed; delete paypal.after; }
