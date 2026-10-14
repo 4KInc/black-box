@@ -141,6 +141,12 @@ export const CASES = [
     expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
   },
   {
+    id: 'P03', kind: 'passkey', record: 'live-fullchain-passkey.record.json', reason: NAD, paypal: 'live-fullchain-passkey.paypal.json',
+    title: 'Full chain, live: Touch ID budget, fooled agent, webhook, refund',
+    story: "The buyer approved a $150 budget with Touch ID. Haiku 4.5 read the hidden note and paid $240. PayPal's webhook triggered Black Box, which checked the passkey against the payer PayPal reported, decided MERCHANT and refunded $240 with no one at the keyboard.",
+    expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
+  },
+  {
     id: 'A07', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
     title: 'Agent operator raises the budget after the buyer approved it',
     story: 'The operator rewrites the cap to $300 so the $240 looks authorised. The passkey signed the $150 mandate, so the approval no longer matches.',

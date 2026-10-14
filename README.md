@@ -48,7 +48,7 @@ Node 24, no dependencies.
 
 ```sh
 npm test                                     # 115 tests
-npm run bench                                # 28-case bench: every verdict and rule, the AI flagger, attacks on the record
+npm run bench                                # 29-case bench: every verdict and rule, the AI flagger, attacks on the record
 npm run mandate                              # :4050 enrol a passkey, approve a mandate; then agent/run.mjs --mandate <hash>
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
 npm run shop                                 # demo shop :4010, review platform :4011
