@@ -1,11 +1,12 @@
 // One dispute, end to end: stored record + what PayPal says -> facts -> verdict -> planned action.
-// Everything here is deterministic code. The only AI input is the optional injection flag,
-// which can only ever lead to NEEDS A HUMAN.
+// Everything here is deterministic code. The only AI input is the flagger's quotes. Code decides
+// whether they count: only a quote that names the purchased item (SKU or exact name) raises
+// aiInjectionFlag, and that flag can only ever lead to NEEDS A HUMAN.
 
 import { jsonLdBlocks } from '../lib/channels.mjs';
 import { recordFacts } from '../recorder/recorder.mjs';
 import { planAction } from './actions.mjs';
-import { findingsFor } from './extract.mjs';
+import { findingsFor, mentionsItem } from './extract.mjs';
 import { summarize } from './findings.mjs';
 import { checkMandate } from './mandate.mjs';
 import { decide } from './verdict.mjs';
@@ -26,7 +27,8 @@ export function signedProduct(record) {
 }
 
 // order = { customId, payeeMerchantId, createdAt, capturedCents, payerId } from PayPal.
-export function evaluateCase({ record, order, reason, aiInjectionFlag = false, enrolledKeys }) {
+// flaggedPassages = the flagger's grounded quotes ([{ quote, reason }]), or [] when it did not run.
+export function evaluateCase({ record, order, reason, flaggedPassages = [], enrolledKeys }) {
   const integrity = recordFacts(record, order, { enrolledKeys });
   const product = signedProduct(record);
   const page = record.fetches[record.purchase.page_index];
@@ -43,6 +45,9 @@ export function evaluateCase({ record, order, reason, aiInjectionFlag = false, e
 
   const findings = product ? findingsFor(record, { sku: product.sku, name: product.name }) : [];
   const summary = summarize(findings);
+  // Manipulation aimed at other products on the pages does not make this purchase suspect.
+  const flagged = flaggedPassages.map((p) => ({ ...p, namesPurchasedItem: Boolean(product && mentionsItem(p.quote, product)) }));
+  const aiInjectionFlag = flagged.some((p) => p.namesPurchasedItem);
   const facts = {
     ...integrity.facts,
     mandateBroken: mandate.broken,
@@ -58,5 +63,5 @@ export function evaluateCase({ record, order, reason, aiInjectionFlag = false, e
     signedPriceCents: product?.priceCents ?? order.capturedCents,
   });
 
-  return { verdict, plan, facts, mandate, findings, product, integrityProblems: integrity.problems, mandateAuth: integrity.mandate };
+  return { verdict, plan, facts, mandate, findings, product, integrityProblems: integrity.problems, mandateAuth: integrity.mandate, flaggedPassages: flagged };
 }

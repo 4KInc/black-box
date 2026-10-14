@@ -130,7 +130,7 @@ export function isSelfContained(html) {
   return !/\ssrc=|<link\b|@import|url\(|<iframe|<object|<embed|\son[a-z]+=/i.test(html);
 }
 
-function mentionsItem(text, { sku, name }) {
+export function mentionsItem(text, { sku, name }) {
   const t = text.toLowerCase();
   return (sku && t.includes(sku.toLowerCase())) || (name && t.includes(name.toLowerCase()));
 }

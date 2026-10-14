@@ -93,6 +93,6 @@ export function judge({ hash, record, paypal }, { root, enrolledKeys } = {}) {
     ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents }
     : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents, payerId: paypal.payerId ?? null };
   const reason = paypal?.reason ?? DEFAULT_REASON;
-  const aiInjectionFlag = paypal?.flagger?.flagged === true;
-  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, aiInjectionFlag, enrolledKeys: enrolledKeys ?? (root ? enrolledKeysFrom(root) : undefined) }) };
+  const flaggedPassages = paypal?.flagger?.passages ?? [];
+  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, flaggedPassages, enrolledKeys: enrolledKeys ?? (root ? enrolledKeysFrom(root) : undefined) }) };
 }

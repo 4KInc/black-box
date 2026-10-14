@@ -29,13 +29,26 @@ deterministic code (not an AI) returns one verdict: **USER**, **AGENT**, **MERCH
    executor with no one at the keyboard. It acts at most once per dispute, only when PayPal offers
    the planned action, and only for orders that carry a Black Box record.
 
+## Design decisions
+
+- **Rule 4 has two triggers.** A case goes to a person when the agent read hidden text that code
+  cannot pin on the merchant (inside third-party-signed content, or depending on unsigned files or
+  scripts), or when the AI flagger raises its flag. Otherwise a lie planted by a third party would
+  be blamed on the agent (bench R06).
+- **The mandate must be passkey-approved** (`mandateSigned`, a record check). Without it, whoever
+  runs the agent could rewrite the budget. Orders PayPal created before `PASSKEY_REQUIRED_FROM`
+  predate passkeys and are judged without it (bench A07-A10).
+- **A flag counts only for the item bought.** The flagger's quotes raise the flag only if a quote
+  names the purchased item (SKU or exact name), the same test the merchant conditions use.
+  Manipulation aimed at other products does not make an honest purchase suspect (bench F05).
+
 ## Run it
 
 Node 24, no dependencies.
 
 ```sh
-npm test                                     # 114 tests
-npm run bench                                # 27-case bench: every verdict and rule, the AI flagger, attacks on the record
+npm test                                     # 115 tests
+npm run bench                                # 28-case bench: every verdict and rule, the AI flagger, attacks on the record
 npm run mandate                              # :4050 enrol a passkey, approve a mandate; then agent/run.mjs --mandate <hash>
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
 npm run shop                                 # demo shop :4010, review platform :4011

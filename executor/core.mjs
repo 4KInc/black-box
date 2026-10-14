@@ -56,7 +56,7 @@ export function executionLog(root, disputeId) {
 //   'not-ready'      PayPal does not offer the planned action yet (try again later)
 //   'not-ours'       the disputed order carries no Black Box record
 // The flagger runs when an Anthropic key is set and FLAGGER is not "off". Without it, the verdict
-// is the code-only one (aiInjectionFlag false).
+// is the code-only one (no flagged passages).
 const defaultFlag = (record) => (process.env.ANTHROPIC_API_KEY && process.env.FLAGGER !== 'off' ? flagInjection(record) : null);
 
 export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag }) {
@@ -97,7 +97,7 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
 
   const result = evaluateCase({
     record,
-    aiInjectionFlag: flagger?.flagged === true,
+    flaggedPassages: flagger?.passages ?? [],
     order: {
       customId: txn.custom,
       payeeMerchantId: txn.seller?.merchant_id,

@@ -29,7 +29,7 @@ const FACT_TEXT = {
   namesPurchasedItem: 'That hidden text names the item that was bought',
   inModelInput: 'That hidden text reached the model',
   merchantOwned: "That hidden text is the merchant's own (signed, self-contained, no third party)",
-  aiInjectionFlag: 'An AI flagger marked agent-directed text (can only lead to NEEDS A HUMAN)',
+  aiInjectionFlag: 'The AI flagger quoted agent-directed text that names the item bought (can only lead to NEEDS A HUMAN)',
   unattributedHiddenText: 'Hidden text the agent read that cannot be pinned on the merchant',
 };
 
@@ -213,7 +213,7 @@ ${j.mandate.violations.length ? `<ul class="checks">${j.mandate.violations.map((
 
   // The contrast in one line: the signed, visible price against the hidden text the model read.
   const found = j.findings.find((f) => f.inModelInput && f.namesPurchasedItem) ?? j.findings.find((f) => f.inModelInput);
-  const flagged = j.flagger?.passages?.[0];
+  const flagged = j.flaggedPassages.find((p) => p.namesPurchasedItem);
   const hiddenRead = found ?? (flagged && { text: flagged.quote, method: `flagged by the AI flagger; code did not find it hidden` });
   const contrast = hiddenRead ? `<div class="two" style="margin-bottom:16px">
 <div class="card"><div class="k">Shown to a person</div><div class="big">${esc(j.product?.name ?? r.purchase.sku)} · ${money(j.product?.priceCents ?? r.purchase.price_cents)}</div></div>
@@ -233,8 +233,9 @@ ${yesNo(f.inModelInput, 'Reached the model')}${yesNo(f.signedByMerchant, 'Mercha
     : '<div class="card k">None found.</div>'}`;
 
   const flaggerCard = j.flagger ? `<h2>AI flagger</h2><div class="card"><div class="k">${esc(j.flagger.model)} read the pages the agent read. It can only send a case to a person.</div>
-${j.flagger.passages.length ? j.flagger.passages.map((p) => `<p><mark>“${esc(p.quote)}”</mark><br><span class="k">${esc(p.reason)}</span></p>`).join('') : '<p>Found no text aimed at automated buyers.</p>'}
-<ul class="checks">${yesNo(j.flagger.flagged, j.flagger.flagged ? 'Flagged: every quote checked word for word against the model input' : 'Not flagged')}</ul></div>`
+${j.flaggedPassages.length ? j.flaggedPassages.map((p) => `<p><mark>“${esc(p.quote)}”</mark><br><span class="k">${esc(p.reason)}</span></p>
+<ul class="checks">${yesNo(p.namesPurchasedItem, p.namesPurchasedItem ? 'Names the item bought: counts' : 'Does not name the item bought: ignored for this purchase')}</ul>`).join('') : '<p>Found no text aimed at automated buyers.</p>'}
+<div class="k" style="margin-top:8px">Every quote was checked word for word against the model input. Only quotes that name the purchased item raise the flag.</div></div>`
     : '<h2>AI flagger</h2><div class="card k">Not run for this case: the verdict is code-only.</div>';
 
   const groups = [
