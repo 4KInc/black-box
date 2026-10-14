@@ -6,6 +6,7 @@
   "scripts": {
     "test": "node --test \"*/test/*.test.mjs\"",
     "shop": "node shop/main.mjs",
-    "replay": "node replay/server.mjs"
+    "replay": "node replay/server.mjs",
+    "bench": "node bench/run.mjs"
   }
 }

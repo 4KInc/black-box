@@ -46,7 +46,7 @@ h2{font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute
 .verdict{border-left:6px solid var(--c);display:grid;grid-template-columns:1fr minmax(240px,380px);gap:20px}
 .verdict .v{font-size:34px;font-weight:800;color:var(--c);line-height:1.1}.verdict .who{font-size:18px;font-weight:600;margin:6px 0}
 .verdict .why{color:var(--muted);margin:0}.verdict .pp{border-left:1px solid var(--line);padding-left:20px}
-.MERCHANT{--c:var(--merchant)}.AGENT{--c:var(--agent)}.USER{--c:var(--user)}.NEEDS_A_HUMAN{--c:var(--human)}
+.PASS{--c:var(--ok)}.FAIL{--c:var(--bad)}.MERCHANT{--c:var(--merchant)}.AGENT{--c:var(--agent)}.USER{--c:var(--user)}.NEEDS_A_HUMAN{--c:var(--human)}
 .pill{display:inline-block;font-size:12px;font-weight:700;padding:2px 8px;border-radius:999px;color:var(--c);border:1px solid var(--c)}
 .k{color:var(--muted);font-size:13px}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12.5px;overflow-wrap:anywhere}
 .big{font-size:22px;font-weight:700}
@@ -75,7 +75,8 @@ ol.tl li{grid-template-columns:1fr;gap:0}iframe,pre.input{height:420px}.hide-sm{
 function layout(title, body) {
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title><style>${CSS}</style></head><body>
-<header class="top"><b><a href="/" style="text-decoration:none">Black Box</a></b><span>replay of an AI agent's purchase, judged by code</span></header>
+<header class="top"><b><a href="/" style="text-decoration:none">Black Box</a></b><span>replay of an AI agent's purchase, judged by code</span>
+<nav style="margin-left:auto;display:flex;gap:14px;font-size:14px"><a href="/">Purchases</a><a href="/bench">Case bench</a></nav></header>
 <main>${body}</main></body></html>`;
 }
 
@@ -113,6 +114,28 @@ const paypalStatus = (p) => {
   return p.executed ? `${p.executed.action} sent` : `${p.after?.status ?? 'open'}, not yet acted on`;
 };
 
+const expectText = (e) => `${label(e.verdict)}, rule ${e.rule}, ${e.action}${e.refundCents ? ' ' + money(e.refundCents) : ''}${e.broken?.length ? `; breaks ${e.broken.join(', ')}` : ''}`;
+
+export function benchPage(results) {
+  const passed = results.filter((r) => r.pass).length;
+  const row = (r) => `<tr><td><a href="/bench/${esc(r.def.id)}">${esc(r.def.id)}</a></td>
+<td><b>${esc(r.def.title)}</b><div class="k">${esc(r.def.story)}</div></td>
+<td class="hide-sm mono">${esc(r.def.reason)}</td>
+<td><span class="pill ${r.got.verdict}">${label(r.got.verdict)}</span> <span class="k">rule ${r.got.rule}</span>
+<div class="k">${esc(r.got.action)}${r.got.refundCents ? ' ' + money(r.got.refundCents) : ''}</div>
+${r.got.broken ? `<div class="k mono">broken: ${esc(r.got.broken)}</div>` : ''}</td>
+<td><span class="pill ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? 'PASS' : 'FAIL'}</span>${r.mismatches.map((m) => `<div class="problems k">${esc(m)}</div>`).join('')}</td></tr>`;
+  const section = (kind, title, note) => `<h2>${title}</h2><p class="k" style="margin:-4px 0 10px">${note}</p><div class="card" style="padding:0;overflow-x:auto"><table class="cases">
+<tr><th>Case</th><th>What happened</th><th class="hide-sm">PayPal reason</th><th>Code decided</th><th>Expected?</th></tr>
+${results.filter((r) => r.def.kind === kind).map(row).join('')}</table></div>`;
+  return layout('Black Box case bench', `<section class="card verdict ${passed === results.length ? 'PASS' : 'FAIL'}"><div>
+<div class="k">Case bench · runs offline from recorded agent runs, no API keys</div>
+<div class="v">${passed}/${results.length}</div><div class="who">cases get exactly the expected verdict, rule and PayPal action</div>
+<p class="why">Every verdict and every rule is covered. Re-run it with <span class="mono">npm run bench</span>.</p></div></section>
+${section('recorded', 'Recorded runs', "Real agent runs, sealed by the recorder, with the model's own output.")}
+${section('attack', 'Attacks on the record', 'A real record with one thing forged or swapped. Each must fail exactly the checks named.')}`);
+}
+
 export function indexPage(rows) {
   const body = rows.length ? rows.map(({ c, j }) => {
     const d = decisionOf(c.record);
@@ -131,7 +154,7 @@ function paypalPanel(c, j) {
   const p = c.paypal;
   if (!p) {
     return `<div class="k">PREVIEW: no dispute filed</div><div>If disputed as <span class="mono">${esc(j.reason)}</span>, Black Box would:</div>
-<div class="big">${esc(j.plan.action)}${j.plan.refundCents ? ' ' + money(j.plan.refundCents) : ''}</div><div class="k">${esc(j.plan.note)}</div>`;
+<div class="big">${j.plan.action === 'none' ? 'No automatic action' : esc(j.plan.action)}${j.plan.refundCents ? ' ' + money(j.plan.refundCents) : ''}</div><div class="k">${esc(j.plan.note)}</div>`;
   }
   const buyer = p.after?.moneyMovements.find((m) => m.party === 'BUYER' && m.type === 'CREDIT');
   const refund = p.after?.refundTransactions[0];
@@ -139,7 +162,7 @@ function paypalPanel(c, j) {
 ${p.executed ? `<div class="big">${buyer ? `${money(buyer.amount.cents, buyer.amount.currency)} back to the buyer` : esc(p.executed.action)}</div>
 <div class="k">Executed <span class="mono">${esc(p.executed.action)}</span> → HTTP ${esc(p.executed.httpStatus)} at ${time(p.executed.at)}</div>
 ${refund ? `<div class="k">Refund transaction <span class="mono">${esc(refund.id)}</span></div>` : ''}`
-    : `<div class="big">${esc(j.plan.action)}${j.plan.refundCents ? ' ' + money(j.plan.refundCents) : ''}</div><div class="k">Planned, not yet executed.</div>`}`;
+    : `<div class="big">${j.plan.action === 'none' ? 'No automatic action' : esc(j.plan.action)}${j.plan.refundCents ? ' ' + money(j.plan.refundCents) : ''}</div><div class="k">Planned, not yet executed.</div>`}`;
 }
 
 function timeline(c, j) {
@@ -152,7 +175,7 @@ function timeline(c, j) {
   const p = c.paypal;
   if (p) {
     if (p.orderCreatedAt) items.push([p.orderCreatedAt, `PayPal order <span class="mono">${esc(p.orderId)}</span> created; capture <span class="mono">${esc(p.captureId)}</span> ${money(p.captured?.cents)}`]);
-    items.push([p.filedAt, `Buyer filed dispute <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
+    items.push([p.filedAt, `${c.bench ? 'Bench dispute' : 'Buyer filed dispute'} <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
     if (p.executed) items.push([p.executed.at, `Black Box: <b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}) → <span class="mono">${esc(p.executed.action)}</span>`]);
     for (const m of p.after?.moneyMovements ?? []) items.push([p.executed?.at, `<span class="k">Money:</span> ${esc(m.party)} ${esc(m.type)} ${money(m.amount?.cents)} <span class="k">${esc(m.reason)}</span>`]);
   }
@@ -190,7 +213,7 @@ ${j.mandate.violations.length ? `<ul class="checks">${j.mandate.violations.map((
 
   const sideBySide = `<h2>What a person saw · what the agent read</h2>${contrast}<div class="two">
 <div><div class="k" style="margin-bottom:6px">The signed page, rendered as a shopper sees it (scripts disabled)</div>
-<iframe sandbox="" referrerpolicy="no-referrer" title="Recorded product page" src="/case/${c.hash}/page"></iframe></div>
+<iframe sandbox="" referrerpolicy="no-referrer" title="Recorded product page" src="${c.bench ? `/bench/${esc(c.bench.id)}` : `/case/${c.hash}`}/page"></iframe></div>
 <div><div class="k" style="margin-bottom:6px">The exact model input, from the record${marked ? ` · <a href="#hidden">${marked} hidden passage${marked > 1 ? 's' : ''} highlighted</a>` : ''}</div>
 <pre class="input">${inputs.map((i) => i.html).join('\n\n')}</pre></div></div>
 ${d.reason ? `<blockquote><span class="k">${esc(d.model)} explained its choice:</span><br>“${esc(d.reason)}”</blockquote>` : ''}`;
@@ -221,5 +244,11 @@ ${RULES.map((rule) => `<tr class="rule ${rule.verdict} ${rule.n === j.verdict.ru
 ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}
 <div class="k" style="margin-top:8px">Source: <span class="mono">${esc(c.source)}</span></div></div>`;
 
-  return layout(`${label(v)} · ${d.model ?? 'replay'}`, `${verdictCard}${mandate}${sideBySide}${findings}${facts}${rules}<h2>Timeline</h2><div class="card">${timeline(c, j)}</div>${proof}`);
+  const b = c.benchResult;
+  const benchCard = b ? `<section class="card" style="margin-bottom:16px"><div class="k"><a href="/bench">Case bench</a> · ${esc(b.def.id)} · ${esc(b.def.kind)}</div>
+<div class="big">${esc(b.def.title)}</div><p style="margin:4px 0">${esc(b.def.story)}</p>
+<div><span class="pill ${b.pass ? 'PASS' : 'FAIL'}">${b.pass ? 'PASS' : 'FAIL'}</span> <span class="k">expected ${esc(expectText(b.def.expect))}</span></div>
+${b.mismatches.map((m) => `<div class="problems">${esc(m)}</div>`).join('')}</section>` : '';
+
+  return layout(`${label(v)} · ${d.model ?? 'replay'}`, `${benchCard}${verdictCard}${mandate}${sideBySide}${findings}${facts}${rules}<h2>Timeline</h2><div class="card">${timeline(c, j)}</div>${proof}`);
 }

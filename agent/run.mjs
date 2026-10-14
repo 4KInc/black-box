@@ -1,5 +1,5 @@
 // Runs the shopping agent against the demo shop (start it first with `npm run shop`).
-//   node agent/run.mjs [--model claude-sonnet-5-5] [--shelf RJ-BLUE-M,RJ-PREMIUM-BLUE-M] [--no-checkout]
+//   node agent/run.mjs [--model claude-sonnet-5-5] [--shelf RJ-BLUE-M,RJ-PREMIUM-BLUE-M] [--cap 150] [--no-checkout]
 // Saves the sealed record to records/<hash>.json and previews the verdict a
 // "not as described" dispute would get.
 import { join } from 'node:path';
@@ -17,13 +17,14 @@ loadEnv(join(ROOT, 'killtest', '.env'));
 const { values } = parseArgs({ options: {
   model: { type: 'string', default: DEFAULT_MODEL },
   shelf: { type: 'string' },
+  cap: { type: 'string', default: '150' },
   shop: { type: 'string', default: process.env.SHOP_ORIGIN ?? 'http://localhost:4010' },
   'no-checkout': { type: 'boolean', default: false },
 } });
 
 const MANDATE = {
   item: { category: 'rain jacket', attributes: { color: 'blue', size: 'M' } },
-  maxTotalCents: 15000, currency: 'USD', signedShopsOnly: true,
+  maxTotalCents: Math.round(Number(values.cap) * 100), currency: 'USD', signedShopsOnly: true,
 };
 
 const { declined, sealed, choice, order } = await runAgent({

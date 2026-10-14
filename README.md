@@ -25,7 +25,8 @@ deterministic code (not an AI) returns one verdict: **USER**, **AGENT**, **MERCH
 Node 24, no dependencies.
 
 ```sh
-npm test                                     # 87 tests
+npm test                                     # 91 tests
+npm run bench                                # 16-case bench: every verdict and rule, plus attacks on the record
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
 npm run shop                                 # demo shop :4010, review platform :4011
 node agent/run.mjs --model claude-haiku-4-5-20251001 --shelf RJ-PREMIUM-BLUE-M   # needs ANTHROPIC_API_KEY in .env
@@ -45,7 +46,8 @@ npm run replay                               # replay UI on :4030: verdict, hidd
 | `recorder/` | sealed shopping records |
 | `agent/` | shopping agent (Anthropic API or a local OpenAI-compatible model) |
 | `executor/` | dispute → record → verdict → PayPal action |
-| `replay/` | replay UI: every recorded purchase, judged and explained (no scripts; recorded pages sandboxed) |
+| `bench/` | case bench: recorded runs and record attacks, each with its expected verdict, rule and PayPal action |
+| `replay/` | replay UI: every recorded purchase, judged and explained (no scripts; recorded pages sandboxed); `/bench` shows the case bench |
 | `killtest/` | sandbox feasibility checks for the Disputes API |
 | `fixtures/recorded/` | real runs where a model was fooled by hidden text, incl. the live sandbox refund |
 
