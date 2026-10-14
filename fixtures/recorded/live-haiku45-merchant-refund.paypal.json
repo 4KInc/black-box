@@ -5,7 +5,7 @@
   "customId": "61c79d751ce7311d6eeca9bcf83079ddeb7f7f354a13b4c2fcc29673f3fe8a8e",
   "payeeMerchantId": "MCYKQUXGB936U",
   "orderId": "1SB25672SL834854W",
-  "orderCreatedAt": "2026-10-13T06:18:53Z",
+  "orderCreatedAt": "2026-10-13T06:16:20Z",
   "captureId": "6AB341950L6459918",
   "captured": {
     "cents": 24000,
@@ -18,7 +18,16 @@
     "debugId": "ca49c63a29a36"
   },
   "after": {
-    "status": "UNDER_REVIEW",
+    "status": "RESOLVED",
+    "outcome": {
+      "code": "RESOLVED_BUYER_FAVOUR",
+      "reason": "SELLER_ISSUED_REFUND",
+      "refunded": {
+        "cents": 24000,
+        "currency": "USD"
+      }
+    },
+    "updatedAt": "2026-10-13T06:48:33.394Z",
     "moneyMovements": [
       {
         "party": "BUYER",

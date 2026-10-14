@@ -36,6 +36,8 @@ export function paypalFromLog(entries) {
     executed: executed ? { action: executed.step, httpStatus: executed.status, at: executed.at, debugId: executed.debug_id ?? null } : null,
     after: after ? {
       status: after.status,
+      outcome: after.dispute_outcome ? { code: after.dispute_outcome.outcome_code, reason: after.dispute_outcome.outcome_reason ?? null, refunded: amount(after.dispute_outcome.amount_refunded) } : null,
+      updatedAt: after.update_time ?? null,
       moneyMovements: (after.money_movements ?? []).map((m) => ({ party: m.affected_party, type: m.type, reason: m.reason, amount: amount(m.amount) })),
       refundTransactions: (after.refund_details?.transactions ?? []).map((t) => ({ id: t.id, amount: amount(t.gross_amount) })),
     } : null,

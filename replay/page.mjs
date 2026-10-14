@@ -161,7 +161,8 @@ function paypalPanel(c, j) {
   return `<div class="k">PayPal dispute <span class="mono">${esc(p.disputeId)}</span></div>
 ${p.executed ? `<div class="big">${buyer ? `${money(buyer.amount.cents, buyer.amount.currency)} back to the buyer` : esc(p.executed.action)}</div>
 <div class="k">Executed <span class="mono">${esc(p.executed.action)}</span> → HTTP ${esc(p.executed.httpStatus)} at ${time(p.executed.at)}</div>
-${refund ? `<div class="k">Refund transaction <span class="mono">${esc(refund.id)}</span></div>` : ''}`
+${refund ? `<div class="k">Refund transaction <span class="mono">${esc(refund.id)}</span></div>` : ''}
+${p.after?.outcome ? `<div class="k">PayPal closed the dispute: <b>${esc(p.after.outcome.code)}</b>${p.after.outcome.reason ? ` (${esc(p.after.outcome.reason)})` : ''}</div>` : ''}`
     : `<div class="big">${j.plan.action === 'none' ? 'No automatic action' : esc(j.plan.action)}${j.plan.refundCents ? ' ' + money(j.plan.refundCents) : ''}</div><div class="k">Planned, not yet executed.</div>`}`;
 }
 
@@ -178,6 +179,7 @@ function timeline(c, j) {
     items.push([p.filedAt, `${c.bench ? 'Bench dispute' : 'Buyer filed dispute'} <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
     if (p.executed) items.push([p.executed.at, `Black Box: <b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}) → <span class="mono">${esc(p.executed.action)}</span>`]);
     for (const m of p.after?.moneyMovements ?? []) items.push([p.executed?.at, `<span class="k">Money:</span> ${esc(m.party)} ${esc(m.type)} ${money(m.amount?.cents)} <span class="k">${esc(m.reason)}</span>`]);
+    if (p.after?.outcome) items.push([p.after.updatedAt, `PayPal closed the dispute: <b>${esc(p.after.outcome.code)}</b> ${esc(p.after.outcome.reason ?? '')}${p.after.outcome.refunded ? `, ${money(p.after.outcome.refunded.cents)} refunded` : ''}`]);
   }
   return `<ol class="tl">${items.map(([at, h]) => `<li><span class="when">${time(at)}</span><span>${h}</span></li>`).join('')}</ol>`;
 }

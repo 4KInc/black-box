@@ -19,18 +19,24 @@ deterministic code (not an AI) returns one verdict: **USER**, **AGENT**, **MERCH
    merchant signed was hidden from humans, named the purchased item and reached the model.
 4. **Executor.** Reads a PayPal dispute, loads the record by `custom_id`, decides, and runs
    `accept-claim`, `make-offer` or `provide-evidence`.
+5. **Autopilot.** A dispute webhook (verified with PayPal) or the dispute watcher triggers the
+   executor with no one at the keyboard. It acts at most once per dispute, only when PayPal offers
+   the planned action, and only for orders that carry a Black Box record.
 
 ## Run it
 
 Node 24, no dependencies.
 
 ```sh
-npm test                                     # 91 tests
+npm test                                     # 99 tests
 npm run bench                                # 16-case bench: every verdict and rule, plus attacks on the record
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
 npm run shop                                 # demo shop :4010, review platform :4011
 node agent/run.mjs --model claude-haiku-4-5-20251001 --shelf RJ-PREMIUM-BLUE-M   # needs ANTHROPIC_API_KEY in .env
 node executor/resolve.mjs <dispute_id>       # dry run; add --execute to act
+AUTO_EXECUTE=on npm run watch                # poll PayPal and resolve new disputes automatically (no public URL needed)
+npm run webhook -- --register https://…/paypal/webhook   # register a public URL for dispute webhooks
+AUTO_EXECUTE=on npm run webhook              # receive webhooks; every event is verified with PayPal first
 npm run replay                               # replay UI on :4030: verdict, hidden text vs model input, facts, PayPal outcome
 ```
 

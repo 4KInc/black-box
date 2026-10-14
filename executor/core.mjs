@@ -1,0 +1,112 @@
+// One dispute, end to end, shared by the CLI (resolve.mjs), the webhook receiver and the watcher:
+//   1. reads the dispute from PayPal (reason, amount, custom_id = record hash, payee merchant ID)
+//   2. reads the capture and its order to learn when the order was created
+//   3. loads the stored record by its hash and evaluates the case (engine/case.mjs)
+//   4. with execute: true, carries out the planned PayPal action and records the response
+// Every PayPal call is appended to records/executions/<dispute>.jsonl.
+//
+// Safe to call repeatedly for the same dispute: it acts at most once (a logged, successful action
+// means "done"), only when PayPal currently offers that action, and only for orders that carry
+// a Black Box record.
+
+import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { accessToken, API, paypal } from '../lib/paypal.mjs';
+import { loadRecord } from '../recorder/recorder.mjs';
+import { evaluateCase } from '../engine/case.mjs';
+import { toValue } from '../engine/actions.mjs';
+
+const cents = (v) => Math.round(Number(v) * 100);
+const ACTION_STEP = /^(accept-claim|make-offer|provide-evidence)/;
+
+// The dispute link PayPal shows when an action is currently allowed.
+const LINK_FOR = {
+  'accept-claim': 'accept_claim',
+  'accept-claim-partial': 'accept_claim',
+  'make-offer': 'make_offer',
+  'provide-evidence': 'provide_evidence',
+};
+
+export function executionLog(root, disputeId) {
+  if (!/^[A-Z0-9-]{6,64}$/.test(disputeId)) throw new TypeError(`not a dispute ID: ${disputeId}`);
+  const dir = join(root, 'records', 'executions');
+  mkdirSync(dir, { recursive: true });
+  const path = join(dir, `${disputeId}.jsonl`);
+  const read = () => (existsSync(path) ? readFileSync(path, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+  return {
+    path,
+    read,
+    write: (entry) => appendFileSync(path, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n'),
+    alreadyExecuted: () => read().some((e) => ACTION_STEP.test(e.step ?? '') && e.status >= 200 && e.status < 300),
+  };
+}
+
+// outcome.status is one of:
+//   'planned'        dry run, or the plan has no PayPal action
+//   'executed'       the action was sent and PayPal accepted it
+//   'already-done'   an earlier run already executed an action for this dispute
+//   'not-ready'      PayPal does not offer the planned action yet (try again later)
+//   'not-ours'       the disputed order carries no Black Box record
+export async function resolveDispute(disputeId, { root, execute = false, source = 'cli' }) {
+  const log = executionLog(root, disputeId);
+  async function must(step, method, path, json) {
+    const r = await paypal(method, path, json);
+    log.write({ step, source, method, path, status: r.status, debug_id: r.debugId, request: json ?? null, response: r.data });
+    if (!r.ok) throw new Error(`${step} failed (${r.status}, debug ${r.debugId}): ${JSON.stringify(r.data).slice(0, 400)}`);
+    return r.data;
+  }
+
+  const dispute = await must('get dispute', 'GET', `/v1/customer/disputes/${disputeId}`);
+  const txn = dispute.disputed_transactions?.[0];
+  const links = (dispute.links ?? []).map((l) => l.rel);
+  const base = { disputeId, dispute, links };
+
+  let record;
+  try { record = txn?.custom ? loadRecord(join(root, 'records'), txn.custom) : null; } catch { record = null; }
+  if (!record) {
+    log.write({ step: 'skip', source, why: txn?.custom ? `no stored record ${txn.custom}` : 'no custom_id on the disputed transaction' });
+    return { ...base, status: 'not-ours' };
+  }
+
+  const capture = await must('get capture', 'GET', `/v2/payments/captures/${txn.seller_transaction_id}`);
+  const orderId = capture.supplementary_data?.related_ids?.order_id;
+  const order = orderId ? await must('get order', 'GET', `/v2/checkout/orders/${orderId}`) : null;
+
+  const result = evaluateCase({
+    record,
+    order: {
+      customId: txn.custom,
+      payeeMerchantId: txn.seller?.merchant_id,
+      createdAt: order?.create_time ?? capture.create_time,
+      capturedCents: cents(txn.gross_amount.value),
+    },
+    reason: dispute.reason,
+  });
+  log.write({ step: 'verdict', source, verdict: result.verdict, plan: result.plan, facts: result.facts });
+  const out = { ...base, record, txn, result };
+
+  const p = result.plan;
+  if (!execute || p.action === 'none') return { ...out, status: 'planned' };
+  if (log.alreadyExecuted()) return { ...out, status: 'already-done' };
+  if (!links.includes(LINK_FOR[p.action])) return { ...out, status: 'not-ready' };
+
+  const note = `Black Box verdict ${result.verdict.verdict} (rule ${result.verdict.rule}). Record ${txn.custom}.`;
+  const amount = (c) => ({ currency_code: txn.gross_amount.currency_code, value: toValue(c) });
+
+  if (p.action === 'accept-claim' || p.action === 'accept-claim-partial') {
+    const type = p.action === 'accept-claim' ? 'REFUND' : 'PARTIAL_REFUND';
+    await must(`accept-claim ${type}`, 'POST', `/v1/customer/disputes/${disputeId}/accept-claim`, { note, accept_claim_type: type, refund_amount: amount(p.refundCents) });
+  } else if (p.action === 'make-offer') {
+    await must('make-offer REFUND', 'POST', `/v1/customer/disputes/${disputeId}/make-offer`, { note, offer_type: 'REFUND', offer_amount: amount(p.refundCents) });
+  } else if (p.action === 'provide-evidence') {
+    const form = new FormData();
+    form.append('input', new Blob([JSON.stringify({ evidences: [{ evidence_type: 'OTHER', notes: note, documents: [{ name: 'blackbox-record.txt' }] }] })], { type: 'application/json' }));
+    // PayPal accepts JPG, GIF, PNG, PDF or TXT evidence, so the record goes up as text.
+    form.append('file1', new Blob([JSON.stringify(record, null, 2)], { type: 'text/plain' }), 'blackbox-record.txt');
+    const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form });
+    log.write({ step: 'provide-evidence', source, status: r.status, response: await r.text() });
+    if (!r.ok) throw new Error(`provide-evidence failed (${r.status})`);
+  }
+  const after = await must('get dispute (after)', 'GET', `/v1/customer/disputes/${disputeId}`);
+  return { ...out, status: 'executed', after };
+}

@@ -7,6 +7,8 @@
     "test": "node --test \"*/test/*.test.mjs\"",
     "shop": "node shop/main.mjs",
     "replay": "node replay/server.mjs",
-    "bench": "node bench/run.mjs"
+    "bench": "node bench/run.mjs",
+    "watch": "node executor/watch.mjs",
+    "webhook": "node executor/webhook.mjs"
   }
 }
