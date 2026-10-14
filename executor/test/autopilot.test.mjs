@@ -108,3 +108,12 @@ test('execution logs only accept real dispute IDs, and an executed action counts
   log.write({ step: 'accept-claim REFUND', status: 200 });
   assert.equal(log.alreadyExecuted(), true);
 });
+
+test('the action lock is exclusive across callers and released only on a definite refusal', () => {
+  const a = executionLog(root, 'PP-D-888');
+  const b = executionLog(root, 'PP-D-888');
+  assert.equal(a.lock(), true);
+  assert.equal(b.lock(), false);
+  a.unlock();
+  assert.equal(b.lock(), true);
+});

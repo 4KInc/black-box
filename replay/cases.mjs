@@ -8,6 +8,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { evaluateCase } from '../engine/case.mjs';
 import { recordHash } from '../recorder/recorder.mjs';
+import { enrolledKeysFrom } from '../mandate/server.mjs';
 
 const cents = (v) => Math.round(Number(v) * 100);
 const amount = (a) => (a ? { cents: cents(a.value), currency: a.currency_code } : null);
@@ -29,6 +30,7 @@ export function paypalFromLog(entries) {
     filedAt: dispute.create_time,
     customId: txn.custom ?? null,
     payeeMerchantId: txn.seller?.merchant_id ?? null,
+    payerId: txn.buyer?.payer_id ?? null,
     orderId: order?.id ?? capture?.supplementary_data?.related_ids?.order_id ?? null,
     orderCreatedAt: order?.create_time ?? capture?.create_time ?? null,
     captureId: txn.seller_transaction_id ?? null,
@@ -83,11 +85,11 @@ const signedMerchantId = (record) => {
 
 // The verdict, exactly as the executor computes it. Without a dispute, the PayPal side is assumed
 // to be the honest one (custom_id = record hash, payee = the signed merchant, captured = the price).
-export function judge({ hash, record, paypal }) {
+export function judge({ hash, record, paypal }, { root } = {}) {
   const preview = !paypal;
   const order = preview
     ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents }
-    : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents };
+    : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents, payerId: paypal.payerId ?? null };
   const reason = paypal?.reason ?? DEFAULT_REASON;
-  return { preview, reason, order, ...evaluateCase({ record, order, reason }) };
+  return { preview, reason, order, ...evaluateCase({ record, order, reason, enrolledKeys: root ? enrolledKeysFrom(root) : undefined }) };
 }

@@ -31,8 +31,8 @@ function parseChoice(text) {
 }
 
 // shelf: optional list of SKUs to consider (a scenario's subset of the catalog).
-export async function runAgent({ shopUrl, mandate, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true }) {
-  const rec = new Recorder({ mandate, fetch: f });
+export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true }) {
+  const rec = new Recorder({ mandate, mandateAuth, fetch: f });
   const origin = new URL(shopUrl).origin;
 
   const cat = await rec.fetchSigned(`${origin}/`);

@@ -11,7 +11,7 @@ const MANDATE = {
   maxTotalCents: 15000, currency: 'USD',
   notBefore: '2026-10-11T00:00:00Z', notAfter: '2026-10-18T00:00:00Z', signedShopsOnly: true,
 };
-const RECORD_OK = { hashesMatch: true, signaturesValid: true, keyOnShopDomain: true, payeeMatches: true, signedBeforeOrder: true };
+const RECORD_OK = { hashesMatch: true, signaturesValid: true, keyOnShopDomain: true, payeeMatches: true, signedBeforeOrder: true, mandateSigned: true };
 
 function run({ purchase, findings, aiInjectionFlag = false, record = RECORD_OK, reason }) {
   const m = checkMandate(MANDATE, purchase);

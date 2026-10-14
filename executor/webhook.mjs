@@ -1,6 +1,7 @@
 // PayPal webhook receiver: a dispute is filed -> PayPal calls us -> Black Box resolves it.
 //
-//   node executor/webhook.mjs                     receive on :4040 at POST /paypal/webhook
+//   node executor/webhook.mjs [--watch 30]        receive on :4040 at POST /paypal/webhook
+//                                                 (--watch also polls, through the same autopilot)
 //   node executor/webhook.mjs --register <url>    register <url> with PayPal for dispute events
 //                                                 (prints the webhook ID for PAYPAL_WEBHOOK_ID)
 //
@@ -17,6 +18,7 @@ import { parseArgs } from 'node:util';
 import { loadEnv } from '../lib/env.mjs';
 import { paypal } from '../lib/paypal.mjs';
 import { createAutopilot } from './autopilot.mjs';
+import { pollOnce } from './watch.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 export const DISPUTE_EVENTS = ['CUSTOMER.DISPUTE.CREATED', 'CUSTOMER.DISPUTE.UPDATED'];
@@ -76,7 +78,7 @@ function fileLog(name) {
 
 if (import.meta.main) {
   loadEnv(join(ROOT, '.env'), join(ROOT, 'killtest', '.env'));
-  const { values } = parseArgs({ options: { register: { type: 'string' }, port: { type: 'string', default: process.env.WEBHOOK_PORT ?? '4040' } } });
+  const { values } = parseArgs({ options: { register: { type: 'string' }, watch: { type: 'string' }, port: { type: 'string', default: process.env.WEBHOOK_PORT ?? '4040' } } });
 
   if (values.register) {
     const url = new URL(values.register);
@@ -94,4 +96,9 @@ if (import.meta.main) {
   const autopilot = createAutopilot({ root: ROOT, execute, report: log });
   createWebhookReceiver({ autopilot, verify: paypalVerifier(webhookId), log }).listen(Number(values.port), () =>
     console.log(`webhook  POST http://localhost:${values.port}/paypal/webhook   ${execute ? 'AUTO_EXECUTE=on: will act' : 'dry run (AUTO_EXECUTE=on to act)'}`));
+  if (values.watch) {
+    const tick = () => pollOnce(autopilot).catch((e) => log({ status: 'poll failed', error: e.message }));
+    setInterval(tick, Number(values.watch) * 1000);
+    console.log(`watcher  polling every ${values.watch}s through the same autopilot`);
+  }
 }

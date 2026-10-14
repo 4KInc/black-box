@@ -25,9 +25,9 @@ export function signedProduct(record) {
   };
 }
 
-// order = { customId, payeeMerchantId, createdAt, capturedCents } from PayPal.
-export function evaluateCase({ record, order, reason, aiInjectionFlag = false }) {
-  const integrity = recordFacts(record, order);
+// order = { customId, payeeMerchantId, createdAt, capturedCents, payerId } from PayPal.
+export function evaluateCase({ record, order, reason, aiInjectionFlag = false, enrolledKeys }) {
+  const integrity = recordFacts(record, order, { enrolledKeys });
   const product = signedProduct(record);
   const page = record.fetches[record.purchase.page_index];
 
@@ -58,5 +58,5 @@ export function evaluateCase({ record, order, reason, aiInjectionFlag = false })
     signedPriceCents: product?.priceCents ?? order.capturedCents,
   });
 
-  return { verdict, plan, facts, mandate, findings, product, integrityProblems: integrity.problems };
+  return { verdict, plan, facts, mandate, findings, product, integrityProblems: integrity.problems, mandateAuth: integrity.mandate };
 }

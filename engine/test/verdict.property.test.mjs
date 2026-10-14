@@ -24,9 +24,9 @@ function oracle(f) {
 
 const ALL = [...everyCombination()];
 
-test('the space is every combination of the 12 facts', () => {
-  assert.equal(FACT_KEYS.length, 12);
-  assert.equal(ALL.length, 4096);
+test('the space is every combination of the 13 facts', () => {
+  assert.equal(FACT_KEYS.length, 13);
+  assert.equal(ALL.length, 8192);
 });
 
 test('exactly one rule fires for every combination, and it gives the expected verdict', () => {

@@ -23,6 +23,7 @@ const FACT_TEXT = {
   keyOnShopDomain: "The signing key was published on the shop's own domain",
   payeeMatches: 'The signed merchant ID equals the PayPal payee',
   signedBeforeOrder: 'Every page was signed before the PayPal order existed',
+  mandateSigned: 'The paying user approved the mandate with their enrolled passkey (or the order predates passkeys)',
   mandateBroken: "The purchase breaks the user's mandate",
   concealedInReadChannel: 'Text hidden from people, inside what the agent reads',
   namesPurchasedItem: 'That hidden text names the item that was bought',
@@ -203,7 +204,8 @@ export function casePage(c, j) {
   const mandate = `<h2>What the user authorised</h2><div class="card two">
 <div><div class="k">Mandate</div><div class="big">${esc(m.item?.category)}${attrs ? ` · ${esc(attrs)}` : ''}</div>
 <div>at most <b>${money(m.maxTotalCents, m.currency)}</b>${m.signedShopsOnly ? ', from shops that sign their pages' : ''}</div>
-<div class="k mono">mandate sha256 ${short(r.mandate_hash, 16)}</div></div>
+<div class="k mono">mandate sha256 ${short(r.mandate_hash, 16)}</div>
+<ul class="checks">${j.mandateAuth?.legacy ? '<li class="k">Unsigned: this order predates passkey mandates</li>' : yesNo(j.facts.mandateSigned, j.mandateAuth?.reason ?? 'Approved with a passkey')}</ul></div>
 <div><div class="k">What was bought</div><div class="big">${esc(j.product?.name ?? r.purchase.sku)} · ${money(j.order.capturedCents)}</div>
 ${j.mandate.violations.length ? `<ul class="checks">${j.mandate.violations.map((x) => `<li class="no" style="color:var(--bad)">${esc(x.code === 'OVER_CAP' ? `Over budget: paid ${money(j.order.capturedCents)}, cap ${money(m.maxTotalCents)}, ${money(j.order.capturedCents - m.maxTotalCents)} over` : `${x.code}: ${x.detail}`)}</li>`).join('')}</ul>` : '<ul class="checks"><li class="yes">Within the mandate</li></ul>'}</div></div>`;
 

@@ -1,20 +1,25 @@
 // The Black Box recorder. While the agent shops, it keeps:
-//   - the mandate the user signed
+//   - the mandate the user signed, and the user's passkey approval of it (mandate_auth)
 //   - every page fetched, byte for byte, with its signature headers and the shop's published keys
 //   - the keys of any third party that signed part of a page
 //   - every model input, exactly as sent to the model, and every decision the agent made
 //   - the purchase
 // seal() freezes the record and returns its hash, which goes to checkout and into custom_id.
 // At dispute time, recordFacts() re-checks everything from the stored record alone and returns
-// the five record-integrity facts the verdict engine needs.
+// the six record-integrity facts the verdict engine needs.
 
 import { createHash } from 'node:crypto';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { canonicalize } from '../lib/canonical.mjs';
 import { findSpans, verifyResponse } from '../lib/sig.mjs';
+import { verifyMandateAssertion } from '../lib/webauthn.mjs';
 
 export const RECORD_VERSION = 'blackbox-record-v1';
+export const RECORD_VERSION_PASSKEY = 'blackbox-record-v2';
+// Orders PayPal created from this moment on must carry a passkey-approved mandate. Earlier
+// records predate passkeys. PayPal sets the order time, so a new record cannot pass as an old one.
+export const PASSKEY_REQUIRED_FROM = '2026-10-15T00:00:00Z';
 const sha = (data) => createHash('sha256').update(data).digest('hex');
 export const recordHash = (record) => sha(canonicalize(record));
 
@@ -36,10 +41,12 @@ export class Recorder {
   #now;
   #jwksCache = new Map();
 
-  constructor({ mandate, fetch: f = fetch, now = () => new Date().toISOString() }) {
+  constructor({ mandate, mandateAuth = null, fetch: f = fetch, now = () => new Date().toISOString() }) {
     this.#fetch = f;
     this.#now = now;
-    this.#record = { version: RECORD_VERSION, mandate, mandate_hash: sha(canonicalize(mandate)), fetches: [], issuer_keys: {}, model_inputs: [], decisions: [], purchase: null };
+    this.#record = mandateAuth
+      ? { version: RECORD_VERSION_PASSKEY, mandate, mandate_hash: sha(canonicalize(mandate)), mandate_auth: mandateAuth, fetches: [], issuer_keys: {}, model_inputs: [], decisions: [], purchase: null }
+      : { version: RECORD_VERSION, mandate, mandate_hash: sha(canonicalize(mandate)), fetches: [], issuer_keys: {}, model_inputs: [], decisions: [], purchase: null };
   }
 
   #assertOpen() { if (this.#sealed) throw new Error('record is sealed'); }
@@ -113,9 +120,10 @@ export class Recorder {
 
 const merchantIdIn = (html) => html.match(/<meta name="paypal-merchant-id" content="([^"]+)">/)?.[1] ?? null;
 
-// order = what PayPal says at dispute time: { customId, payeeMerchantId, createdAt (ISO) }.
+// order = what PayPal says at dispute time: { customId, payeeMerchantId, createdAt (ISO), payerId }.
+// enrolledKeys(payerId) returns the passkey public keys (base64url SPKI) that payer enrolled.
 // Everything else is re-derived from the stored record; nothing is re-fetched.
-export function recordFacts(record, order) {
+export function recordFacts(record, order, { enrolledKeys = () => [] } = {}) {
   const problems = [];
   const fetches = record.fetches ?? [];
 
@@ -143,6 +151,9 @@ export function recordFacts(record, order) {
   const beforeOk = Number.isFinite(orderAt) && reverified.every((v) => v.ok && v.created <= orderAt);
   if (!beforeOk) problems.push('a signature is newer than the order (or the order time is unknown)');
 
+  const mandate = mandateCheck(record, order, enrolledKeys);
+  if (!mandate.ok) problems.push(mandate.reason);
+
   return {
     facts: {
       hashesMatch: hashOk && bodiesOk,
@@ -150,10 +161,31 @@ export function recordFacts(record, order) {
       keyOnShopDomain: keyOnDomain,
       payeeMatches: payeeOk,
       signedBeforeOrder: beforeOk,
+      mandateSigned: mandate.ok,
     },
+    mandate,
     signedMerchantId,
     problems,
   };
+}
+
+// The mandate counts only if the paying user approved it with a passkey they enrolled, or if the
+// PayPal order is older than passkeys (then mandate.legacy is true and the replay says so).
+function mandateCheck(record, order, enrolledKeys) {
+  const auth = record.mandate_auth;
+  if (!auth) {
+    const at = Date.parse(order.createdAt);
+    return Number.isFinite(at) && at < Date.parse(PASSKEY_REQUIRED_FROM)
+      ? { ok: true, legacy: true, reason: 'order predates passkey mandates' }
+      : { ok: false, reason: 'the mandate was not approved with a passkey' };
+  }
+  const sig = verifyMandateAssertion(record.mandate, auth);
+  if (!sig.ok) return { ok: false, reason: `mandate passkey: ${sig.reason}` };
+  const keys = order.payerId ? enrolledKeys(order.payerId) ?? [] : [];
+  if (!keys.includes(auth.public_key_spki)) {
+    return { ok: false, reason: `the mandate passkey is not one enrolled by PayPal payer ${order.payerId ?? '(unknown)'}` };
+  }
+  return { ok: true, legacy: false, reason: 'approved with the payer\'s enrolled passkey' };
 }
 
 // ---------- storage ----------

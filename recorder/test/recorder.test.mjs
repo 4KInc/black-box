@@ -84,7 +84,7 @@ test('saving and loading does not change the record hash', async () => {
 test('an untouched record gives all five integrity facts', async () => {
   const { sealed } = await shopRun();
   const { facts, signedMerchantId, problems } = recordFacts(sealed.record, order(sealed.hash));
-  assert.deepEqual(facts, { hashesMatch: true, signaturesValid: true, keyOnShopDomain: true, payeeMatches: true, signedBeforeOrder: true });
+  assert.deepEqual(facts, { hashesMatch: true, signaturesValid: true, keyOnShopDomain: true, payeeMatches: true, signedBeforeOrder: true, mandateSigned: true });
   assert.equal(signedMerchantId, TEST_MERCHANT);
   assert.deepEqual(problems, []);
 });

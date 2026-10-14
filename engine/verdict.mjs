@@ -18,6 +18,8 @@ export const RECORD_CHECKS = Object.freeze([
   'keyOnShopDomain',    // the verifying key is published at the shop's /.well-known/ JWKS
   'payeeMatches',       // the merchant ID in signed content equals the PayPal order's payee
   'signedBeforeOrder',  // every signature's `created` is earlier than the order
+  'mandateSigned',      // the paying user approved the mandate with their enrolled passkey
+                        // (or the order predates passkey mandates)
 ]);
 
 // The four MERCHANT conditions. All must hold for one hidden text (rules 2 and 3).

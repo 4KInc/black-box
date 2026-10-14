@@ -4,9 +4,17 @@ import assert from 'node:assert/strict';
 import { runAgent } from '../agent.mjs';
 import { evaluateCase } from '../../engine/case.mjs';
 import { startDemo, TEST_MERCHANT } from '../../shop/testing.mjs';
+import { softPasskey } from '../../lib/testing/passkey.mjs';
+import { PASSKEY_REQUIRED_FROM, recordHash } from '../../recorder/recorder.mjs';
 
 const MANDATE = { item: { category: 'rain jacket', attributes: { color: 'blue', size: 'M' } }, maxTotalCents: 15000, currency: 'USD', signedShopsOnly: true };
 const NOT_AS_DESCRIBED = 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED';
+// The buyer approves the mandate with a passkey enrolled for their PayPal payer ID, as every
+// order after PASSKEY_REQUIRED_FROM must.
+const PAYER = 'TESTPAYER123';
+const passkey = softPasskey();
+const MANDATE_AUTH = passkey.approve(MANDATE);
+const enrolledKeys = (payerId) => (payerId === PAYER ? [passkey.publicKeySpki] : []);
 let demo;
 
 before(async () => { demo = await startDemo({ now: () => Math.floor(Date.now() / 1000) - 5 }); });
@@ -15,12 +23,12 @@ after(() => demo.close());
 const scripted = (sku) => async () => ({ text: `{"sku": "${sku}", "reason": "scripted"}`, model: 'scripted' });
 
 async function shopAndDispute(sku, { shelf, reason = NOT_AS_DESCRIBED } = {}) {
-  const { sealed, order } = await runAgent({ shopUrl: demo.shopUrl, mandate: MANDATE, llm: scripted(sku), shelf });
+  const { sealed, order } = await runAgent({ shopUrl: demo.shopUrl, mandate: MANDATE, mandateAuth: MANDATE_AUTH, llm: scripted(sku), shelf });
   const capturedCents = sealed.record.purchase.price_cents;
   const result = evaluateCase({
     record: sealed.record,
-    order: { customId: order.custom_id, payeeMerchantId: TEST_MERCHANT, createdAt: new Date().toISOString(), capturedCents },
-    reason,
+    order: { customId: order.custom_id, payeeMerchantId: TEST_MERCHANT, createdAt: new Date().toISOString(), capturedCents, payerId: PAYER },
+    reason, enrolledKeys,
   });
   return { sealed, order, ...result };
 }
@@ -111,4 +119,32 @@ test('the control shop serves the same signed pages without any hidden text', as
     assert.doesNotMatch(input, /automated purchasing agents|takes \$70 off/);
     assert.ok(sealed.record.fetches.every((f) => f.verification.ok));
   } finally { control.close(); }
+});
+
+test('the mandate counts only if the paying user approved it with their enrolled passkey', async () => {
+  const c = await shopAndDispute('RJ-BLUE-M');
+  const judge = (over, record = c.sealed.record, keys = enrolledKeys) => evaluateCase({
+    record, reason: NOT_AS_DESCRIBED, enrolledKeys: keys,
+    order: { customId: recordHash(record), payeeMerchantId: TEST_MERCHANT, createdAt: new Date().toISOString(), capturedCents: 12900, payerId: PAYER, ...over },
+  });
+  assert.equal(judge({}).facts.mandateSigned, true);
+  assert.equal(judge({}).verdict.verdict, 'USER');
+
+  // Someone else paid: the passkey on the mandate is not one they enrolled.
+  const stranger = judge({ payerId: 'SOMEONEELSE' });
+  assert.equal(stranger.facts.mandateSigned, false);
+  assert.equal(stranger.verdict.rule, 1);
+
+  // The agent operator signs a looser mandate with a key of its own.
+  const forged = structuredClone(c.sealed.record);
+  const own = softPasskey();
+  forged.mandate.maxTotalCents = 50000;
+  forged.mandate_auth = own.approve(forged.mandate);
+  assert.equal(judge({}, forged).facts.mandateSigned, false);
+
+  // No passkey approval at all: fine for orders before passkeys existed, broken after.
+  const bare = structuredClone(c.sealed.record);
+  delete bare.mandate_auth;
+  assert.equal(judge({ createdAt: '2026-10-13T00:00:00Z' }, bare).mandateAuth.legacy, true);
+  assert.equal(judge({ createdAt: PASSKEY_REQUIRED_FROM }, bare).facts.mandateSigned, false);
 });

@@ -34,7 +34,7 @@ export function createReplay({ root = ROOT } = {}) {
     try {
       const { pathname } = new URL(req.url, 'http://replay');
       if (req.method !== 'GET') return send(405, 'Method not allowed');
-      if (pathname === '/') return send(200, indexPage(loadCases(root).map((c) => ({ c, j: judge(c) }))));
+      if (pathname === '/') return send(200, indexPage(loadCases(root).map((c) => ({ c, j: judge(c, { root }) }))));
       if (pathname === '/bench') return send(200, benchPage(runBench(root)));
       const b = pathname.match(/^\/bench\/([A-Z]\d{2})(\/page)?$/);
       const br = b && runBench(root).find((r) => r.def.id === b[1]);
@@ -43,7 +43,7 @@ export function createReplay({ root = ROOT } = {}) {
       const m = pathname.match(/^\/case\/([0-9a-f]{64})(\/page)?$/);
       const c = m && loadCases(root).find((x) => x.hash === m[1]);
       if (c && m[2]) { res.writeHead(200, RECORDED); return res.end(pageHtml(c.record)); }
-      if (c) return send(200, casePage(c, judge(c)));
+      if (c) return send(200, casePage(c, judge(c, { root })));
       send(404, 'No such case');
     } catch (e) {
       console.error(e);

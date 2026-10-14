@@ -9,12 +9,13 @@
 // means "done"), only when PayPal currently offers that action, and only for orders that carry
 // a Black Box record.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { accessToken, API, paypal } from '../lib/paypal.mjs';
 import { loadRecord } from '../recorder/recorder.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { toValue } from '../engine/actions.mjs';
+import { enrolledKeysFrom } from '../mandate/server.mjs';
 
 const cents = (v) => Math.round(Number(v) * 100);
 const ACTION_STEP = /^(accept-claim|make-offer|provide-evidence)/;
@@ -33,9 +34,14 @@ export function executionLog(root, disputeId) {
   mkdirSync(dir, { recursive: true });
   const path = join(dir, `${disputeId}.jsonl`);
   const read = () => (existsSync(path) ? readFileSync(path, 'utf8').trim().split('\n').filter(Boolean).map((l) => JSON.parse(l)) : []);
+  const lockPath = join(dir, `${disputeId}.lock`);
   return {
     path,
     read,
+    // Taken just before an action is sent; exclusive across processes. Released only when PayPal
+    // definitely refused the action; after a success, or an unknown outcome, it stays.
+    lock: () => { try { writeFileSync(lockPath, `${process.pid} ${new Date().toISOString()}\n`, { flag: 'wx' }); return true; } catch { return false; } },
+    unlock: () => { try { unlinkSync(lockPath); } catch { /* already gone */ } },
     write: (entry) => appendFileSync(path, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n'),
     alreadyExecuted: () => read().some((e) => ACTION_STEP.test(e.step ?? '') && e.status >= 200 && e.status < 300),
   };
@@ -52,7 +58,7 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
   async function must(step, method, path, json) {
     const r = await paypal(method, path, json);
     log.write({ step, source, method, path, status: r.status, debug_id: r.debugId, request: json ?? null, response: r.data });
-    if (!r.ok) throw new Error(`${step} failed (${r.status}, debug ${r.debugId}): ${JSON.stringify(r.data).slice(0, 400)}`);
+    if (!r.ok) throw Object.assign(new Error(`${step} failed (${r.status}, debug ${r.debugId}): ${JSON.stringify(r.data).slice(0, 400)}`), { refused: true });
     return r.data;
   }
 
@@ -79,8 +85,10 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
       payeeMerchantId: txn.seller?.merchant_id,
       createdAt: order?.create_time ?? capture.create_time,
       capturedCents: cents(txn.gross_amount.value),
+      payerId: txn.buyer?.payer_id ?? null,
     },
     reason: dispute.reason,
+    enrolledKeys: enrolledKeysFrom(root),
   });
   log.write({ step: 'verdict', source, verdict: result.verdict, plan: result.plan, facts: result.facts });
   const out = { ...base, record, txn, result };
@@ -89,24 +97,34 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
   if (!execute || p.action === 'none') return { ...out, status: 'planned' };
   if (log.alreadyExecuted()) return { ...out, status: 'already-done' };
   if (!links.includes(LINK_FOR[p.action])) return { ...out, status: 'not-ready' };
-
-  const note = `Black Box verdict ${result.verdict.verdict} (rule ${result.verdict.rule}). Record ${txn.custom}.`;
-  const amount = (c) => ({ currency_code: txn.gross_amount.currency_code, value: toValue(c) });
-
-  if (p.action === 'accept-claim' || p.action === 'accept-claim-partial') {
-    const type = p.action === 'accept-claim' ? 'REFUND' : 'PARTIAL_REFUND';
-    await must(`accept-claim ${type}`, 'POST', `/v1/customer/disputes/${disputeId}/accept-claim`, { note, accept_claim_type: type, refund_amount: amount(p.refundCents) });
-  } else if (p.action === 'make-offer') {
-    await must('make-offer REFUND', 'POST', `/v1/customer/disputes/${disputeId}/make-offer`, { note, offer_type: 'REFUND', offer_amount: amount(p.refundCents) });
-  } else if (p.action === 'provide-evidence') {
-    const form = new FormData();
-    form.append('input', new Blob([JSON.stringify({ evidences: [{ evidence_type: 'OTHER', notes: note, documents: [{ name: 'blackbox-record.txt' }] }] })], { type: 'application/json' }));
-    // PayPal accepts JPG, GIF, PNG, PDF or TXT evidence, so the record goes up as text.
-    form.append('file1', new Blob([JSON.stringify(record, null, 2)], { type: 'text/plain' }), 'blackbox-record.txt');
-    const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form });
-    log.write({ step: 'provide-evidence', source, status: r.status, response: await r.text() });
-    if (!r.ok) throw new Error(`provide-evidence failed (${r.status})`);
+  if (!log.lock()) return { ...out, status: 'already-done' };
+  try {
+    await act();
+  } catch (e) {
+    if (e.refused) log.unlock();
+    throw e;
   }
   const after = await must('get dispute (after)', 'GET', `/v1/customer/disputes/${disputeId}`);
   return { ...out, status: 'executed', after };
+
+  // The one PayPal call the plan allows. Hoisted, so it reads in plan order above.
+  async function act() {
+    const note = `Black Box verdict ${result.verdict.verdict} (rule ${result.verdict.rule}). Record ${txn.custom}.`;
+    const amount = (c) => ({ currency_code: txn.gross_amount.currency_code, value: toValue(c) });
+
+    if (p.action === 'accept-claim' || p.action === 'accept-claim-partial') {
+      const type = p.action === 'accept-claim' ? 'REFUND' : 'PARTIAL_REFUND';
+      await must(`accept-claim ${type}`, 'POST', `/v1/customer/disputes/${disputeId}/accept-claim`, { note, accept_claim_type: type, refund_amount: amount(p.refundCents) });
+    } else if (p.action === 'make-offer') {
+      await must('make-offer REFUND', 'POST', `/v1/customer/disputes/${disputeId}/make-offer`, { note, offer_type: 'REFUND', offer_amount: amount(p.refundCents) });
+    } else if (p.action === 'provide-evidence') {
+      const form = new FormData();
+      form.append('input', new Blob([JSON.stringify({ evidences: [{ evidence_type: 'OTHER', notes: note, documents: [{ name: 'blackbox-record.txt' }] }] })], { type: 'application/json' }));
+      // PayPal accepts JPG, GIF, PNG, PDF or TXT evidence, so the record goes up as text.
+      form.append('file1', new Blob([JSON.stringify(record, null, 2)], { type: 'text/plain' }), 'blackbox-record.txt');
+      const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form });
+      log.write({ step: 'provide-evidence', source, status: r.status, response: await r.text() });
+      if (!r.ok) throw Object.assign(new Error(`provide-evidence failed (${r.status})`), { refused: true });
+    }
+  }
 }
