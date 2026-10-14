@@ -134,6 +134,7 @@ ${results.filter((r) => r.def.kind === kind).map(row).join('')}</table></div>`;
 <div class="v">${passed}/${results.length}</div><div class="who">cases get exactly the expected verdict, rule and PayPal action</div>
 <p class="why">Every verdict and every rule is covered. Re-run it with <span class="mono">npm run bench</span>.</p></div></section>
 ${section('recorded', 'Recorded runs', "Real agent runs, sealed by the recorder, with the model's own output.")}
+${section('passkey', 'Passkey-approved mandates', 'The buyer approved the budget with Touch ID. Records after the passkey cutoff must carry that approval.')}
 ${section('flagger', 'The AI flagger', 'Its real, recorded answers. It can only send a case to a person, and only quotes found word for word in what the agent read count.')}
 ${section('attack', 'Attacks on the record', 'A real record with one thing forged or swapped. Each must fail exactly the checks named.')}`);
 }

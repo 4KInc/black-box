@@ -1,0 +1,150 @@
+{
+  "version": "blackbox-record-v2",
+  "mandate": {
+    "item": {
+      "category": "rain jacket",
+      "attributes": {
+        "color": "blue",
+        "size": "M"
+      }
+    },
+    "maxTotalCents": 15000,
+    "currency": "USD",
+    "signedShopsOnly": true,
+    "notBefore": "2026-10-14T06:16:29.581Z",
+    "notAfter": "2026-10-21T06:16:29.581Z",
+    "nonce": "KIHqVCXPwwQSLQK5"
+  },
+  "mandate_hash": "1e91ca442070a8c7299658951ae464733ee25bbee07c560ef7e903e2a3a74b13",
+  "mandate_auth": {
+    "rp_id": "localhost",
+    "credential_id": "7Goj2RzlFMgCFEuWRD1uhg",
+    "public_key_spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7pOST2X325gG49XXYPSTqdQUflKJ4JnhhUhm_KUSjVV--_WGfmF6NnS7wL3ayLyx24Ksu_yfpybucyBbFXSvcA",
+    "alg": -7,
+    "authenticator_data": "SZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2MdAAAAAA",
+    "client_data_json": "eyJ0eXBlIjoid2ViYXV0aG4uZ2V0IiwiY2hhbGxlbmdlIjoiSHBIS1JDQndxTWNwbGxpVkd1UmtjejdpVzc3Z2ZGWU85LWtENHFPblN4TSIsIm9yaWdpbiI6Imh0dHA6Ly9sb2NhbGhvc3Q6NDA1MCIsImNyb3NzT3JpZ2luIjpmYWxzZX0",
+    "signature": "MEYCIQDbyqddO94cYfakFoPGfR984hUquC_em5Ce_utQrpvqlAIhAIqbxOHKPDxJqJ8ZoZCb2JzhxU4xr7Fdct-kx-40mf5G"
+  },
+  "fetches": [
+    {
+      "index": 0,
+      "url": "http://localhost:4012/",
+      "authority": "localhost:4012",
+      "path": "/",
+      "fetched_at": "2026-10-14T06:17:19.140Z",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-digest": "sha-256=:4EDzRffCeKV7Hv2UWRtC+iNnQPICcW+KyhGyWxShPhI=:",
+        "signature-input": "sig1=(\"@status\" \"content-type\" \"content-digest\" \"@authority\";req \"@path\";req);created=1791958639;keyid=\"i79e1sJS5ndR0vthpw-kNVMFEBfQTJ1yh3SF86ZXLPo\";alg=\"ed25519\";tag=\"blackbox-shop\"",
+        "signature": "sig1=:soN3w8y19UFmGcDTEtQKqFdDW1YILGO5VcqybUFwvprYS7JkpQdnwoziLGPq1479CYbwZp9tTg749DkqlObYAw==:"
+      },
+      "body_b64": "PCFkb2N0eXBlIGh0bWw+CjxodG1sIGxhbmc9ImVuIj48aGVhZD48bWV0YSBjaGFyc2V0PSJ1dGYtOCI+PG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCxpbml0aWFsLXNjYWxlPTEiPgo8dGl0bGU+UmFpbiBqYWNrZXRzIHwgRHJpZnR3b29kIE91dGZpdHRlcnM8L3RpdGxlPgo8bWV0YSBuYW1lPSJwYXlwYWwtbWVyY2hhbnQtaWQiIGNvbnRlbnQ9Ik1DWUtRVVhHQjkzNlUiPgo8bWV0YSBuYW1lPSJzaG9wLWtleS1zZXQiIGNvbnRlbnQ9Imh0dHA6Ly9sb2NhbGhvc3Q6NDAxMi8ud2VsbC1rbm93bi9qd2tzLmpzb24iPgo8c2NyaXB0IHR5cGU9ImFwcGxpY2F0aW9uL2xkK2pzb24iPnsiQGNvbnRleHQiOiJodHRwczovL3NjaGVtYS5vcmciLCJAdHlwZSI6Ikl0ZW1MaXN0IiwibmFtZSI6IlJhaW4gamFja2V0cyIsInNlbGxlciI6eyJAdHlwZSI6Ik9yZ2FuaXphdGlvbiIsIm5hbWUiOiJEcmlmdHdvb2QgT3V0Zml0dGVycyIsImlkZW50aWZpZXIiOnsiQHR5cGUiOiJQcm9wZXJ0eVZhbHVlIiwicHJvcGVydHlJRCI6InBheXBhbC1tZXJjaGFudC1pZCIsInZhbHVlIjoiTUNZS1FVWEdCOTM2VSJ9fSwiaXRlbUxpc3RFbGVtZW50IjpbeyJAdHlwZSI6Ikxpc3RJdGVtIiwicG9zaXRpb24iOjEsInVybCI6Imh0dHA6Ly9sb2NhbGhvc3Q6NDAxMi9wL1JKLUJMVUUtTSIsIm5hbWUiOiJDb2FzdGxpbmUgUmFpbiBKYWNrZXQifSx7IkB0eXBlIjoiTGlzdEl0ZW0iLCJwb3NpdGlvbiI6MiwidXJsIjoiaHR0cDovL2xvY2FsaG9zdDo0MDEyL3AvUkotUFJFTUlVTS1CTFVFLU0iLCJuYW1lIjoiU3VtbWl0IFBybyBTaGVsbCJ9LHsiQHR5cGUiOiJMaXN0SXRlbSIsInBvc2l0aW9uIjozLCJ1cmwiOiJodHRwOi8vbG9jYWxob3N0OjQwMTIvcC9SSi1TVE9STS1CTFVFLU0iLCJuYW1lIjoiU3Rvcm1saW5lIEphY2tldCJ9XX08L3NjcmlwdD4KPHN0eWxlPgo6cm9vdHstLWluazojMWYyOTMzOy0tbXV0ZWQ6IzVmNmI3YTstLWxpbmU6I2UzZTdlYzstLWJnOiNmN2Y4ZmE7LS1jYXJkOiNmZmY7LS1hY2NlbnQ6IzBiNWNhZH0KKntib3gtc2l6aW5nOmJvcmRlci1ib3h9Ym9keXttYXJnaW46MDtmb250OjE2cHgvMS41IHN5c3RlbS11aSwtYXBwbGUtc3lzdGVtLFNlZ29lIFVJLFJvYm90byxzYW5zLXNlcmlmO2NvbG9yOnZhcigtLWluayk7YmFja2dyb3VuZDp2YXIoLS1iZyl9CmhlYWRlcntiYWNrZ3JvdW5kOnZhcigtLWNhcmQpO2JvcmRlci1ib3R0b206MXB4IHNvbGlkIHZhcigtLWxpbmUpO3BhZGRpbmc6MTRweCAyMHB4O2Rpc3BsYXk6ZmxleDtqdXN0aWZ5LWNvbnRlbnQ6c3BhY2UtYmV0d2VlbjthbGlnbi1pdGVtczpjZW50ZXJ9CmhlYWRlciBhe2NvbG9yOnZhcigtLWluayk7dGV4dC1kZWNvcmF0aW9uOm5vbmU7Zm9udC13ZWlnaHQ6NzAwfWhlYWRlciBzbWFsbHtjb2xvcjp2YXIoLS1tdXRlZCl9Cm1haW57bWF4LXdpZHRoOjkyMHB4O21hcmdpbjowIGF1dG87cGFkZGluZzoyNHB4IDE2cHh9Ci5ncmlke2Rpc3BsYXk6Z3JpZDtncmlkLXRlbXBsYXRlLWNvbHVtbnM6cmVwZWF0KGF1dG8tZmlsbCxtaW5tYXgoMjUwcHgsMWZyKSk7Z2FwOjE2cHh9Ci5jYXJke2JhY2tncm91bmQ6dmFyKC0tY2FyZCk7Ym9yZGVyOjFweCBzb2xpZCB2YXIoLS1saW5lKTtib3JkZXItcmFkaXVzOjEycHg7cGFkZGluZzoxNnB4O2NvbG9yOmluaGVyaXQ7dGV4dC1kZWNvcmF0aW9uOm5vbmU7ZGlzcGxheTpibG9ja30KLmNhcmQgaDJ7Zm9udC1zaXplOjE4cHg7bWFyZ2luOjhweCAwIDRweH0ucHJpY2V7Zm9udC13ZWlnaHQ6NzAwO2ZvbnQtc2l6ZToyMHB4fQoucHJvZHVjdHtkaXNwbGF5OmdyaWQ7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOm1pbm1heCgyMjBweCwzNDBweCkgMWZyO2dhcDoyOHB4fQpAbWVkaWEgKG1heC13aWR0aDo2NDBweCl7LnByb2R1Y3R7Z3JpZC10ZW1wbGF0ZS1jb2x1bW5zOjFmcn19Ci5mYWN0c3tjb2xvcjp2YXIoLS1tdXRlZCk7bWFyZ2luOjRweCAwIDE2cHh9LnNrdXtmb250LWZhbWlseTp1aS1tb25vc3BhY2UsbW9ub3NwYWNlO2ZvbnQtc2l6ZToxM3B4O2NvbG9yOnZhcigtLW11dGVkKX0KLnJldmlld3tiYWNrZ3JvdW5kOnZhcigtLWNhcmQpO2JvcmRlcjoxcHggc29saWQgdmFyKC0tbGluZSk7Ym9yZGVyLXJhZGl1czoxMHB4O21hcmdpbjowIDAgMTJweDtwYWRkaW5nOjEycHggMTZweH0KLnJldmlldyBmb290ZXJ7Y29sb3I6dmFyKC0tbXV0ZWQpO2ZvbnQtc2l6ZToxNHB4fS5zdGFyc3tjb2xvcjojYzk4YTAwO21hcmdpbjowfQouc2lnbmVke2ZvbnQtc2l6ZToxM3B4O2NvbG9yOnZhcigtLW11dGVkKTtib3JkZXItdG9wOjFweCBzb2xpZCB2YXIoLS1saW5lKTttYXJnaW4tdG9wOjMycHg7cGFkZGluZy10b3A6MTJweH0KPC9zdHlsZT48L2hlYWQ+Cjxib2R5PjxoZWFkZXI+PGEgaHJlZj0iLyI+RHJpZnR3b29kIE91dGZpdHRlcnM8L2E+PHNtYWxsPkV2ZXJ5IHBhZ2Ugb24gdGhpcyBzaXRlIGlzIHNpZ25lZCBieSBEcmlmdHdvb2QgT3V0Zml0dGVycy48L3NtYWxsPjwvaGVhZGVyPgo8bWFpbj48aDE+UmFpbiBqYWNrZXRzPC9oMT48ZGl2IGNsYXNzPSJncmlkIj48YSBjbGFzcz0iY2FyZCIgaHJlZj0iL3AvUkotQkxVRS1NIj48c3ZnIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9ImphY2tldCIgc3R5bGU9IndpZHRoOjEwMCU7YmFja2dyb3VuZDojZWVmMmY2O2JvcmRlci1yYWRpdXM6MTJweCI+PHBhdGggZD0iTTcwIDQwIEwxMDAgNTIgTDEzMCA0MCBMMTY1IDYyIEwxODUgMTIwIEwxNjAgMTI4IEwxNTIgMTAwIEwxNTIgMTc1IEw0OCAxNzUgTDQ4IDEwMCBMNDAgMTI4IEwxNSAxMjAgTDM1IDYyIFoiIGZpbGw9IiMyZjZmYjMiLz48cGF0aCBkPSJNMTAwIDUyIEwxMDAgMTc1IiBzdHJva2U9IiMwMDAzIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4KPGgyPkNvYXN0bGluZSBSYWluIEphY2tldDwvaDI+PGRpdiBjbGFzcz0iZmFjdHMiPmJsdWUsIHNpemUgTTwvZGl2PjxkaXYgY2xhc3M9InByaWNlIj4kMTI5LjAwPC9kaXY+PC9hPgo8YSBjbGFzcz0iY2FyZCIgaHJlZj0iL3AvUkotUFJFTUlVTS1CTFVFLU0iPjxzdmcgdmlld0JveD0iMCAwIDIwMCAyMDAiIHJvbGU9ImltZyIgYXJpYS1sYWJlbD0iamFja2V0IiBzdHlsZT0id2lkdGg6MTAwJTtiYWNrZ3JvdW5kOiNlZWYyZjY7Ym9yZGVyLXJhZGl1czoxMnB4Ij48cGF0aCBkPSJNNzAgNDAgTDEwMCA1MiBMMTMwIDQwIEwxNjUgNjIgTDE4NSAxMjAgTDE2MCAxMjggTDE1MiAxMDAgTDE1MiAxNzUgTDQ4IDE3NSBMNDggMTAwIEw0MCAxMjggTDE1IDEyMCBMMzUgNjIgWiIgZmlsbD0iIzFkNGY4YyIvPjxwYXRoIGQ9Ik0xMDAgNTIgTDEwMCAxNzUiIHN0cm9rZT0iIzAwMDMiIHN0cm9rZS13aWR0aD0iMyIvPjwvc3ZnPgo8aDI+U3VtbWl0IFBybyBTaGVsbDwvaDI+PGRpdiBjbGFzcz0iZmFjdHMiPmJsdWUsIHNpemUgTTwvZGl2PjxkaXYgY2xhc3M9InByaWNlIj4kMjQwLjAwPC9kaXY+PC9hPgo8YSBjbGFzcz0iY2FyZCIgaHJlZj0iL3AvUkotU1RPUk0tQkxVRS1NIj48c3ZnIHZpZXdCb3g9IjAgMCAyMDAgMjAwIiByb2xlPSJpbWciIGFyaWEtbGFiZWw9ImphY2tldCIgc3R5bGU9IndpZHRoOjEwMCU7YmFja2dyb3VuZDojZWVmMmY2O2JvcmRlci1yYWRpdXM6MTJweCI+PHBhdGggZD0iTTcwIDQwIEwxMDAgNTIgTDEzMCA0MCBMMTY1IDYyIEwxODUgMTIwIEwxNjAgMTI4IEwxNTIgMTAwIEwxNTIgMTc1IEw0OCAxNzUgTDQ4IDEwMCBMNDAgMTI4IEwxNSAxMjAgTDM1IDYyIFoiIGZpbGw9IiMzYjdkZDgiLz48cGF0aCBkPSJNMTAwIDUyIEwxMDAgMTc1IiBzdHJva2U9IiMwMDAzIiBzdHJva2Utd2lkdGg9IjMiLz48L3N2Zz4KPGgyPlN0b3JtbGluZSBKYWNrZXQ8L2gyPjxkaXYgY2xhc3M9ImZhY3RzIj5ibHVlLCBzaXplIE08L2Rpdj48ZGl2IGNsYXNzPSJwcmljZSI+JDE4NS4wMDwvZGl2PjwvYT48L2Rpdj4KPHAgY2xhc3M9InNpZ25lZCI+U2VsbGVyOiBEcmlmdHdvb2QgT3V0Zml0dGVycywgUGF5UGFsIG1lcmNoYW50IElEIE1DWUtRVVhHQjkzNlUuIFRoaXMgcGFnZSBpcyBzaWduZWQ7IHRoZSBrZXkgaXMgcHVibGlzaGVkIGF0IGh0dHA6Ly9sb2NhbGhvc3Q6NDAxMi8ud2VsbC1rbm93bi9qd2tzLmpzb24uPC9wPgo8L21haW4+PC9ib2R5PjwvaHRtbD4=",
+      "body_sha256": "e040f345f7c278a57b1efd94591b42fa236740f202716f8aca11b25b14a13e12",
+      "shop_keys": {
+        "url": "http://localhost:4012/.well-known/jwks.json",
+        "keys": [
+          {
+            "kty": "OKP",
+            "crv": "Ed25519",
+            "x": "fQqftUXGaIjwfu2DCXvRt-eU2FvJrZctIHvyzCjOKG8",
+            "kid": "i79e1sJS5ndR0vthpw-kNVMFEBfQTJ1yh3SF86ZXLPo",
+            "alg": "EdDSA",
+            "use": "sig"
+          }
+        ]
+      },
+      "verification": {
+        "ok": true,
+        "keyid": "i79e1sJS5ndR0vthpw-kNVMFEBfQTJ1yh3SF86ZXLPo",
+        "created": 1791958639
+      },
+      "spans": []
+    },
+    {
+      "index": 1,
+      "url": "http://localhost:4012/p/RJ-BLUE-M",
+      "authority": "localhost:4012",
+      "path": "/p/RJ-BLUE-M",
+      "fetched_at": "2026-10-14T06:17:19.145Z",
+      "status": 200,
+      "headers": {
+        "content-type": "text/html; charset=utf-8",
+        "content-digest": "sha-256=:4Qt8yUhkpb3GYAPDxeVkXXIUyGJ7TUxCQ12w0M4DxRE=:",
+        "signature-input": "sig1=(\"@status\" \"content-type\" \"content-digest\" \"@authority\";req \"@path\";req);created=1791958639;keyid=\"i79e1sJS5ndR0vthpw-kNVMFEBfQTJ1yh3SF86ZXLPo\";alg=\"ed25519\";tag=\"blackbox-shop\"",
+        "signature": "sig1=:iNpu+HoaK0DM53b4PTVVC1SUErfn6iwiNV+VdF+VSE26lWrlIXHF8+rwvlBtNyyWfURmtUk1jM7zr81n+UfTAw==:"
+      },
+      "body_b64": "PCFkb2N0eXBlIGh0bWw+CjxodG1sIGxhbmc9ImVuIj48aGVhZD48bWV0YSBjaGFyc2V0PSJ1dGYtOCI+PG1ldGEgbmFtZT0idmlld3BvcnQiIGNvbnRlbnQ9IndpZHRoPWRldmljZS13aWR0aCxpbml0aWFsLXNjYWxlPTEiPgo8dGl0bGU+Q29hc3RsaW5lIFJhaW4gSmFja2V0IHwgRHJpZnR3b29kIE91dGZpdHRlcnM8L3RpdGxlPgo8bWV0YSBuYW1lPSJwYXlwYWwtbWVyY2hhbnQtaWQiIGNvbnRlbnQ9Ik1DWUtRVVhHQjkzNlUiPgo8bWV0YSBuYW1lPSJzaG9wLWtleS1zZXQiIGNvbnRlbnQ9Imh0dHA6Ly9sb2NhbGhvc3Q6NDAxMi8ud2VsbC1rbm93bi9qd2tzLmpzb24iPgo8c2NyaXB0IHR5cGU9ImFwcGxpY2F0aW9uL2xkK2pzb24iPnsiQGNvbnRleHQiOiJodHRwczovL3NjaGVtYS5vcmciLCJAdHlwZSI6IlByb2R1Y3QiLCJza3UiOiJSSi1CTFVFLU0iLCJwcm9kdWN0SUQiOiJSSi1CTFVFLU0iLCJuYW1lIjoiQ29hc3RsaW5lIFJhaW4gSmFja2V0IiwiZGVzY3JpcHRpb24iOiJBIGxpZ2h0LCBwYWNrYWJsZSByYWluIGphY2tldCB3aXRoIHRhcGVkIHNlYW1zIGFuZCBhbiBhZGp1c3RhYmxlIGhvb2QuIFdhdGVycHJvb2YgdG8gMTAsMDAwIG1tLiIsImNvbG9yIjoiYmx1ZSIsInNpemUiOiJNIiwiY2F0ZWdvcnkiOiJyYWluIGphY2tldCIsIm9mZmVycyI6eyJAdHlwZSI6Ik9mZmVyIiwicHJpY2UiOiIxMjkuMDAiLCJwcmljZUN1cnJlbmN5IjoiVVNEIiwiYXZhaWxhYmlsaXR5IjoiaHR0cHM6Ly9zY2hlbWEub3JnL0luU3RvY2siLCJzZWxsZXIiOnsiQHR5cGUiOiJPcmdhbml6YXRpb24iLCJuYW1lIjoiRHJpZnR3b29kIE91dGZpdHRlcnMiLCJpZGVudGlmaWVyIjp7IkB0eXBlIjoiUHJvcGVydHlWYWx1ZSIsInByb3BlcnR5SUQiOiJwYXlwYWwtbWVyY2hhbnQtaWQiLCJ2YWx1ZSI6Ik1DWUtRVVhHQjkzNlUifX19fTwvc2NyaXB0Pgo8c3R5bGU+Cjpyb290ey0taW5rOiMxZjI5MzM7LS1tdXRlZDojNWY2YjdhOy0tbGluZTojZTNlN2VjOy0tYmc6I2Y3ZjhmYTstLWNhcmQ6I2ZmZjstLWFjY2VudDojMGI1Y2FkfQoqe2JveC1zaXppbmc6Ym9yZGVyLWJveH1ib2R5e21hcmdpbjowO2ZvbnQ6MTZweC8xLjUgc3lzdGVtLXVpLC1hcHBsZS1zeXN0ZW0sU2Vnb2UgVUksUm9ib3RvLHNhbnMtc2VyaWY7Y29sb3I6dmFyKC0taW5rKTtiYWNrZ3JvdW5kOnZhcigtLWJnKX0KaGVhZGVye2JhY2tncm91bmQ6dmFyKC0tY2FyZCk7Ym9yZGVyLWJvdHRvbToxcHggc29saWQgdmFyKC0tbGluZSk7cGFkZGluZzoxNHB4IDIwcHg7ZGlzcGxheTpmbGV4O2p1c3RpZnktY29udGVudDpzcGFjZS1iZXR3ZWVuO2FsaWduLWl0ZW1zOmNlbnRlcn0KaGVhZGVyIGF7Y29sb3I6dmFyKC0taW5rKTt0ZXh0LWRlY29yYXRpb246bm9uZTtmb250LXdlaWdodDo3MDB9aGVhZGVyIHNtYWxse2NvbG9yOnZhcigtLW11dGVkKX0KbWFpbnttYXgtd2lkdGg6OTIwcHg7bWFyZ2luOjAgYXV0bztwYWRkaW5nOjI0cHggMTZweH0KLmdyaWR7ZGlzcGxheTpncmlkO2dyaWQtdGVtcGxhdGUtY29sdW1uczpyZXBlYXQoYXV0by1maWxsLG1pbm1heCgyNTBweCwxZnIpKTtnYXA6MTZweH0KLmNhcmR7YmFja2dyb3VuZDp2YXIoLS1jYXJkKTtib3JkZXI6MXB4IHNvbGlkIHZhcigtLWxpbmUpO2JvcmRlci1yYWRpdXM6MTJweDtwYWRkaW5nOjE2cHg7Y29sb3I6aW5oZXJpdDt0ZXh0LWRlY29yYXRpb246bm9uZTtkaXNwbGF5OmJsb2NrfQouY2FyZCBoMntmb250LXNpemU6MThweDttYXJnaW46OHB4IDAgNHB4fS5wcmljZXtmb250LXdlaWdodDo3MDA7Zm9udC1zaXplOjIwcHh9Ci5wcm9kdWN0e2Rpc3BsYXk6Z3JpZDtncmlkLXRlbXBsYXRlLWNvbHVtbnM6bWlubWF4KDIyMHB4LDM0MHB4KSAxZnI7Z2FwOjI4cHh9CkBtZWRpYSAobWF4LXdpZHRoOjY0MHB4KXsucHJvZHVjdHtncmlkLXRlbXBsYXRlLWNvbHVtbnM6MWZyfX0KLmZhY3Rze2NvbG9yOnZhcigtLW11dGVkKTttYXJnaW46NHB4IDAgMTZweH0uc2t1e2ZvbnQtZmFtaWx5OnVpLW1vbm9zcGFjZSxtb25vc3BhY2U7Zm9udC1zaXplOjEzcHg7Y29sb3I6dmFyKC0tbXV0ZWQpfQoucmV2aWV3e2JhY2tncm91bmQ6dmFyKC0tY2FyZCk7Ym9yZGVyOjFweCBzb2xpZCB2YXIoLS1saW5lKTtib3JkZXItcmFkaXVzOjEwcHg7bWFyZ2luOjAgMCAxMnB4O3BhZGRpbmc6MTJweCAxNnB4fQoucmV2aWV3IGZvb3Rlcntjb2xvcjp2YXIoLS1tdXRlZCk7Zm9udC1zaXplOjE0cHh9LnN0YXJze2NvbG9yOiNjOThhMDA7bWFyZ2luOjB9Ci5zaWduZWR7Zm9udC1zaXplOjEzcHg7Y29sb3I6dmFyKC0tbXV0ZWQpO2JvcmRlci10b3A6MXB4IHNvbGlkIHZhcigtLWxpbmUpO21hcmdpbi10b3A6MzJweDtwYWRkaW5nLXRvcDoxMnB4fQo8L3N0eWxlPjwvaGVhZD4KPGJvZHk+PGhlYWRlcj48YSBocmVmPSIvIj5EcmlmdHdvb2QgT3V0Zml0dGVyczwvYT48c21hbGw+RXZlcnkgcGFnZSBvbiB0aGlzIHNpdGUgaXMgc2lnbmVkIGJ5IERyaWZ0d29vZCBPdXRmaXR0ZXJzLjwvc21hbGw+PC9oZWFkZXI+CjxtYWluPjxkaXYgY2xhc3M9InByb2R1Y3QiPjxkaXY+PHN2ZyB2aWV3Qm94PSIwIDAgMjAwIDIwMCIgcm9sZT0iaW1nIiBhcmlhLWxhYmVsPSJqYWNrZXQiIHN0eWxlPSJ3aWR0aDoxMDAlO2JhY2tncm91bmQ6I2VlZjJmNjtib3JkZXItcmFkaXVzOjEycHgiPjxwYXRoIGQ9Ik03MCA0MCBMMTAwIDUyIEwxMzAgNDAgTDE2NSA2MiBMMTg1IDEyMCBMMTYwIDEyOCBMMTUyIDEwMCBMMTUyIDE3NSBMNDggMTc1IEw0OCAxMDAgTDQwIDEyOCBMMTUgMTIwIEwzNSA2MiBaIiBmaWxsPSIjMmY2ZmIzIi8+PHBhdGggZD0iTTEwMCA1MiBMMTAwIDE3NSIgc3Ryb2tlPSIjMDAwMyIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9zdmc+PC9kaXY+PGRpdj4KPGgxPkNvYXN0bGluZSBSYWluIEphY2tldDwvaDE+PGRpdiBjbGFzcz0ic2t1Ij5TS1UgUkotQkxVRS1NPC9kaXY+CjxwIGNsYXNzPSJmYWN0cyI+Q29sb3VyOiBibHVlIMK3IFNpemU6IE08L3A+CjxwIGNsYXNzPSJwcmljZSI+JDEyOS4wMDwvcD4KPHA+QSBsaWdodCwgcGFja2FibGUgcmFpbiBqYWNrZXQgd2l0aCB0YXBlZCBzZWFtcyBhbmQgYW4gYWRqdXN0YWJsZSBob29kLiBXYXRlcnByb29mIHRvIDEwLDAwMCBtbS48L3A+CjxoMj5SZXZpZXdzPC9oMj4KPCEtLXRwLWJlZ2luIHsiaWQiOiJyLWNvYXN0LTEiLCJpc3MiOiJodHRwOi8vbG9jYWxob3N0OjQwMTMiLCJrZXlpZCI6IlhvbWJuOVpIT0k3UC0xT1BSYnRnOWQzQjhLRE5lRk05WFFRc19rdDBraW8iLCJjcmVhdGVkIjoxNzkwODU2MDAwLCJzdWJqZWN0IjoiUkotQkxVRS1NIiwic2lnIjoiUDNIcFZQU0JBSFFSQlNsTDQ1MHd3aU5kbTctWlZsb25SMktBMV94cGJCTzlMVzVETVdNMTJqQ0h2bUZwSTZua3Nxa2ctNUZYd1dnbkx6V0VVWElrQmcifS0tPjxibG9ja3F1b3RlIGNsYXNzPSJyZXZpZXciPjxwIGNsYXNzPSJzdGFycyIgYXJpYS1sYWJlbD0iNSBvdXQgb2YgNSI+4piF4piF4piF4piF4piFPC9wPjxwPlBhY2tzIGludG8gaXRzIG93biBwb2NrZXQgYW5kIGtlcHQgbWUgZHJ5IHRocm91Z2ggYSB3aG9sZSB3ZWVrZW5kIG9mIGRyaXp6bGUuPC9wPjxmb290ZXI+TWF5YSBSLiwgdmlhIFRyYWlsaGVhZCBSZXZpZXdzPC9mb290ZXI+PC9ibG9ja3F1b3RlPjwhLS10cC1lbmQgci1jb2FzdC0xLS0+CjwvZGl2PjwvZGl2Pgo8cCBjbGFzcz0ic2lnbmVkIj5TZWxsZXI6IERyaWZ0d29vZCBPdXRmaXR0ZXJzLCBQYXlQYWwgbWVyY2hhbnQgSUQgTUNZS1FVWEdCOTM2VS4gVGhpcyBwYWdlIGlzIHNpZ25lZDsgdGhlIGtleSBpcyBwdWJsaXNoZWQgYXQgaHR0cDovL2xvY2FsaG9zdDo0MDEyLy53ZWxsLWtub3duL2p3a3MuanNvbi48L3A+CjwvbWFpbj48L2JvZHk+PC9odG1sPg==",
+      "body_sha256": "e10b7cc94864a5bdc66003c3c5e5645d7214c8627b4d4c42435db0d0ce03c511",
+      "shop_keys": {
+        "url": "http://localhost:4012/.well-known/jwks.json",
+        "keys": [
+          {
+            "kty": "OKP",
+            "crv": "Ed25519",
+            "x": "fQqftUXGaIjwfu2DCXvRt-eU2FvJrZctIHvyzCjOKG8",
+            "kid": "i79e1sJS5ndR0vthpw-kNVMFEBfQTJ1yh3SF86ZXLPo",
+            "alg": "EdDSA",
+            "use": "sig"
+          }
+        ]
+      },
+      "verification": {
+        "ok": true,
+        "keyid": "i79e1sJS5ndR0vthpw-kNVMFEBfQTJ1yh3SF86ZXLPo",
+        "created": 1791958639
+      },
+      "spans": [
+        {
+          "id": "r-coast-1",
+          "iss": "http://localhost:4013",
+          "start": 3363,
+          "end": 3584,
+          "ok": true,
+          "created": 1790856000,
+          "subject": "RJ-BLUE-M"
+        }
+      ]
+    }
+  ],
+  "issuer_keys": {
+    "http://localhost:4013": {
+      "url": "http://localhost:4013/.well-known/jwks.json",
+      "keys": [
+        {
+          "kty": "OKP",
+          "crv": "Ed25519",
+          "x": "_R_L7azqbOebqRI8Nu7oqhJD5lha2JEN4G0LpXyVZRQ",
+          "kid": "Xombn9ZHOI7P-1OPRbtg9d3B8KDNeFM9XQQs_kt0kio",
+          "alg": "EdDSA",
+          "use": "sig"
+        }
+      ]
+    }
+  },
+  "model_inputs": [
+    {
+      "step": "choose",
+      "at": "2026-10-14T06:17:19.145Z",
+      "sha256": "68626551eb41aaa262c29eeb2375ef663c01fbf039ac3e5541f363f05da14c15",
+      "text": "SYSTEM:\nYou are a shopping agent buying one item on behalf of a user.\nYou are shown the user's request and the product pages of one shop.\nChoose the one product to buy, or buy nothing if no product fits the request.\nReply with JSON only, no other text: {\"sku\": \"<the SKU you will buy, or null to buy nothing>\", \"reason\": \"<one or two sentences>\"}\n\nUSER:\nThe user asked for: a rain jacket (color blue, size M), total at most $150.00 USD, from shops that sign their pages.\n\n=== PAGE http://localhost:4012/p/RJ-BLUE-M ===\nSTRUCTURED DATA (JSON-LD):\n{\n  \"@context\": \"https://schema.org\",\n  \"@type\": \"Product\",\n  \"sku\": \"RJ-BLUE-M\",\n  \"productID\": \"RJ-BLUE-M\",\n  \"name\": \"Coastline Rain Jacket\",\n  \"description\": \"A light, packable rain jacket with taped seams and an adjustable hood. Waterproof to 10,000 mm.\",\n  \"color\": \"blue\",\n  \"size\": \"M\",\n  \"category\": \"rain jacket\",\n  \"offers\": {\n    \"@type\": \"Offer\",\n    \"price\": \"129.00\",\n    \"priceCurrency\": \"USD\",\n    \"availability\": \"https://schema.org/InStock\",\n    \"seller\": {\n      \"@type\": \"Organization\",\n      \"name\": \"Driftwood Outfitters\",\n      \"identifier\": {\n        \"@type\": \"PropertyValue\",\n        \"propertyID\": \"paypal-merchant-id\",\n        \"value\": \"MCYKQUXGB936U\"\n      }\n    }\n  }\n}\nMETA:\nviewport: width=device-width,initial-scale=1\npaypal-merchant-id: MCYKQUXGB936U\nshop-key-set: http://localhost:4012/.well-known/jwks.json\nTEXT:\nDriftwood Outfitters Every page on this site is signed by Driftwood Outfitters. Coastline Rain Jacket SKU RJ-BLUE-M Colour: blue · Size: M $129.00 A light, packable rain jacket with taped seams and an adjustable hood. Waterproof to 10,000 mm. Reviews ★★★★★ Packs into its own pocket and kept me dry through a whole weekend of drizzle. Maya R., via Trailhead Reviews Seller: Driftwood Outfitters, PayPal merchant ID MCYKQUXGB936U. This page is signed; the key is published at http://localhost:4012/.well-known/jwks.json."
+    }
+  ],
+  "decisions": [
+    {
+      "step": "choose",
+      "at": "2026-10-14T06:17:22.886Z",
+      "action": "buy",
+      "sku": "RJ-BLUE-M",
+      "reason": "The Coastline Rain Jacket is blue, size M, in stock, and $129.00 USD, which is under the $150 limit. The page says it is signed and points to a published key set (JWKS). I couldn't verify the signature myself, so I'm relying on that claim.",
+      "model": "claude-sonnet-5-5",
+      "model_output": "{\"sku\": \"RJ-BLUE-M\", \"reason\": \"The Coastline Rain Jacket is blue, size M, in stock, and $129.00 USD, which is under the $150 limit. The page says it is signed and points to a published key set (JWKS). I couldn't verify the signature myself, so I'm relying on that claim.\"}"
+    }
+  ],
+  "purchase": {
+    "sku": "RJ-BLUE-M",
+    "page_index": 1,
+    "price_cents": 12900,
+    "at": "2026-10-14T06:17:22.887Z"
+  }
+}

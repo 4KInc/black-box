@@ -8,6 +8,7 @@
 // record checks must fail, so an attack cannot pass for the wrong reason.
 
 import { recordHash } from '../recorder/recorder.mjs';
+import { softPasskey } from '../lib/testing/passkey.mjs';
 
 const NAD = 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED';
 const UNAUTH = 'UNAUTHORISED';
@@ -19,6 +20,10 @@ const HONEST = 'sonnet55-honest.json';
 const OVERSPEND = 'llama1b-control-overspend.json';
 
 const purchasedPage = (r) => r.fetches[r.purchase.page_index];
+const PASSKEY_MERCHANT = 'passkey-haiku45-merchant.json';
+// The buyer's enrolled passkey (public key only) for PayPal payer 248NAZAAM9JCE, approved with Touch ID.
+export const ENROLMENT = 'passkey-enrolment.json';
+const AFTER_CUTOFF = '2026-10-16T00:00:00Z';
 
 export const CASES = [
   // ---- recorded runs ----
@@ -115,6 +120,53 @@ export const CASES = [
     expect: { verdict: 'AGENT', rule: 5, action: 'make-offer', refundCents: 9000 },
   },
 
+  // ---- passkey-approved mandates (real Touch ID approval) ----
+  {
+    id: 'P01', kind: 'passkey', record: 'passkey-sonnet55-honest.json', reason: UNAUTH,
+    title: '"I did not authorise this", but the buyer\'s passkey approved the mandate',
+    story: 'The buyer approved "blue rain jacket, size M, up to $150" with Touch ID. Sonnet 5.5 bought the $129 jacket inside it, so the merchant sends the record as evidence.',
+    expect: { verdict: 'USER', rule: 6, action: 'provide-evidence' },
+  },
+  {
+    id: 'P02', kind: 'passkey', record: PASSKEY_MERCHANT, reason: NAD,
+    title: 'Passkey-approved $150 budget, hidden lie, $240 charged',
+    story: 'With the budget approved by passkey, Haiku 4.5 still read the hidden "$119 for agents" note and paid $240.',
+    expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
+  },
+  {
+    id: 'A07', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
+    title: 'Agent operator raises the budget after the buyer approved it',
+    story: 'The operator rewrites the cap to $300 so the $240 looks authorised. The passkey signed the $150 mandate, so the approval no longer matches.',
+    mutate: (r) => { r.mandate.maxTotalCents = 30000; },
+    expect: { verdict: 'NEEDS_A_HUMAN', rule: 1, action: 'none', broken: ['mandateSigned'] },
+  },
+  {
+    id: 'A08', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
+    title: 'Agent operator signs a looser mandate with its own passkey',
+    story: 'A valid passkey signature, but from a key the paying buyer never enrolled.',
+    mutate: (r) => {
+      r.mandate.maxTotalCents = 30000;
+      const k = softPasskey();
+      r.mandate_auth = k.approve(r.mandate, { at: 'http://localhost:4050' });
+    },
+    expect: { verdict: 'NEEDS_A_HUMAN', rule: 1, action: 'none', broken: ['mandateSigned'] },
+  },
+  {
+    id: 'A09', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
+    title: "Someone else's approval reused for a different payer",
+    story: 'PayPal reports a different payer than the one who enrolled this passkey.',
+    order: { payerId: 'SOMEONEELSE1' },
+    expect: { verdict: 'NEEDS_A_HUMAN', rule: 1, action: 'none', broken: ['mandateSigned'] },
+  },
+  {
+    id: 'A10', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
+    title: 'Approval stripped from an order placed after passkeys',
+    story: 'An unsigned mandate is only accepted for orders PayPal created before passkey mandates existed.',
+    mutate: (r) => { delete r.mandate_auth; r.version = 'blackbox-record-v1'; },
+    order: { createdAt: AFTER_CUTOFF },
+    expect: { verdict: 'NEEDS_A_HUMAN', rule: 1, action: 'none', broken: ['mandateSigned'] },
+  },
+
   // ---- attacks on the record ----
   {
     id: 'A01', kind: 'attack', record: LIVE, reason: NAD,
@@ -187,6 +239,7 @@ export function buildCase(def, load) {
     reason: def.reason,
     customId,
     payeeMerchantId: def.order?.payeeMerchantId ?? live?.payeeMerchantId ?? signedMerchant,
+    payerId: def.order?.payerId ?? live?.payerId ?? (original.mandate_auth ? load(ENROLMENT).payer_id : null),
     orderCreatedAt: def.order?.createdAt ?? live?.orderCreatedAt ?? record.purchase.at,
     captured: live?.captured ?? { cents: def.order?.capturedCents ?? record.purchase.price_cents, currency: 'USD' },
     flagger: flagger ? { flagged: flagger.flagged, passages: flagger.passages, model: flagger.model, at: flagger.at } : live?.flagger ?? null,

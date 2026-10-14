@@ -87,12 +87,12 @@ const signedMerchantId = (record) => {
 
 // The verdict, exactly as the executor computes it. Without a dispute, the PayPal side is assumed
 // to be the honest one (custom_id = record hash, payee = the signed merchant, captured = the price).
-export function judge({ hash, record, paypal }, { root } = {}) {
+export function judge({ hash, record, paypal }, { root, enrolledKeys } = {}) {
   const preview = !paypal;
   const order = preview
     ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents }
     : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents, payerId: paypal.payerId ?? null };
   const reason = paypal?.reason ?? DEFAULT_REASON;
   const aiInjectionFlag = paypal?.flagger?.flagged === true;
-  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, aiInjectionFlag, enrolledKeys: root ? enrolledKeysFrom(root) : undefined }) };
+  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, aiInjectionFlag, enrolledKeys: enrolledKeys ?? (root ? enrolledKeysFrom(root) : undefined) }) };
 }

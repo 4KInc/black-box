@@ -1,0 +1,11 @@
+{
+  "payer_id": "248NAZAAM9JCE",
+  "credentials": [
+    {
+      "id": "7Goj2RzlFMgCFEuWRD1uhg",
+      "public_key_spki": "MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7pOST2X325gG49XXYPSTqdQUflKJ4JnhhUhm_KUSjVV--_WGfmF6NnS7wL3ayLyx24Ksu_yfpybucyBbFXSvcA",
+      "alg": -7,
+      "enrolled_at": "2026-10-14T06:15:35.595Z"
+    }
+  ]
+}
