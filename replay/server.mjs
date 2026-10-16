@@ -2,6 +2,7 @@
 // to what the agent read, the facts, the rule that fired and what PayPal did.
 //   npm run replay   -> http://localhost:4030
 // Cases are re-read on every request, so new agent runs and executed disputes appear on reload.
+import { existsSync, readFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { judge, loadCases } from './cases.mjs';
@@ -10,6 +11,7 @@ import { benchPage, casePage, indexPage, pageHtml } from './page.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const PORT = Number(process.env.REPLAY_PORT ?? 4030);
+const FONTS = join(import.meta.dirname, 'fonts');
 
 // The recorded page itself, for the iframe: sandboxed, so it gets an opaque origin and cannot
 // run scripts, submit forms or navigate; it may only use its own inline CSS and SVG.
@@ -23,7 +25,7 @@ const RECORDED = {
 // Recorded pages are untrusted: no script runs anywhere, and nothing is loaded from elsewhere.
 const HEADERS = {
   'content-type': 'text/html; charset=utf-8',
-  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-src 'self'; base-uri 'none'; form-action 'none'",
+  'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'",
   'x-content-type-options': 'nosniff',
   'referrer-policy': 'no-referrer',
 };
@@ -34,6 +36,11 @@ export function createReplay({ root = ROOT } = {}) {
     try {
       const { pathname } = new URL(req.url, 'http://replay');
       if (req.method !== 'GET') return send(405, 'Method not allowed');
+      const font = pathname.match(/^\/fonts\/([A-Za-z0-9-]+\.woff2)$/);
+      if (font && existsSync(join(FONTS, font[1]))) {
+        res.writeHead(200, { 'content-type': 'font/woff2', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' });
+        return res.end(readFileSync(join(FONTS, font[1])));
+      }
       if (pathname === '/') return send(200, indexPage(loadCases(root).map((c) => ({ c, j: judge(c, { root }) }))));
       if (pathname === '/bench') return send(200, benchPage(runBench(root)));
       const b = pathname.match(/^\/bench\/([A-Z]\d{2})(\/page)?$/);

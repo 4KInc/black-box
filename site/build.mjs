@@ -14,18 +14,20 @@ import { benchPage, casePage, indexPage, pageHtml } from '../replay/page.mjs';
 const ROOT = join(import.meta.dirname, '..');
 const OUT = process.argv[2] ?? join(ROOT, '_site');
 
-const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; frame-src 'self'; base-uri 'none'; form-action 'none'";
+const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'";
 const RECORDED_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'";
 
 // Absolute links ("/case/…") become relative to the page, so the site works under any path
 // (GitHub Pages serves it at /black-box/). Directory links get a trailing slash.
 export function relativise(html, depth) {
   const up = depth ? '../'.repeat(depth) : './';
-  return html.replace(/(href|src)="\/([^"]*)"/g, (_, attr, path) => {
-    const [p, frag = ''] = path.split('#');
-    const dir = p === '' || p.endsWith('/') ? p : `${p}/`;
-    return `${attr}="${up}${dir}${frag ? '#' + frag : ''}"`;
-  });
+  return html
+    .replace(/(href|src)="\/([^"]*)"/g, (_, attr, path) => {
+      const [p, frag = ''] = path.split('#');
+      const dir = p === '' || p.endsWith('/') ? p : `${p}/`;
+      return `${attr}="${up}${dir}${frag ? '#' + frag : ''}"`;
+    })
+    .replace(/url\(\/fonts\//g, `url(${up}fonts/`);
 }
 
 // Puts a CSP <meta> first in <head>, before anything the page itself contains.
@@ -40,16 +42,13 @@ function write(path, html, depth, csp = PAGE_CSP) {
   writeFileSync(file, withCsp(relativise(html, depth), csp));
 }
 
-const INTRO = `<section class="card verdict MERCHANT"><div>
-<div class="k">Black Box · PayPal sandbox · read-only replay, no keys needed</div>
-<div class="v">Who pays when an AI agent buys the wrong thing?</div>
-<p class="why" style="margin-top:8px">Black Box records what a shopping agent saw and decided, seals it into the PayPal order,
-and when the buyer disputes, code (not an AI) decides: <b>USER</b>, <b>AGENT</b>, <b>MERCHANT</b> or <b>NEEDS A HUMAN</b>.
-PayPal then carries the outcome out. Every case below is a real recorded run.</p>
-<p class="why">Live in the PayPal sandbox: the cases marked with a PayPal dispute were refunded through the Disputes API,
-the last two by the autopilot from PayPal's own webhook, with no one at the keyboard.
-<a href="/bench">The case bench</a> runs every verdict, every rule and ten attacks on the record.</p>
-<p class="why">Source: <a href="https://github.com/4KInc/black-box">github.com/4KInc/black-box</a></p></div></section>`;
+const INTRO = `<section class="hero"><div><div class="eyebrow"><b>●</b> Black Box · PayPal sandbox · read-only, no keys</div>
+<h1>Who pays when an AI agent <em>buys wrong?</em></h1></div>
+<div><p>Black Box records what a shopping agent saw and decided and seals it into the PayPal order. When the buyer disputes,
+code, not an AI, decides who is at fault: <b>user</b>, <b>agent</b>, <b>merchant</b>, or <b>a human</b> must look. PayPal then carries it out.</p>
+<p>Every recording below is a real run. The ones marked PayPal were refunded live in the sandbox, the last two by the autopilot from
+PayPal's own webhook. <a href="/bench">The case bench</a> runs every verdict, every rule and ten attacks.
+Source: <a href="https://github.com/4KInc/black-box">github.com/4KInc/black-box</a>.</p></div></section>`;
 
 // A scratch root holding only what is committed: the fixtures, and the buyer's enrolled
 // passkey (public key) in the registry the replay reads.
@@ -63,6 +62,7 @@ try {
   rmSync(OUT, { recursive: true, force: true });
   mkdirSync(OUT, { recursive: true });
   writeFileSync(join(OUT, '.nojekyll'), '');
+  cpSync(join(ROOT, 'replay', 'fonts'), join(OUT, 'fonts'), { recursive: true });
 
   const cases = loadCases(root).map((c) => ({ c, j: judge(c, { root }) }));
   write('', indexPage(cases, { intro: INTRO }), 0);

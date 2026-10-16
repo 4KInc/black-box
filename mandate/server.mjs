@@ -12,11 +12,13 @@ import { join } from 'node:path';
 import { canonicalize } from '../lib/canonical.mjs';
 import { loadEnv } from '../lib/env.mjs';
 import { b64u, verifyMandateAssertion } from '../lib/webauthn.mjs';
+import { CSS } from '../replay/page.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const PORT = Number(process.env.MANDATE_PORT ?? 4050);
 const RP_ID = 'localhost';
 const PAYER_ID = /^[A-Z0-9]{8,20}$/;
+const FONTS = join(ROOT, 'replay', 'fonts');
 const sha256hex = (s) => createHash('sha256').update(s).digest('hex');
 
 // ---------- enrolment registry: PayPal payer ID -> passkeys ----------
@@ -62,27 +64,51 @@ export function buildMandate({ category, color, size, maxDollars, days }) {
 
 // ---------- server ----------
 
-const PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Approve a mandate</title><style>
-:root{--ink:#16202b;--muted:#5d6b7b;--line:#dfe4ea;--bg:#f4f6f9;--card:#fff;--accent:#1d4ed8;--ok:#13795b;--bad:#b42318}
-@media (prefers-color-scheme:dark){:root{--ink:#e6ebf1;--muted:#9aa7b6;--line:#2b3542;--bg:#0f141a;--card:#161d25;--accent:#60a5fa;--ok:#4ade80;--bad:#f87171}}
-*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.55 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-main{max-width:620px;margin:0 auto;padding:24px 16px}h1{font-size:22px;margin:0 0 4px}.k{color:var(--muted);font-size:13px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-top:16px}
-label{display:block;margin:10px 0 4px;font-weight:600;font-size:13px}input{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
-.row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}button{margin-top:14px;padding:10px 16px;border:0;border-radius:8px;background:var(--accent);color:#fff;font:inherit;font-weight:600;cursor:pointer}
-button[disabled]{opacity:.5;cursor:default}.plain{font-size:18px;font-weight:600}#out{white-space:pre-wrap;font-family:ui-monospace,monospace;font-size:12.5px}
-.ok{color:var(--ok)}.bad{color:var(--bad)}
-</style></head><body><main>
-<h1>Approve what your agent may buy</h1><div class="k">Black Box records this mandate. Your passkey signs exactly what you see here.</div>
-<div class="card"><label for="payer">Your PayPal payer ID</label><input id="payer" autocomplete="off">
-<div class="k" id="enrolled">Checking for an enrolled passkey…</div><button id="enrol" hidden>Enrol a passkey for this payer ID</button></div>
-<div class="card"><label for="category">Item</label><input id="category" value="rain jacket">
-<div class="row"><div><label for="color">Colour</label><input id="color" value="blue"></div><div><label for="size">Size</label><input id="size" value="M"></div>
-<div><label for="max">Budget (USD)</label><input id="max" value="150" inputmode="decimal"></div></div>
-<label for="days">Valid for (days)</label><input id="days" value="7" inputmode="numeric">
-<p class="plain" id="plain"></p><button id="approve" disabled>Approve with passkey</button></div>
-<div class="card"><div id="out" class="k">Nothing approved yet.</div></div>
+const PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="color-scheme" content="dark"><title>Clear your agent · Black Box</title><style>${CSS}
+.clear{max-width:760px;margin:0 auto}
+.clear h1{font:700 clamp(44px,8vw,86px)/.88 var(--display);text-transform:uppercase;margin:10px 0 14px}
+.clear h1 em{font-style:normal;color:var(--orange)}
+.clear .lede{color:var(--ink-2);max-width:60ch;margin:0}
+.step{margin-top:22px}
+.step .eyebrow{display:flex;gap:10px;align-items:baseline;margin-bottom:10px}
+.step .eyebrow b{font:400 12px/1 var(--mono)}
+label{display:block;font:400 10.5px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:12px 0 6px}
+input{width:100%;padding:12px 12px;border:1px solid var(--rule-2);border-radius:3px;background:var(--bg);color:var(--ink);font:400 16px/1.2 var(--mono);letter-spacing:.02em}
+input:focus{outline:none;border-color:var(--orange);box-shadow:0 0 0 3px oklch(.71 .19 45 / .18)}
+.row3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+@media (max-width:560px){.row3{grid-template-columns:1fr 1fr}}
+.status{margin-top:10px;font:400 11px/1.5 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.readback{margin-top:18px;border:1px solid var(--rule-2);border-left:4px solid var(--orange);border-radius:3px;padding:16px 18px;background:oklch(.13 .01 45 / .5)}
+.readback p{margin:6px 0 0;font:600 clamp(22px,3.2vw,30px)/1.15 var(--display);letter-spacing:.02em}
+button{margin-top:16px;display:inline-flex;align-items:center;gap:10px;padding:13px 18px;border:1px solid var(--orange);border-radius:3px;background:var(--orange);color:#160700;
+  font:700 17px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;cursor:pointer;box-shadow:0 0 24px oklch(.71 .19 45 / .3)}
+button:hover{filter:brightness(1.08)}
+button[disabled]{opacity:.35;cursor:not-allowed;box-shadow:none}
+button.ghost{background:transparent;color:var(--orange)}
+#out{white-space:pre-wrap;font:400 12.5px/1.6 var(--mono);color:var(--ink-3)}
+#out.ok{color:var(--green)}#out.bad{color:var(--red)}
+</style></head><body>
+<header class="bar"><span class="mark"><span class="unit" aria-hidden="true"></span>BLACK BOX</span><span class="sub">mandate clearance</span></header>
+<main><div class="clear">
+<div class="eyebrow"><b>●</b> Pre-flight</div>
+<h1>Clear your agent <em>to buy</em></h1>
+<p class="lede">Say what the agent may buy. Black Box seals this into every record, and your passkey signs exactly the readback below. Nothing more, nothing looser.</p>
+
+<section class="panel step"><div class="eyebrow"><b>01</b> Who is paying</div>
+<label for="payer">PayPal payer ID</label><input id="payer" autocomplete="off" spellcheck="false">
+<div class="status" id="enrolled">Checking for an enrolled passkey…</div><button id="enrol" class="ghost" hidden>Enrol a passkey for this payer</button></section>
+
+<section class="panel step"><div class="eyebrow"><b>02</b> What it may buy</div>
+<label for="category">Item</label><input id="category" value="rain jacket">
+<div class="row3"><div><label for="color">Colour</label><input id="color" value="blue"></div><div><label for="size">Size</label><input id="size" value="M"></div>
+<div><label for="max">Budget, USD</label><input id="max" value="150" inputmode="decimal"></div></div>
+<label for="days">Valid for, days</label><input id="days" value="7" inputmode="numeric">
+<div class="readback"><div class="eyebrow">Readback · this is what your passkey signs</div><p id="plain"></p></div>
+<button id="approve" disabled>◆ Approve with passkey</button></section>
+
+<section class="panel step"><div class="eyebrow"><b>03</b> Clearance</div><div id="out">Nothing approved yet.</div></section>
+</div>
 </main><script src="/app.js"></script></body></html>`;
 
 const APP_JS = `
@@ -141,7 +167,7 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '' } = {}) {
   const pendingApprove = new Map(); // token -> { payerId, mandate }
 
   const HEADERS = {
-    'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; connect-src 'self'; base-uri 'none'; form-action 'none'",
+    'content-security-policy': "default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'",
     'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer',
   };
   return createServer((req, res) => {
@@ -153,6 +179,8 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '' } = {}) {
     if (req.method === 'GET') {
       if (url.pathname === '/') return send(200, 'text/html; charset=utf-8', PAGE);
       if (url.pathname === '/app.js') return send(200, 'text/javascript; charset=utf-8', APP_JS);
+      const font = url.pathname.match(/^\/fonts\/([A-Za-z0-9-]+\.woff2)$/);
+      if (font && existsSync(join(FONTS, font[1]))) { res.writeHead(200, { 'content-type': 'font/woff2', 'x-content-type-options': 'nosniff' }); return res.end(readFileSync(join(FONTS, font[1]))); }
       if (url.pathname === '/defaults') return json(200, { payerId: defaultPayerId });
       if (url.pathname === '/enrolled') return json(200, { credentials: enrolledCredentials(root, url.searchParams.get('payer')).map(({ id, alg, enrolled_at }) => ({ id, alg, enrolled_at })) });
       return json(404, { error: 'not found' });

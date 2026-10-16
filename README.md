@@ -50,7 +50,7 @@ recorded case and the case bench, rebuilt from `fixtures/` by GitHub Actions on 
 Node 24, no dependencies.
 
 ```sh
-npm test                                     # 118 tests
+npm test                                     # 119 tests
 npm run bench                                # 29-case bench: every verdict and rule, the AI flagger, attacks on the record
 npm run mandate                              # :4050 enrol a passkey, approve a mandate; then agent/run.mjs --mandate <hash>
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
@@ -88,6 +88,12 @@ npm run replay                               # replay UI on :4030: verdict, hidd
 The signature code implements only the RFC 9421 subset this project needs; it is not a general
 implementation. Passkey enrolment trusts the enrolment screen (no attestation check), and the
 enrolment registry is local. The demo shop deliberately contains hidden pricing lies to test agents.
+
+## Design
+
+The UI is a flight recorder and its incident report: B612 (the typeface Airbus drew for cockpit
+displays) and Barlow Condensed, both SIL Open Font License, self-hosted in `replay/fonts/` with
+their licences. No scripts on any replay page; motion is CSS only and off under reduced motion.
 
 ## License
 

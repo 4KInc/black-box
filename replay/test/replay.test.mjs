@@ -66,6 +66,14 @@ test('the live case page replays the verdict, the hidden text and what PayPal di
   assert.doesNotMatch(html, /<script/i);
 });
 
+test('fonts are served from the replay itself, and only known font files', async () => {
+  const r = await fetch(`${base}/fonts/B612-400.woff2`);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('content-type'), 'font/woff2');
+  assert.equal((await fetch(`${base}/fonts/..%2F..%2Fpackage.json`)).status, 404);
+  assert.match((await fetch(base + '/')).headers.get('content-security-policy'), /font-src 'self'/);
+});
+
 test('the recorded page is served sandboxed, and unknown cases are 404', async () => {
   const r = await fetch(`${base}/case/${LIVE}/page`);
   assert.equal(r.status, 200);
@@ -76,5 +84,5 @@ test('the recorded page is served sandboxed, and unknown cases are 404', async (
 
 test('a fixture with third-party hidden text is NEEDS A HUMAN', async () => {
   const html = await (await fetch(base + '/')).text();
-  assert.match(html, /NEEDS A HUMAN<\/span> <span class="k">rule 4/);
+  assert.match(html, /<span class="vv">NEEDS A HUMAN<\/span><span class="rl">rule 4/);
 });
