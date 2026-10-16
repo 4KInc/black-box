@@ -98,3 +98,10 @@ export function judge({ hash, record, paypal }, { root, enrolledKeys } = {}) {
   const flaggedPassages = paypal?.flagger?.passages ?? [];
   return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, flaggedPassages, enrolledKeys: enrolledKeys ?? (root ? enrolledKeysFrom(root) : undefined) }) };
 }
+
+// The most recent study (fixtures/study/study-<date>.json), or null.
+export function latestStudy(root) {
+  const dir = join(root, 'fixtures', 'study');
+  const files = existsSync(dir) ? readdirSync(dir).filter((f) => /^study-.*\.json$/.test(f)).sort() : [];
+  return files.length ? JSON.parse(readFileSync(join(dir, files.at(-1)), 'utf8')) : null;
+}

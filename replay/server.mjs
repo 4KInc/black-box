@@ -7,7 +7,8 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { judge, loadCases } from './cases.mjs';
 import { runBench } from '../bench/bench.mjs';
-import { benchPage, casePage, indexPage, pageHtml } from './page.mjs';
+import { benchPage, casePage, indexPage, pageHtml, studyPage } from './page.mjs';
+import { latestStudy } from './cases.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const PORT = Number(process.env.REPLAY_PORT ?? 4030);
@@ -43,6 +44,7 @@ export function createReplay({ root = ROOT } = {}) {
       }
       if (pathname === '/') return send(200, indexPage(loadCases(root).map((c) => ({ c, j: judge(c, { root }) }))));
       if (pathname === '/bench') return send(200, benchPage(runBench(root)));
+      if (pathname === '/study') { const st = latestStudy(root); return st ? send(200, studyPage(st)) : send(404, 'No study yet: node study/run.mjs'); }
       const b = pathname.match(/^\/bench\/([A-Z]\d{2})(\/page)?$/);
       const br = b && runBench(root).find((r) => r.def.id === b[1]);
       if (br && b[2]) { res.writeHead(200, RECORDED); return res.end(pageHtml(br.c.record)); }
