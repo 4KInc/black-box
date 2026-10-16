@@ -50,7 +50,7 @@ recorded case and the case bench, rebuilt from `fixtures/` by GitHub Actions on 
 Node 24, no dependencies.
 
 ```sh
-npm test                                     # 119 tests
+npm test                                     # 120 tests
 npm run bench                                # 29-case bench: every verdict and rule, the AI flagger, attacks on the record
 npm run mandate                              # :4050 enrol a passkey, approve a mandate; then agent/run.mjs --mandate <hash>
 cp killtest/.env.example killtest/.env       # sandbox client ID/secret
