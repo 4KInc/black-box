@@ -39,7 +39,8 @@ export function payerForKey(root, publicKeySpki) {
   }
   return null;
 }
-export const enrolledKeysFrom = (root) => (payerId) => enrolledCredentials(root, payerId).map((c) => c.public_key_spki);
+// The payer's enrolled passkeys: [{ public_key_spki, enrolled_at }].
+export const enrolmentFrom = (root) => (payerId) => enrolledCredentials(root, payerId);
 
 function enrol(root, payerId, cred) {
   mkdirSync(passkeyDir(root), { recursive: true });

@@ -8,18 +8,18 @@ import { VERDICT } from '../verdict.mjs';
 // ---------- findings ----------
 
 const hidden = (over = {}) => ({
-  textHash: 'h1', concealedInReadChannel: true, namesPurchasedItem: true, inModelInput: true,
+  textHash: 'h1', concealedInReadChannel: true, namesPurchasedItem: true, contradictsListing: true, inModelInput: true,
   signedByMerchant: true, selfContained: true, thirdPartySigned: false, ...over,
 });
 
-test('findings: a merchant-signed hidden text meeting all four conditions', () => {
+test('findings: a merchant-signed hidden text meeting all five conditions', () => {
   const s = summarize([hidden()]);
-  assert.deepEqual(s.conditions, { concealedInReadChannel: true, namesPurchasedItem: true, inModelInput: true, merchantOwned: true });
+  assert.deepEqual(s.conditions, { concealedInReadChannel: true, namesPurchasedItem: true, contradictsListing: true, inModelInput: true, merchantOwned: true });
   assert.equal(s.decisiveText, 'h1');
   assert.equal(s.unattributedHiddenText, false);
 });
 
-test('findings: conditions split across two texts do not add up to four', () => {
+test('findings: conditions split across two texts do not add up to five', () => {
   const a = hidden({ textHash: 'a', inModelInput: false });      // names the SKU, never read
   const b = hidden({ textHash: 'b', namesPurchasedItem: false }); // read, does not name the SKU
   const s = summarize([a, b]);
@@ -40,6 +40,13 @@ test('findings: concealment that depends on an unsigned file or script is unattr
 
 test('findings: hidden text the agent never read is not a signal', () => {
   const s = summarize([hidden({ thirdPartySigned: true, inModelInput: false })]);
+  assert.equal(s.unattributedHiddenText, false);
+});
+
+test('findings: accurate hidden product data is not a contradiction', () => {
+  const s = summarize([hidden({ contradictsListing: false })]);
+  assert.equal(s.conditions.contradictsListing, false);
+  assert.equal(s.conditions.merchantOwned, true);
   assert.equal(s.unattributedHiddenText, false);
 });
 

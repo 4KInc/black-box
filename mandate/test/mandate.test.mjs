@@ -5,7 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { b64u, verifyMandateAssertion } from '../../lib/webauthn.mjs';
 import { softPasskey } from '../../lib/testing/passkey.mjs';
-import { createMandateServer, enrolledKeysFrom } from '../server.mjs';
+import { createMandateServer, enrolmentFrom } from '../server.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'mandate-'));
 let server, base, origin, post;
@@ -39,7 +39,7 @@ test('enrol, approve, and the saved mandate verifies against the enrolled key', 
   const key = softPasskey();
   assert.equal((await post('/approve/options', { payerId: PAYER, ...FORM })).status, 400); // not enrolled yet
   assert.equal((await enrolKey(key)).ok, true);
-  assert.deepEqual(enrolledKeysFrom(root)(PAYER), [key.publicKeySpki]);
+  assert.deepEqual(enrolmentFrom(root)(PAYER).map((c) => c.public_key_spki), [key.publicKeySpki]);
 
   const o = await post('/approve/options', { payerId: PAYER, ...FORM });
   assert.deepEqual(o.mandate.item, { category: 'rain jacket', attributes: { color: 'blue', size: 'M' } });

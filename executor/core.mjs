@@ -16,7 +16,7 @@ import { accessToken, API, paypal } from '../lib/paypal.mjs';
 import { loadRecord } from '../recorder/recorder.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { toValue } from '../engine/actions.mjs';
-import { enrolledKeysFrom } from '../mandate/server.mjs';
+import { enrolmentFrom } from '../mandate/server.mjs';
 import { flagInjection } from '../flagger/flagger.mjs';
 
 const cents = (v) => Math.round(Number(v) * 100);
@@ -106,7 +106,7 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
       payerId: txn.buyer?.payer_id ?? null,
     },
     reason: dispute.reason,
-    enrolledKeys: enrolledKeysFrom(root),
+    enrolment: enrolmentFrom(root),
   });
   log.write({ step: 'verdict', source, verdict: result.verdict, plan: result.plan, facts: result.facts });
   const out = { ...base, record, txn, result, flagger };

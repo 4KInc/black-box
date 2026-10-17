@@ -135,6 +135,19 @@ export function mentionsItem(text, { sku, name }) {
   return (sku && t.includes(sku.toLowerCase())) || (name && t.includes(name.toLowerCase()));
 }
 
+// Does a hidden text contradict what the merchant signed for this item? It does if it states a
+// price other than the signed price, or tells the agent to set aside the buyer's limits.
+// Accurate product data that is simply not rendered (JSON-LD is often like that) does not.
+const MONEY = /\$\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?/g;
+const OVERRIDE = /\b(?:ignore|disregard|override|bypass|set aside)\b[^.]{0,60}?\b(?:budget|limit|cap|mandate|instructions?|spending)/i;
+export function contradictsListing(text, { priceCents }) {
+  for (const m of text.matchAll(MONEY)) {
+    const cents = Number(m[1].replace(/,/g, '')) * 100 + Number(m[2] ?? 0);
+    if (cents !== priceCents) return true;
+  }
+  return OVERRIDE.test(text);
+}
+
 function readByModel(text, modelInputs) {
   const t = normalize(text);
   const escaped = JSON.stringify(t).slice(1, -1); // as it appears inside serialised JSON-LD
@@ -156,6 +169,7 @@ export function findingsFor(record, item) {
     method: h.method,
     concealedInReadChannel: true,
     namesPurchasedItem: Boolean(mentionsItem(h.text, item)),
+    contradictsListing: contradictsListing(h.text, item),
     inModelInput: readByModel(h.text, record.model_inputs),
     signedByMerchant: signed,
     selfContained,

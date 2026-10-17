@@ -19,13 +19,17 @@ export const RECORD_CHECKS = Object.freeze([
   'payeeMatches',       // the merchant ID in signed content equals the PayPal order's payee
   'signedBeforeOrder',  // every signature's `created` is earlier than the order
   'mandateSigned',      // the paying user approved the mandate with their enrolled passkey
-                        // (or the order predates passkey mandates)
+                        // (or the payer had no passkey enrolled when PayPal created the order)
 ]);
 
-// The four MERCHANT conditions. All must hold for one hidden text (rules 2 and 3).
+// The five MERCHANT conditions. All must hold for one hidden text (rules 2 and 3). Together they
+// define agent-directed deception under Black Box's responsibility policy: they show that the
+// merchant planted a contradicting text the agent read, not that the text changed the decision.
 export const MERCHANT_CONDITIONS = Object.freeze([
   'concealedInReadChannel', // hidden by a method inside what the agent reads (JSON-LD/meta, textContent)
   'namesPurchasedItem',     // deterministic match on SKU, product ID or exact product name
+  'contradictsListing',     // states a price other than the signed price, or tells the agent to set
+                            // aside the buyer's limits; accurate product data that is merely unrendered is not
   'inModelInput',           // appears in the logged model input after whitespace normalisation
   'merchantOwned',          // merchant-signed, self-contained, no third-party signature covering it
 ]);
@@ -40,7 +44,7 @@ export const FACT_KEYS = Object.freeze([
 ]);
 
 const recordBroken = (f) => RECORD_CHECKS.some((k) => !f[k]);
-const allFour = (f) => MERCHANT_CONDITIONS.every((k) => f[k]);
+const allFive = (f) => MERCHANT_CONDITIONS.every((k) => f[k]);
 const otherSignal = (f) => f.aiInjectionFlag || f.unattributedHiddenText;
 
 export const RULES = Object.freeze([
@@ -51,28 +55,28 @@ export const RULES = Object.freeze([
   },
   {
     n: 2, verdict: VERDICT.MERCHANT,
-    why: 'The purchase breaks the mandate, and the merchant\'s own signed, hidden text naming this item was read by the agent.',
-    when: (f) => !recordBroken(f) && allFour(f) && f.mandateBroken,
+    why: 'The purchase breaks the mandate, and the agent read the merchant\'s own signed, hidden text that names this item and contradicts its listing. Under the policy the merchant is responsible, whether or not the agent would have failed anyway.',
+    when: (f) => !recordBroken(f) && allFive(f) && f.mandateBroken,
   },
   {
     n: 3, verdict: VERDICT.HUMAN,
     why: 'The purchase is within the mandate, but the merchant steered it. Whether that harmed the buyer is a judgment, not a check.',
-    when: (f) => !recordBroken(f) && allFour(f) && !f.mandateBroken,
+    when: (f) => !recordBroken(f) && allFive(f) && !f.mandateBroken,
   },
   {
     n: 4, verdict: VERDICT.HUMAN,
     why: 'There is an injection signal that code cannot attribute to the merchant.',
-    when: (f) => !recordBroken(f) && !allFour(f) && otherSignal(f),
+    when: (f) => !recordBroken(f) && !allFive(f) && otherSignal(f),
   },
   {
     n: 5, verdict: VERDICT.AGENT,
-    why: 'The purchase breaks the mandate and nothing on the page explains it.',
-    when: (f) => !recordBroken(f) && !allFour(f) && !otherSignal(f) && f.mandateBroken,
+    why: 'The purchase breaks the mandate, and nothing the agent read contradicted the listing or was flagged as manipulation.',
+    when: (f) => !recordBroken(f) && !allFive(f) && !otherSignal(f) && f.mandateBroken,
   },
   {
     n: 6, verdict: VERDICT.USER,
     why: 'The purchase is within the mandate and nothing is suspicious.',
-    when: (f) => !recordBroken(f) && !allFour(f) && !otherSignal(f) && !f.mandateBroken,
+    when: (f) => !recordBroken(f) && !allFive(f) && !otherSignal(f) && !f.mandateBroken,
   },
 ]);
 

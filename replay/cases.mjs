@@ -8,7 +8,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { evaluateCase } from '../engine/case.mjs';
 import { recordHash } from '../recorder/recorder.mjs';
-import { enrolledKeysFrom, payerForKey } from '../mandate/server.mjs';
+import { enrolmentFrom, payerForKey } from '../mandate/server.mjs';
 
 const cents = (v) => Math.round(Number(v) * 100);
 const amount = (a) => (a ? { cents: cents(a.value), currency: a.currency_code } : null);
@@ -88,7 +88,7 @@ const signedMerchantId = (record) => {
 // The verdict, exactly as the executor computes it. Without a dispute, the PayPal side is assumed
 // to be the honest one (custom_id = record hash, payee = the signed merchant, captured = the price,
 // payer = whoever enrolled the passkey that approved the mandate).
-export function judge({ hash, record, paypal }, { root, enrolledKeys } = {}) {
+export function judge({ hash, record, paypal }, { root, enrolment } = {}) {
   const preview = !paypal;
   const order = preview
     ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents,
@@ -96,7 +96,7 @@ export function judge({ hash, record, paypal }, { root, enrolledKeys } = {}) {
     : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents, payerId: paypal.payerId ?? null };
   const reason = paypal?.reason ?? DEFAULT_REASON;
   const flaggedPassages = paypal?.flagger?.passages ?? [];
-  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, flaggedPassages, enrolledKeys: enrolledKeys ?? (root ? enrolledKeysFrom(root) : undefined) }) };
+  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, flaggedPassages, enrolment: enrolment ?? (root ? enrolmentFrom(root) : undefined) }) };
 }
 
 // The most recent study (fixtures/study/study-<date>.json), or null.

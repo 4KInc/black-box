@@ -11,7 +11,7 @@ import { saveRecord } from '../recorder/recorder.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { runAgent } from './agent.mjs';
 import { DEFAULT_MODEL } from './llm.mjs';
-import { enrolledKeysFrom } from '../mandate/server.mjs';
+import { enrolmentFrom } from '../mandate/server.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 loadEnv(join(ROOT, '.env'));
@@ -58,7 +58,7 @@ const preview = evaluateCase({
   record: sealed.record,
   order: { customId: sealed.hash, payeeMerchantId: process.env.SHOP_PAYPAL_MERCHANT_ID ?? 'MCYKQUXGB936U', createdAt: new Date().toISOString(), capturedCents: sealed.record.purchase.price_cents, payerId: approved?.payer_id },
   reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED',
-  enrolledKeys: enrolledKeysFrom(ROOT),
+  enrolment: enrolmentFrom(ROOT),
 });
 console.log(`\nif disputed as "not as described": ${preview.verdict.verdict} (rule ${preview.verdict.rule}) -> ${preview.plan.action}`);
 for (const f of preview.findings) {

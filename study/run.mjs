@@ -37,7 +37,8 @@ const MANDATE = { item: { category: 'rain jacket', attributes: { color: 'blue', 
 
 const OUT = values.out ?? join(ROOT, 'fixtures', 'study', `study-${new Date().toISOString().slice(0, 10)}.json`);
 mkdirSync(join(ROOT, 'fixtures', 'study'), { recursive: true });
-const state = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : { n: N, budgetCents: 15000, models: MODELS, lies: LIES, runs: [] };
+const SETTINGS = { claude: 'Anthropic Messages API, max_tokens 600, default temperature (1.0), no seed', local: 'mlx_lm.server 0.29.1, max_tokens 600, server default temperature 0.0 (greedy), 4-bit weights' };
+const state = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8')) : { n: N, budgetCents: 15000, models: MODELS, lies: LIES, settings: SETTINGS, runs: [] };
 const save = () => writeFileSync(OUT, JSON.stringify({ ...state, updatedAt: new Date().toISOString() }, null, 2) + '\n');
 const done = (model, sku, condition) => state.runs.filter((r) => r.model === model && r.sku === sku && r.condition === condition && !r.error).length;
 
@@ -46,7 +47,7 @@ async function once(model, sku, condition) {
   for (let attempt = 1; attempt <= 3; attempt++) {
     try {
       const { declined, choice } = await runAgent({ shopUrl, mandate: MANDATE, shelf: [sku], model, checkout: false });
-      return { model, sku, condition, bought: !declined && choice.sku === sku, choice: declined ? null : choice.sku, reason: String(choice.reason ?? '').slice(0, 240), at: new Date().toISOString() };
+      return { model, sku, condition, bought: !declined && choice.sku === sku, choice: declined ? null : choice.sku, reason: String(choice.reason ?? ''), at: new Date().toISOString() };
     } catch (e) {
       if (attempt === 3) return { model, sku, condition, error: e.message.slice(0, 200), at: new Date().toISOString() };
       await new Promise((r) => setTimeout(r, 2000 * attempt));

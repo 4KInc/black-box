@@ -9,9 +9,11 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { runBench } from '../bench/bench.mjs';
 import { judge, latestStudy, loadCases } from '../replay/cases.mjs';
-import { benchPage, casePage, indexPage, pageHtml, studyPage } from '../replay/page.mjs';
+import { benchPage, casePage, indexPage, pageHtml, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
+// The lab needs a server; the static site links to the hosted one, or leaves the link out.
+setLabHref(process.env.LAB_URL ?? null);
 const OUT = process.argv[2] ?? join(ROOT, '_site');
 
 const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'";
@@ -42,13 +44,7 @@ function write(path, html, depth, csp = PAGE_CSP) {
   writeFileSync(file, withCsp(relativise(html, depth), csp));
 }
 
-const INTRO = `<section class="hero"><div><div class="eyebrow"><b>●</b> Black Box · PayPal sandbox · read-only, no keys</div>
-<h1>Who pays when an AI agent <em>buys wrong?</em></h1></div>
-<div><p>Black Box records what a shopping agent saw and decided and seals it into the PayPal order. When the buyer disputes,
-code, not an AI, decides who is at fault: <b>user</b>, <b>agent</b>, <b>merchant</b>, or <b>a human</b> must look. PayPal then carries it out.</p>
-<p>Every recording below is a real run. The ones marked PayPal were refunded live in the sandbox, the last two by the autopilot from
-PayPal's own webhook. <a href="/bench">The case bench</a> runs every verdict, every rule and ten attacks.
-Source: <a href="https://github.com/4KInc/black-box">github.com/4KInc/black-box</a>.</p></div></section>`;
+const INTRO = siteIntro({ live: false });
 
 // A scratch root holding only what is committed: the fixtures, and the buyer's enrolled
 // passkey (public key) in the registry the replay reads.

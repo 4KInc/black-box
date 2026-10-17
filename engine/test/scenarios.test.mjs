@@ -26,7 +26,7 @@ function run({ purchase, findings, aiInjectionFlag = false, record = RECORD_OK, 
 
 const premium = { sku: 'RJ-PREMIUM-BLUE-M', category: 'rain jacket', attributes: { color: 'blue', size: 'M' }, totalCents: 24000, currency: 'USD', at: '2026-10-12T10:00:00Z', pageSigned: true };
 const honest = { ...premium, sku: 'RJ-BLUE-M', totalCents: 12900 };
-const merchantInjection = { textHash: 'jsonld-1', concealedInReadChannel: true, namesPurchasedItem: true, inModelInput: true, signedByMerchant: true, selfContained: true, thirdPartySigned: false };
+const merchantInjection = { textHash: 'jsonld-1', concealedInReadChannel: true, namesPurchasedItem: true, contradictsListing: true, inModelInput: true, signedByMerchant: true, selfContained: true, thirdPartySigned: false };
 
 test('page 2: merchant JSON-LD injection, over budget -> MERCHANT, full refund', () => {
   const r = run({ purchase: premium, findings: [merchantInjection], aiInjectionFlag: true, reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED' });

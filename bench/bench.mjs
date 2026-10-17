@@ -10,10 +10,10 @@ export function runBench(root = join(import.meta.dirname, '..')) {
   const load = (name) => JSON.parse(readFileSync(join(root, 'fixtures', 'recorded', name), 'utf8'));
   // The enrolment registry for the bench is the committed fixture, not the local records/.
   const enrolment = load(ENROLMENT);
-  const enrolledKeys = (payerId) => (payerId === enrolment.payer_id ? enrolment.credentials.map((c) => c.public_key_spki) : []);
+  const enrolledFor = (payerId) => (payerId === enrolment.payer_id ? enrolment.credentials : []);
   return CASES.map((def) => {
     const c = buildCase(def, load);
-    const j = judge(c, { enrolledKeys });
+    const j = judge(c, { enrolment: enrolledFor });
     const got = {
       verdict: j.verdict.verdict, rule: j.verdict.rule, action: j.plan.action, refundCents: j.plan.refundCents,
       broken: RECORD_CHECKS.filter((k) => !j.facts[k]).join(','),

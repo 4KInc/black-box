@@ -28,8 +28,8 @@ export function signedProduct(record) {
 
 // order = { customId, payeeMerchantId, createdAt, capturedCents, payerId } from PayPal.
 // flaggedPassages = the flagger's grounded quotes ([{ quote, reason }]), or [] when it did not run.
-export function evaluateCase({ record, order, reason, flaggedPassages = [], enrolledKeys }) {
-  const integrity = recordFacts(record, order, { enrolledKeys });
+export function evaluateCase({ record, order, reason, flaggedPassages = [], enrolment }) {
+  const integrity = recordFacts(record, order, { enrolment });
   const product = signedProduct(record);
   const page = record.fetches[record.purchase.page_index];
 
@@ -43,7 +43,7 @@ export function evaluateCase({ record, order, reason, flaggedPassages = [], enro
     pageSigned: page.verification?.ok === true,
   });
 
-  const findings = product ? findingsFor(record, { sku: product.sku, name: product.name }) : [];
+  const findings = product ? findingsFor(record, { sku: product.sku, name: product.name, priceCents: product.priceCents }) : [];
   const summary = summarize(findings);
   // Manipulation aimed at other products on the pages does not make this purchase suspect.
   const flagged = flaggedPassages.map((p) => ({ ...p, namesPurchasedItem: Boolean(product && mentionsItem(p.quote, product)) }));

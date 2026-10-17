@@ -144,7 +144,7 @@ test('an unsigned page is recorded, flagged, and leaves signaturesValid false', 
 
 test('record facts feed the verdict engine: a tampered record can only give NEEDS A HUMAN', async () => {
   const { sealed } = await shopRun();
-  const rest = { mandateBroken: true, concealedInReadChannel: true, namesPurchasedItem: true, inModelInput: true, merchantOwned: true, aiInjectionFlag: true, unattributedHiddenText: false };
+  const rest = { mandateBroken: true, concealedInReadChannel: true, namesPurchasedItem: true, contradictsListing: true, inModelInput: true, merchantOwned: true, aiInjectionFlag: true, unattributedHiddenText: false };
   assert.equal(decide({ ...recordFacts(sealed.record, order(sealed.hash)).facts, ...rest }).verdict, 'MERCHANT');
   const bad = recordFacts(sealed.record, order(sealed.hash, { payeeMerchantId: 'SOMEONEELSE' })).facts;
   assert.equal(decide({ ...bad, ...rest }).verdict, 'NEEDS_A_HUMAN');

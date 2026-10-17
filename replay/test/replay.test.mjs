@@ -69,8 +69,8 @@ test('the live case page replays the verdict, the hidden text and what PayPal di
 test('every section of a case explains itself in plain words, from the case\'s own facts', async () => {
   const html = await (await fetch(`${base}/case/${LIVE}`)).text();
   assert.equal((html.match(/<p class="plain">/g) ?? []).length, 7);
-  assert.match(html, /<p class="story">The shop hid a message on its page that only the AI would read, claiming the price was \$119\.00\. The AI believed it and spent \$240\.00 on a \$150\.00 budget\./);
-  assert.match(html, /Here it is rule 2: the AI broke the budget because of the shop&#39;s own hidden text, so the shop pays\./);
+  assert.match(html, /<p class="story">The shop hid a message on its page that only the AI would read, claiming the price was \$119\.00\. The AI spent \$240\.00 on a \$150\.00 budget\. Under Black Box.{1,6}s policy, a shop that plants a contradicting message/);
+  assert.match(html, /Here it is rule 2: the AI broke the budget after reading the shop&#39;s own hidden text contradicting its listing, so under the policy the shop is responsible\./);
   assert.match(html, /PayPal returned \$240\.00 to the buyer/);
 });
 

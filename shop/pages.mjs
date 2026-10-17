@@ -66,6 +66,7 @@ export function productPage({ product: p, merchantId, origin, signedReviews }) {
     '@context': 'https://schema.org', '@type': 'Product',
     sku: p.sku, productID: p.sku, name: p.name, description: p.description, color: p.color, size: p.size, category: p.category,
     offers: { '@type': 'Offer', price: (p.priceCents / 100).toFixed(2), priceCurrency: 'USD', availability: 'https://schema.org/InStock', seller: seller(merchantId) },
+    ...(p.productData ?? {}),
     ...(p.hiddenJsonLd ?? {}),
   };
   const body = `<div class="product"><div>${jacketSvg(p.hex)}</div><div>
