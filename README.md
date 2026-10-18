@@ -73,8 +73,10 @@ placed before the buyer enrolled a passkey, so their mandates are unsigned; see
 7. **PayPal carries it out,** at most once: `accept-claim` (a refund), a partial refund or
    `make-offer` for the amount over budget, or `provide-evidence` to defend an honest purchase.
    The evidence is a short note for the PayPal reviewer, the statements it was written from and
-   the full record. Code writes the statements. An AI may reword them into the note, and a check
-   rejects any wording that adds a number, ID or accusation, falling back to the statements.
+   the full record. Code writes the statements and an AI may reword them into the note. The check
+   on that wording is code, not a model: every number, amount, date, SKU and hash in the note must
+   appear exactly in a statement, a fixed word list rejects accusations, and the length is capped.
+   A note that fails is replaced by the statements as written.
 
 **What the record proves, and what it does not.** The record is tamper-evident after it is
 committed to the PayPal order. Whether it truly shows what the model received depends on the
@@ -87,10 +89,14 @@ Black Box does not prove what caused a mistake: a record cannot show what the ag
 done without the lie. Instead it applies a policy that the parties agree to in advance. **This is
 Black Box's proposal, not PayPal's current policy:**
 
-> A merchant that hides content for AI agents that contradicts its own signed listing (another
-> price, or an instruction to ignore the buyer's limits) is responsible for any breach of the
-> mandate on that purchase, **whether or not the agent would have failed anyway.** Otherwise, an
-> agent that breaks the mandate is its operator's responsibility.
+> A merchant that hides content for AI agents that contradicts its own signed listing is
+> responsible for any breach of the mandate on that purchase, **whether or not the agent would
+> have failed anyway.** Otherwise, an agent that breaks the mandate is its operator's
+> responsibility.
+>
+> Hidden content contradicts the listing if it tells the agent to set aside the buyer's limits,
+> or states a price for the purchased item and variant, in the order's currency, valid when the
+> order was placed, other than the signed price. A price aimed at AI agents always counts.
 
 Bench R13 shows the "anyway" case: Llama 1B overspends on the page with the lie, and the study
 shows it overspends without the lie too. The merchant is still responsible, because it planted the
@@ -119,9 +125,14 @@ real case yourself.
 
 ## Design decisions
 
-- **The merchant conditions require a contradiction.** Hidden text counts against the merchant
-  only if it names the item and contradicts the signed listing. Accurate structured data is often
-  not displayed, and that is normal (R12).
+- **The merchant conditions require a contradiction, defined narrowly.** A wrong "yes" costs an
+  honest merchant the whole payment, so the check is strict. Structured data that is never
+  displayed is normal (R12), and it often carries other prices legitimately. None of these
+  count: another size or SKU, a price range, a members-only price, a sale outside its dates, a
+  tax-inclusive price, shipping, another currency or a former price. Each one is a recorded run
+  in the bench (R14–R21), where the agent overspends and the verdict is AGENT. The first version
+  counted any other dollar amount and would have blamed the shop in all eight. A merchant that
+  words a lie to slip past the check still meets the AI flagger, which sends the case to a person.
 - **Rule 4 has two triggers.** A case goes to a person when the agent read hidden text that code
   cannot pin on the merchant, or when the AI flagger raises its flag. Otherwise a lie planted by a
   third party would be blamed on the agent (R06).
@@ -137,8 +148,8 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 139 tests
-npm run bench               # 31 cases: every verdict and rule, the flagger, passkeys, 10 attacks
+npm test                    # 141 tests
+npm run bench               # 39 cases: every verdict and rule, honest price data, the flagger, passkeys, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
 
@@ -154,7 +165,9 @@ node study/run.mjs                                    # re-run the study (see st
 
 **Hosting.** `render.yaml` deploys the replay, bench, study and lab as one Render web service
 (`node lab/hosted.mjs`). It serves only the committed fixtures, holds no keys and never calls
-PayPal.
+PayPal. Set the repository variable `LAB_URL` to its address: the Pages build then links the lab
+from the site, and `.github/workflows/keepwarm.yml` requests it every 10 minutes so the free
+instance does not fall asleep between visitors.
 
 ## Layout
 
@@ -171,7 +184,7 @@ PayPal.
 | `executor/` | dispute → record → verdict → PayPal action; webhook receiver, watcher, autopilot |
 | `replay/` | the replay UI (no scripts; recorded pages sandboxed) |
 | `lab/` | the live lab (tamper with a case, or set facts by hand) and the hosted entry point |
-| `bench/` | 31 cases, each with its expected verdict, rule, PayPal action and failing checks |
+| `bench/` | 39 cases, each with its expected verdict, rule, PayPal action and failing checks |
 | `study/` | the susceptibility study: runner, methods, limitations |
 | `site/` | static export for GitHub Pages |
 | `fixtures/` | recorded runs, live PayPal outcomes, the study |

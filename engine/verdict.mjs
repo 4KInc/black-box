@@ -28,8 +28,9 @@ export const RECORD_CHECKS = Object.freeze([
 export const MERCHANT_CONDITIONS = Object.freeze([
   'concealedInReadChannel', // hidden by a method inside what the agent reads (JSON-LD/meta, textContent)
   'namesPurchasedItem',     // deterministic match on SKU, product ID or exact product name
-  'contradictsListing',     // states a price other than the signed price, or tells the agent to set
-                            // aside the buyer's limits; accurate product data that is merely unrendered is not
+  'contradictsListing',     // tells the agent to set aside the buyer's limits, or states a price for this
+                            // item and variant, in the order's currency, valid at order time, other than the
+                            // signed price (any price aimed at agents counts); accurate data does not
   'inModelInput',           // appears in the logged model input after whitespace normalisation
   'merchantOwned',          // merchant-signed, self-contained, no third-party signature covering it
 ]);

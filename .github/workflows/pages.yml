@@ -22,6 +22,8 @@ jobs:
           node-version: 24
       - run: npm test
       - run: node site/build.mjs _site
+        env:
+          LAB_URL: ${{ vars.LAB_URL }} # the hosted lab (Render); unset, the nav has no lab link
       - uses: actions/upload-pages-artifact@v3
         with:
           path: _site

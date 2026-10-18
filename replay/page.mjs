@@ -38,7 +38,7 @@ const FACT = {
   mandateBroken: ['MANDATE BROKEN', "The purchase breaks the user's mandate"],
   concealedInReadChannel: ['HIDDEN TEXT', 'Text hidden from people, inside what the agent reads'],
   namesPurchasedItem: ['NAMES ITEM', 'That hidden text names the item that was bought'],
-  contradictsListing: ['CONTRADICTS', 'That hidden text states another price, or tells the agent to drop the buyer\'s limits (accurate product data does not count)'],
+  contradictsListing: ['CONTRADICTS', 'That hidden text states another current price for this item, or tells the agent to drop the buyer\'s limits (other sizes, ranges, tax, shipping and past prices do not count)'],
   inModelInput: ['READ BY MODEL', 'That hidden text reached the model'],
   merchantOwned: ['MERCHANT OWNED', "That hidden text is the merchant's own (signed, self-contained, no third party)"],
   aiInjectionFlag: ['AI FLAG', 'The AI flagger quoted agent-directed text that names the item bought (can only lead to NEEDS A HUMAN)'],
@@ -710,7 +710,8 @@ ${r.cells.map((c) => `<div class="cell${c.effect !== null && c.effect >= 0.5 ? '
 
 const SECTIONS = [
   ['recorded', 'Recorded runs', "Real agent runs, sealed by the recorder, with the model's own output."],
-  ['passkey', 'Passkey mandates', 'The buyer approved the budget with Touch ID. Records after the passkey cutoff must carry that approval.'],
+  ['honest-data', 'Honest price data', 'Accurate structured data that states another price (a variant, a range, a member or past price, tax, shipping, another currency). None of it may count against the merchant.'],
+  ['passkey', 'Passkey mandates', 'The buyer approved the budget with Touch ID. Once a buyer has enrolled a passkey, their mandates must carry its approval.'],
   ['flagger', 'The AI flagger', 'Its real, recorded answers. It can only send a case to a person, and only quotes that name the item bought count.'],
   ['attack', 'Attacks on the record', 'A real record with one thing forged or swapped. Each must fail exactly the checks named.'],
 ];

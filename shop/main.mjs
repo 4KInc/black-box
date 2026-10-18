@@ -1,6 +1,7 @@
 // Starts the demo shop and the demo review platform.
 //   node shop/main.mjs        -> shop on :4010, review platform on :4011
 //   SHOP_INJECTIONS=off       -> same pages without the hidden texts (control condition)
+//   SHOP_EXTRA_DATA=<key>     -> add one accurate, differently priced statement (catalog LEGIT_PRICE_DATA)
 // Keys are created on first run in shop/.keys/ (gitignored) and reused after that.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -36,5 +37,5 @@ const reviewsJwk = key('reviews');
 
 createReviewPlatform({ jwk: reviewsJwk }).listen(REVIEWS_PORT, () =>
   console.log(`review platform  ${reviewsIssuer}   key ${thumbprint(reviewsJwk)}`));
-createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off' }).listen(SHOP_PORT, () =>
+createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off', extraData: process.env.SHOP_EXTRA_DATA || null }).listen(SHOP_PORT, () =>
   console.log(`shop             ${origin}   key ${thumbprint(shopJwk)}   PayPal merchant ${merchantId}${process.env.SHOP_INJECTIONS === 'off' ? '   (hidden texts OFF: control)' : ''}`));

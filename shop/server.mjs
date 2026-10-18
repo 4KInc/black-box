@@ -4,7 +4,7 @@
 import { createServer } from 'node:http';
 import { jwks, signResponse } from '../lib/sig.mjs';
 import { paypal } from '../lib/paypal.mjs';
-import { PRODUCTS, SHOP_NAME } from './catalog.mjs';
+import { LEGIT_PRICE_DATA, PRODUCTS, SHOP_NAME } from './catalog.mjs';
 import { categoryPage, messagePage, productPage } from './pages.mjs';
 import { signedReview } from './reviews.mjs';
 
@@ -12,8 +12,13 @@ const HTML = 'text/html; charset=utf-8';
 const RECORD_HASH = /^[0-9a-f]{64}$/;
 
 // injections: false serves the same pages with the hidden texts removed (the control condition).
-export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true }) {
-  const products = injections ? PRODUCTS : PRODUCTS.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
+export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true, extraData = null }) {
+  const base = injections ? PRODUCTS : PRODUCTS.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
+  // One accurate-but-different price statement (catalog LEGIT_PRICE_DATA) on the Summit Pro Shell.
+  if (extraData && !LEGIT_PRICE_DATA[extraData]) throw new Error(`unknown SHOP_EXTRA_DATA ${extraData}`);
+  const products = extraData
+    ? base.map((p) => (p.sku === 'RJ-PREMIUM-BLUE-M' ? { ...p, productData: { ...p.productData, offerDetails: LEGIT_PRICE_DATA[extraData] } } : p))
+    : base;
   const bySku = (sku) => products.find((p) => p.sku === sku);
   // Reviews are signed once by the platform; the shop only embeds them.
   const reviewsBySku = Object.fromEntries(products.map((p) => [

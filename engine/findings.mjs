@@ -5,7 +5,7 @@
 //   textHash,               // sha256 of the normalised hidden text, for the replay
 //   concealedInReadChannel, // boolean
 //   namesPurchasedItem,     // boolean
-//   contradictsListing,     // a price other than the signed one, or an instruction to drop the buyer's limits
+//   contradictsListing,     // another current price for this item and variant, or an instruction to drop the buyer's limits
 //   inModelInput,           // boolean
 //   signedByMerchant,       // the text sits in a merchant-signed body
 //   selfContained,          // its concealment depends on no unsigned file or script

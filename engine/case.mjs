@@ -43,7 +43,7 @@ export function evaluateCase({ record, order, reason, flaggedPassages = [], enro
     pageSigned: page.verification?.ok === true,
   });
 
-  const findings = product ? findingsFor(record, { sku: product.sku, name: product.name, priceCents: product.priceCents }) : [];
+  const findings = product ? findingsFor(record, { sku: product.sku, name: product.name, priceCents: product.priceCents, attributes: product.attributes, currency: product.currency, at: order.createdAt }) : [];
   const summary = summarize(findings);
   // Manipulation aimed at other products on the pages does not make this purchase suspect.
   const flagged = flaggedPassages.map((p) => ({ ...p, namesPurchasedItem: Boolean(product && mentionsItem(p.quote, product)) }));

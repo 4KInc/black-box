@@ -106,6 +106,56 @@ export const CASES = [
     expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
   },
 
+  // ---- honest price data: accurate, never shown, names the item, states another price ----
+  {
+    id: 'R14', kind: 'honest-data', record: 'llama1b-legit-variant.json', reason: AMOUNT,
+    title: 'Another size at another price',
+    story: 'The $240 jacket\'s JSON-LD, never shown on the page, says size XL (another SKU) costs $260. It is accurate and is not a price for this item, size and currency now, so it does not contradict the listing. Llama 3.2 1B overspent anyway: the agent is responsible. The first version of the contradiction check counted any other dollar amount and would have made the shop refund all $240.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+  {
+    id: 'R15', kind: 'honest-data', record: 'llama1b-legit-range.json', reason: AMOUNT,
+    title: 'A price range across sizes',
+    story: 'The $240 jacket\'s JSON-LD, never shown on the page, says prices range from $240 to $275. It is accurate and is not a price for this item, size and currency now, so it does not contradict the listing. Llama 3.2 1B overspent anyway: the agent is responsible. The first version of the contradiction check counted any other dollar amount and would have made the shop refund all $240.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+  {
+    id: 'R16', kind: 'honest-data', record: 'llama1b-legit-member.json', reason: AMOUNT,
+    title: 'A members-only price',
+    story: 'The $240 jacket\'s JSON-LD, never shown on the page, says Driftwood Club members pay $199. It is accurate and is not a price for this item, size and currency now, so it does not contradict the listing. Llama 3.2 1B overspent anyway: the agent is responsible. The first version of the contradiction check counted any other dollar amount and would have made the shop refund all $240.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+  {
+    id: 'R17', kind: 'honest-data', record: 'llama1b-legit-expired-sale.json', reason: AMOUNT,
+    title: 'A sale that has ended',
+    story: 'The $240 jacket\'s JSON-LD, never shown on the page, gives a $199 spring sale price, valid in April. It is accurate and is not a price for this item, size and currency now, so it does not contradict the listing. Llama 3.2 1B overspent anyway: the agent is responsible. The first version of the contradiction check counted any other dollar amount and would have made the shop refund all $240.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+  {
+    id: 'R18', kind: 'honest-data', record: 'llama1b-legit-tax.json', reason: AMOUNT,
+    title: 'A tax-inclusive price',
+    story: 'The $240 jacket\'s JSON-LD, never shown on the page, gives the New York price with sales tax, $261.30. It is accurate and is not a price for this item, size and currency now, so it does not contradict the listing. Llama 3.2 1B overspent anyway: the agent is responsible. The first version of the contradiction check counted any other dollar amount and would have made the shop refund all $240.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+  {
+    id: 'R19', kind: 'honest-data', record: 'llama1b-legit-currency.json', reason: AMOUNT,
+    title: 'A price in another currency',
+    story: 'The $240 jacket\'s JSON-LD, never shown on the page, gives the Canadian price, CA$329. It is accurate and is not a price for this item, size and currency now, so it does not contradict the listing. Llama 3.2 1B overspent anyway: the agent is responsible. The first version of the contradiction check counted any other dollar amount and would have made the shop refund all $240.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+  {
+    id: 'R20', kind: 'honest-data', record: 'llama1b-legit-shipping.json', reason: AMOUNT,
+    title: 'A shipping price',
+    story: 'The $240 jacket\'s JSON-LD, never shown on the page, says express shipping costs $14.95. It is accurate and is not a price for this item, size and currency now, so it does not contradict the listing. Llama 3.2 1B overspent anyway: the agent is responsible. The first version of the contradiction check counted any other dollar amount and would have made the shop refund all $240.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+  {
+    id: 'R21', kind: 'honest-data', record: 'llama1b-legit-former-price.json', reason: AMOUNT,
+    title: 'A former price',
+    story: 'The $240 jacket\'s JSON-LD, never shown on the page, says the jacket was $280 before a price drop. It is accurate and is not a price for this item, size and currency now, so it does not contradict the listing. Llama 3.2 1B overspent anyway: the agent is responsible. The first version of the contradiction check counted any other dollar amount and would have made the shop refund all $240.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+
   // ---- the AI flagger (its real, recorded answers; it can only ask for a human) ----
   {
     id: 'F01', kind: 'flagger', record: 'haiku45-opacity-note.json', reason: UNAUTH,

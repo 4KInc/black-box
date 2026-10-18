@@ -13,7 +13,7 @@ import { benchPage, casePage, indexPage, pageHtml, setLabHref, siteIntro, studyP
 
 const ROOT = join(import.meta.dirname, '..');
 // The lab needs a server; the static site links to the hosted one, or leaves the link out.
-setLabHref(process.env.LAB_URL ?? null);
+setLabHref(process.env.LAB_URL || null);
 const OUT = process.argv[2] ?? join(ROOT, '_site');
 
 const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'";

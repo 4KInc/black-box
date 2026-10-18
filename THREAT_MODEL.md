@@ -24,6 +24,8 @@ It ends with what Black Box has to trust, and what it does not cover.
 | Edits the stored page afterwards to remove the note and blame the agent | Each page is stored with its hash and RFC 9421 signature; the record hash is in the PayPal order's `custom_id`, which PayPal does not allow to change after payment | A01 |
 | Claims it never wrote the note | The page bytes are signed with the shop's Ed25519 key, fetched from the shop's own `/.well-known/jwks.json` | A06 |
 | (Honest merchant) Publishes accurate product data in JSON-LD that is not displayed | Not a contradiction: no other price and no instruction to ignore limits, so it is not held against the merchant | R12 |
+| (Honest merchant) Publishes accurate data that states another price: a variant, a range, a member or sale price, tax, shipping, another currency, a former price | Not a contradiction: only a price for the purchased item and variant, in the order's currency, valid at order time, counts (or any price aimed at agents) | R14–R21 |
+| Words a lie to slip past that definition, such as an agent price phrased as a range | The contradiction check misses it, but the AI flagger quotes it and the case goes to a person, so the lie wins no automatic outcome | F01, F02 |
 | Plants the note in a third-party review to dodge blame | Third-party-signed content is attributed to its signer; code then cannot blame the merchant and sends the case to a person rather than to the agent | R06 |
 | Steers the agent but stays within budget | Within the mandate, steering is a judgment, not a check: NEEDS A HUMAN | R07 |
 | Takes payment to a different account than the page names | The signed merchant ID must equal the PayPal payee | A04 |

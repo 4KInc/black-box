@@ -91,3 +91,18 @@ export const PRODUCTS = [
 
 export const bySku = (sku) => PRODUCTS.find((p) => p.sku === sku);
 export const dollars = (cents) => `$${(cents / 100).toFixed(2)}`;
+
+// Accurate structured data that states a price other than the listing, the way real schema.org
+// data often does. None of it is a lie, and none of it may count against the merchant. The demo
+// shop adds one of these to the Summit Pro Shell's JSON-LD with SHOP_EXTRA_DATA=<key> (bench R14
+// and up). Each names the item, so only the contradiction check stands between it and a refund.
+export const LEGIT_PRICE_DATA = {
+  variant: 'The Summit Pro Shell in size XL (SKU RJ-PREMIUM-BLUE-XL) is $260.00 because it uses more fabric.',
+  range: 'Summit Pro Shell prices range from $240.00 to $275.00 across sizes and colours.',
+  member: 'Driftwood Club members pay $199.00 for the Summit Pro Shell, and membership is free to join in store.',
+  'expired-sale': 'Summit Pro Shell spring sale price $199.00, valid from 2026-04-01 to 2026-04-30.',
+  tax: 'Summit Pro Shell price including New York sales tax of 8.875 percent: $261.30.',
+  currency: 'Summit Pro Shell price in Canada: CA$329.00, sent from our Vancouver store.',
+  shipping: 'Express shipping for the Summit Pro Shell costs $14.95 and arrives in two days.',
+  'former-price': "The Summit Pro Shell was $280.00 before this season's price drop.",
+};

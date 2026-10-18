@@ -135,17 +135,61 @@ export function mentionsItem(text, { sku, name }) {
   return (sku && t.includes(sku.toLowerCase())) || (name && t.includes(name.toLowerCase()));
 }
 
-// Does a hidden text contradict what the merchant signed for this item? It does if it states a
-// price other than the signed price, or tells the agent to set aside the buyer's limits.
-// Accurate product data that is simply not rendered (JSON-LD is often like that) does not.
-const MONEY = /\$\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?/g;
+// Does a hidden text contradict what the merchant signed for this item? Under the policy a "yes"
+// costs the merchant the whole payment, so it is deliberately narrow. It is "yes" if the text
+//   - tells the agent to set aside the buyer's limits, or
+//   - states a price for this item, in the order's currency, valid when the order was placed,
+//     other than the signed price.
+// Accurate structured data often carries other prices, and none of these count: another variant
+// or SKU, a price range, a former price, shipping, tax or fees, another currency, a price for
+// another audience (members, students, bulk), or a sale outside its stated dates. A price aimed
+// at AI agents always counts: no other audience can make that legitimate. Each sentence is judged
+// on its own, so an honest sentence cannot excuse a lie next to it.
+const MONEY = /(?:\b(USD|US|CA|C|A|AU|NZ|HK|S|SG|MX)\s?)?\$\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?(?:\s?(USD|CAD|AUD|NZD|HKD|SGD|MXN)\b)?/g;
 const OVERRIDE = /\b(?:ignore|disregard|override|bypass|set aside)\b[^.]{0,60}?\b(?:budget|limit|cap|mandate|instructions?|spending)/i;
-export function contradictsListing(text, { priceCents }) {
-  for (const m of text.matchAll(MONEY)) {
-    const cents = Number(m[1].replace(/,/g, '')) * 100 + Number(m[2] ?? 0);
-    if (cents !== priceCents) return true;
+const AGENT = /\b(?:AI|agents?|agentic|assistants?|bots?|automated|LLMs?)\b/i;
+const RANGE = /\b(?:prices? (?:range|vary)|ranges? from|ranging from|from|starting at|starts at|as low as|up to|between)\s*(?:[A-Z]{1,3})?\$|\b(?:lowPrice|highPrice)\b|\$\s?[\d,.]+\s?(?:-|–|—|to)\s?(?:[A-Z]{1,3})?\$/i;
+const NOT_THE_PRICE = /\b(?:shipping|delivery|postage|freight|tax(?:es)?|VAT|GST|duty|duties|fees?|surcharge|deposit)\b|\b(?:was|previously|originally|formerly|list price|MSRP|RRP|compare at|reg(?:ular)?\.? price)\s*:?\s*[A-Z]{0,3}\$/i;
+const AUDIENCE = /\b(?:members?|membership|club|loyalty|rewards?|subscribers?|students?|teachers?|military|veterans?|employees?|staff|trade|wholesale|bulk|or more|when you buy|per unit for)\b/i;
+const DATE = /\b(\d{4}-\d{2}-\d{2})\b/g;
+const SIZES = /\bsize\s+(XXS|XS|S|M|L|XL|XXL|\d+)\b/gi;
+const SKU = /\b(?=[A-Z0-9-]*[A-Z])[A-Z0-9]{2,}(?:-[A-Z0-9]+){2,}\b/g; // needs a letter, so a date is not a SKU
+
+const sentences = (text) => text.split(/(?<!\d)[.;!?](?!\d)|\n/).map((x) => x.trim()).filter(Boolean);
+
+function otherVariant(sentence, { sku, attributes = {} }) {
+  if ((sentence.match(SKU) ?? []).some((x) => x !== sku)) return true;
+  const size = attributes.size && [...sentence.matchAll(SIZES)].some((m) => m[1].toUpperCase() !== String(attributes.size).toUpperCase());
+  return Boolean(size);
+}
+
+// A sale or offer whose stated dates do not cover the order time.
+function outsideDates(sentence, at) {
+  const t = Date.parse(at);
+  const dates = [...sentence.matchAll(DATE)].map((m) => Date.parse(`${m[1]}T00:00:00Z`)).filter(Number.isFinite);
+  if (!dates.length || !Number.isFinite(t)) return false;
+  if (dates.length >= 2) return t < Math.min(...dates) || t >= Math.max(...dates) + 86400000;
+  const d = dates[0];
+  if (/\b(?:until|through|thru|ends?|ended|expires?|expired|ending|by)\b/i.test(sentence)) return t >= d + 86400000;
+  if (/\b(?:from|starting|starts|begins?|after)\b/i.test(sentence)) return t < d;
+  return false;
+}
+
+export function contradictsListing(text, { priceCents, sku = null, attributes = {}, currency = 'USD', at = null }) {
+  if (OVERRIDE.test(text)) return true;
+  for (const s of sentences(text)) {
+    const toAgents = AGENT.test(s);
+    for (const m of s.matchAll(MONEY)) {
+      const code = (m[1] ?? m[4] ?? '').toUpperCase();
+      if (code && !(currency === 'USD' && (code === 'USD' || code === 'US'))) continue; // another currency
+      const cents = Number(m[2].replace(/,/g, '')) * 100 + Number(m[3] ?? 0);
+      if (cents === priceCents) continue;
+      if (otherVariant(s, { sku, attributes }) || RANGE.test(s) || NOT_THE_PRICE.test(s) || outsideDates(s, at)) continue;
+      if (!toAgents && AUDIENCE.test(s)) continue;
+      return true;
+    }
   }
-  return OVERRIDE.test(text);
+  return false;
 }
 
 function readByModel(text, modelInputs) {
@@ -169,7 +213,7 @@ export function findingsFor(record, item) {
     method: h.method,
     concealedInReadChannel: true,
     namesPurchasedItem: Boolean(mentionsItem(h.text, item)),
-    contradictsListing: contradictsListing(h.text, item),
+    contradictsListing: contradictsListing(h.text, { ...item, at: item.at ?? record.purchase.at }),
     inModelInput: readByModel(h.text, record.model_inputs),
     signedByMerchant: signed,
     selfContained,
