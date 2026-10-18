@@ -25,6 +25,7 @@ export function paypalFromLog(entries) {
   const executed = entries.find((e) => /^(accept-claim|make-offer|provide-evidence)/.test(e.step));
   const after = ok('get dispute (after)').at(-1);
   const flagger = entries.findLast((e) => e.step === 'flagger' && e.result)?.result ?? null;
+  const evidence = entries.findLast((e) => e.step === 'evidence-note')?.note ?? null;
   return {
     disputeId: dispute.dispute_id,
     reason: dispute.reason,
@@ -37,6 +38,7 @@ export function paypalFromLog(entries) {
     captureId: txn.seller_transaction_id ?? null,
     captured: amount(txn.gross_amount),
     flagger: flagger ? { flagged: flagger.flagged, passages: flagger.passages, model: flagger.model, at: flagger.at } : null,
+    evidenceNote: evidence ? { text: evidence.text, source: evidence.source, model: evidence.model ?? null } : null,
     executed: executed ? { action: executed.step, httpStatus: executed.status, at: executed.at, debugId: executed.debug_id ?? null } : null,
     after: after ? {
       status: after.status,

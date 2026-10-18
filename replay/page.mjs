@@ -9,6 +9,7 @@
 
 import { toValue } from '../engine/actions.mjs';
 import { FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES, VERDICT } from '../engine/verdict.mjs';
+import { statementsFor, templateNote } from '../evidence/evidence.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const money = (c, cur = 'USD') => (Number.isInteger(c) ? `$${toValue(c)}${cur === 'USD' ? '' : ' ' + cur}` : '–');
@@ -232,6 +233,9 @@ ol.tape li.hot .ev{color:var(--orange)}
 /* ---- integrity ---- */
 .hasheq{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:baseline;font:400 12px/1.5 var(--mono)}
 .hasheq .eq{color:var(--green);font-size:16px}.hasheq .ne{color:var(--red);font-size:16px}
+.evnote{margin:12px 0;max-width:72ch;font-size:15px;line-height:1.6}
+.evlist{margin:10px 0 0;padding-left:20px;font-size:13px;line-height:1.55;color:var(--ink-2)}
+.evlist li{margin:4px 0}
 .problems{margin:12px 0 0;padding-left:18px;color:var(--red);font:400 12px/1.6 var(--mono)}
 
 /* ---- recordings ---- */
@@ -652,7 +656,16 @@ ${RULES.map((rule) => `<li class="${rule.verdict}${rule.n === j.verdict.rule ? '
 ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
 <div class="k mono" style="margin-top:12px">source ${esc(c.source)}</div></div>`);
 
-  return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}`, { active: c.bench ? 'bench' : 'recordings' });
+  // 8. the note PayPal receives with the evidence (USER verdicts only)
+  const statements = statementsFor({ record: r, j, hash: c.hash, reason: j.reason });
+  const sent = c.paypal?.evidenceNote;
+  const evidence = statements ? sec('8.0', 'Evidence for PayPal', 'Code writes the statements. An AI may reword them, and a check rejects any wording that adds a number, ID or accusation.', `<div class="panel">
+<div class="eyebrow">${sent ? `Sent to PayPal · ${sent.source === 'ai' ? `worded by <b>${esc(sent.model)}</b>, checked against the statements` : 'the statements as written'}` : 'Preview · the statements as written; on a live dispute an AI may reword them'}</div>
+<p class="evnote">${esc(sent?.text ?? templateNote(statements))}</p>
+<details><summary>The ${statements.length} statements, established by code</summary><ol class="evlist">${statements.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>
+<div class="k" style="margin-top:10px;font-size:12.5px">Attached with them: the full sealed record, as <span class="mono">blackbox-evidence.txt</span>.</div></div>`) : '';
+
+  return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.bench ? 'bench' : 'recordings' });
 }
 
 // ---------------------------------------------------------------- study

@@ -71,8 +71,10 @@ placed before the buyer enrolled a passkey, so their mandates are unsigned; see
    must appear word for word in what the agent read and must name the item bought. It can only
    move a case to NEEDS A HUMAN. It catches hiding tricks that code does not know (bench F01, F02).
 7. **PayPal carries it out,** at most once: `accept-claim` (a refund), a partial refund or
-   `make-offer` for the amount over budget, or `provide-evidence` (the record, to defend an honest
-   purchase).
+   `make-offer` for the amount over budget, or `provide-evidence` to defend an honest purchase.
+   The evidence is a short note for the PayPal reviewer, the statements it was written from and
+   the full record. Code writes the statements. An AI may reword them into the note, and a check
+   rejects any wording that adds a number, ID or accusation, falling back to the statements.
 
 **What the record proves, and what it does not.** The record is tamper-evident after it is
 committed to the PayPal order. Whether it truly shows what the model received depends on the
@@ -99,7 +101,7 @@ against the merchant, so an agent that overspends next to it is the agent's resp
 |---|---|---|---|
 | MERCHANT | The merchant: its own hidden, contradicting text was read and the mandate broken | `accept-claim`: full refund from the merchant | Done: the merchant refunds |
 | AGENT | The agent's operator: the mandate was broken and nothing contradicting was read | Refund the amount over budget (`accept-claim` partial, or `make-offer`, which the buyer must accept) | **Not built.** The merchant refunds the buyer; collecting that amount from the operator is off-platform |
-| USER | The buyer: the purchase was within the mandate | `provide-evidence`: send the record | None due |
+| USER | The buyer: the purchase was within the mandate | `provide-evidence`: a checked note, its statements and the record | None due |
 | NEEDS A HUMAN | Undecided: a broken record, unattributable manipulation, or steering within budget | None | None |
 
 **Who runs it.** In this build, a merchant deploys Black Box to commit in advance to automatic
@@ -135,7 +137,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 133 tests
+npm test                    # 139 tests
 npm run bench               # 31 cases: every verdict and rule, the flagger, passkeys, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
@@ -165,6 +167,7 @@ PayPal.
 | `agent/` | the shopping agent (Anthropic API or a local OpenAI-compatible model) |
 | `mandate/` | passkey enrolment and mandate approval |
 | `flagger/` | AI flagger, grounded by exact quotes |
+| `evidence/` | the evidence note for PayPal: statements from code, wording checked against them |
 | `executor/` | dispute → record → verdict → PayPal action; webhook receiver, watcher, autopilot |
 | `replay/` | the replay UI (no scripts; recorded pages sandboxed) |
 | `lab/` | the live lab (tamper with a case, or set facts by hand) and the hosted entry point |

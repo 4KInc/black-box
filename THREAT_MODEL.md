@@ -67,6 +67,11 @@ It ends with what Black Box has to trust, and what it does not cover.
   consistent and complete, not that the policy is fair or that each fact was extracted correctly.
   The only AI input, the flag, can only lead to NEEDS A HUMAN, and only when its quote names the
   item bought.
+- **The AI words the evidence note, it does not write the facts:** on a USER verdict, code builds
+  the statements sent to PayPal, and an AI may only reword them. A note that adds a number, amount,
+  ID, SKU or hash the statements lack, accuses anyone, or runs long is rejected, and the statements
+  are sent as written. The check cannot prove every rewording is faithful, so the statements and
+  the record always go to PayPal with the note.
 
 ## What Black Box has to trust
 

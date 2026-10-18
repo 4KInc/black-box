@@ -18,6 +18,7 @@ import { evaluateCase } from '../engine/case.mjs';
 import { toValue } from '../engine/actions.mjs';
 import { enrolmentFrom } from '../mandate/server.mjs';
 import { flagInjection } from '../flagger/flagger.mjs';
+import { evidenceFile, evidenceNote, statementsFor, templateNote } from '../evidence/evidence.mjs';
 
 const cents = (v) => Math.round(Number(v) * 100);
 const ACTION_STEP = /^(accept-claim|make-offer|provide-evidence)/;
@@ -58,8 +59,13 @@ export function executionLog(root, disputeId) {
 // The flagger runs when an Anthropic key is set and FLAGGER is not "off". Without it, the verdict
 // is the code-only one (no flagged passages).
 const defaultFlag = (record) => (process.env.ANTHROPIC_API_KEY && process.env.FLAGGER !== 'off' ? flagInjection(record) : null);
+// The evidence note is worded by an AI when a key is set and NARRATOR is not "off"; otherwise, or
+// when the AI's note fails the check, it is the code-built statements themselves.
+const defaultNarrate = (statements) => (process.env.ANTHROPIC_API_KEY && process.env.NARRATOR !== 'off'
+  ? evidenceNote(statements)
+  : { text: templateNote(statements), source: 'template', model: null, rejected: null });
 
-export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag }) {
+export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag, narrate = defaultNarrate }) {
   const log = executionLog(root, disputeId);
   async function must(step, method, path, json) {
     const r = await paypal(method, path, json);
@@ -136,10 +142,17 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
     } else if (p.action === 'make-offer') {
       await must('make-offer REFUND', 'POST', `/v1/customer/disputes/${disputeId}/make-offer`, { note, offer_type: 'REFUND', offer_amount: amount(p.refundCents) });
     } else if (p.action === 'provide-evidence') {
+      const statements = statementsFor({ record, j: { ...result, order: { capturedCents: cents(txn.gross_amount.value) } }, hash: txn.custom, reason: dispute.reason });
+      // One note per record, like the flagger: a retry sends the note already logged.
+      let evidence = log.read().findLast((e) => e.step === 'evidence-note' && e.custom === txn.custom)?.note ?? null;
+      if (!evidence) {
+        evidence = await narrate(statements);
+        log.write({ step: 'evidence-note', source, custom: txn.custom, statements, note: evidence });
+      }
       const form = new FormData();
-      form.append('input', new Blob([JSON.stringify({ evidences: [{ evidence_type: 'OTHER', notes: note, documents: [{ name: 'blackbox-record.txt' }] }] })], { type: 'application/json' }));
-      // PayPal accepts JPG, GIF, PNG, PDF or TXT evidence, so the record goes up as text.
-      form.append('file1', new Blob([JSON.stringify(record, null, 2)], { type: 'text/plain' }), 'blackbox-record.txt');
+      form.append('input', new Blob([JSON.stringify({ evidences: [{ evidence_type: 'OTHER', notes: `${evidence.text}\n\n${note}`, documents: [{ name: 'blackbox-evidence.txt' }] }] })], { type: 'application/json' }));
+      // PayPal accepts JPG, GIF, PNG, PDF or TXT evidence, so the note, statements and record go up as text.
+      form.append('file1', new Blob([evidenceFile({ note: evidence, statements, record })], { type: 'text/plain' }), 'blackbox-evidence.txt');
       const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form });
       log.write({ step: 'provide-evidence', source, status: r.status, response: await r.text() });
       if (!r.ok) throw Object.assign(new Error(`provide-evidence failed (${r.status})`), { refused: true });
