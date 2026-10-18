@@ -85,6 +85,15 @@ test('"not ready" is retried until PayPal allows the action, and gives up after 
   assert.equal(ap2.status('PP-D-444'), 'gave-up');
 });
 
+test('an escalated inquiry is retried with a fresh count until the evidence is sent', async () => {
+  const resolve = fakeResolve('not-ready', 'escalated', 'not-ready', 'not-ready', 'executed');
+  const ap = createAutopilot({ root, execute: true, resolve, retryMs: 2, maxRetries: 3 });
+  await ap.handleWithRetry('PP-D-345', 'webhook');
+  await sleep(80);
+  assert.equal(resolve.calls.length, 5);
+  assert.equal(ap.status('PP-D-345'), 'executed');
+});
+
 test('dry run is fixed when the autopilot is created', async () => {
   const resolve = fakeResolve('planned');
   await createAutopilot({ root, resolve }).handle('PP-D-555');

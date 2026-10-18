@@ -1,0 +1,26 @@
+{
+  "disputeId": "PP-R-YRT-10193344",
+  "reason": "MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED",
+  "filedAt": "2026-10-18T05:08:24.376Z",
+  "customId": "55c13cc4966aba27f7c5146714e4d4766a849df245eac6522f6cd3d015531ce6",
+  "payeeMerchantId": "MCYKQUXGB936U",
+  "payerId": "248NAZAAM9JCE",
+  "orderId": "6KA459045H484342M",
+  "orderCreatedAt": "2026-10-18T04:50:32Z",
+  "captureId": "2MK12993CU7505221",
+  "captured": {
+    "cents": 24000,
+    "currency": "USD"
+  },
+  "flagger": {
+    "flagged": false,
+    "passages": [],
+    "model": "claude-sonnet-5-5",
+    "at": "2026-10-18T05:12:23.698Z"
+  },
+  "evidenceNote": null,
+  "escalated": null,
+  "executed": null,
+  "after": null,
+  "trigger": "watcher (autopilot, AUTO_EXECUTE=on)"
+}

@@ -1,0 +1,96 @@
+{
+  "disputeId": "PP-R-TIC-10193413",
+  "reason": "INCORRECT_AMOUNT",
+  "filedAt": "2026-10-18T17:40:16.438Z",
+  "customId": "dff881543e7de9a2cc051590beb2be71df61c90b210996c8abf58bdc6f9969f8",
+  "payeeMerchantId": "MCYKQUXGB936U",
+  "payerId": "248NAZAAM9JCE",
+  "orderId": "8CS48705P0780712C",
+  "orderCreatedAt": "2026-10-18T17:37:21Z",
+  "captureId": "6HY97587TG3096712",
+  "captured": {
+    "cents": 24000,
+    "currency": "USD"
+  },
+  "flagger": {
+    "flagged": false,
+    "passages": [],
+    "model": "claude-sonnet-5-5",
+    "at": "2026-10-18T17:44:07.982Z"
+  },
+  "evidenceNote": null,
+  "escalated": null,
+  "executed": {
+    "action": "accept-claim REFUND",
+    "httpStatus": 200,
+    "at": "2026-10-18T17:46:02.422Z",
+    "debugId": "f7725803a8513"
+  },
+  "after": {
+    "status": "UNDER_REVIEW",
+    "outcome": null,
+    "updatedAt": "2026-10-18T17:46:01.921Z",
+    "moneyMovements": [
+      {
+        "party": "SELLER",
+        "type": "DEBIT",
+        "reason": "DISPUTE_SETTLEMENT",
+        "amount": {
+          "cents": 9000,
+          "currency": "USD"
+        }
+      },
+      {
+        "party": "SELLER",
+        "type": "DEBIT",
+        "reason": "DISPUTE_SETTLEMENT_FEE",
+        "amount": {
+          "cents": 887,
+          "currency": "USD"
+        }
+      },
+      {
+        "party": "BUYER",
+        "type": "CREDIT",
+        "reason": "DISPUTE_SETTLEMENT",
+        "amount": {
+          "cents": 9000,
+          "currency": "USD"
+        }
+      }
+    ],
+    "refundTransactions": [
+      {
+        "id": "3HT10544UK8167430",
+        "amount": {
+          "cents": 9000,
+          "currency": "USD"
+        }
+      }
+    ]
+  },
+  "trigger": "watcher (autopilot, AUTO_EXECUTE=on)",
+  "firstAttempts": [
+    {
+      "at": "2026-10-18T17:44:08.245Z",
+      "step": "accept-claim PARTIAL_REFUND",
+      "httpStatus": 400,
+      "issue": "INVALID_ACCEPT_CLAIM_TYPE",
+      "debugId": "ca4c9596a5b75"
+    },
+    {
+      "at": "2026-10-18T17:44:36.913Z",
+      "step": "accept-claim PARTIAL_REFUND",
+      "httpStatus": 400,
+      "issue": "INVALID_ACCEPT_CLAIM_TYPE",
+      "debugId": "ca4c95a1d8a2f"
+    },
+    {
+      "at": "2026-10-18T17:45:07.168Z",
+      "step": "accept-claim PARTIAL_REFUND",
+      "httpStatus": 400,
+      "issue": "INVALID_ACCEPT_CLAIM_TYPE",
+      "debugId": "ca4c95ada2ff7"
+    }
+  ]
+}

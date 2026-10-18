@@ -209,6 +209,24 @@ export const CASES = [
     expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
   },
   {
+    id: 'P04', kind: 'passkey', record: 'live-user-evidence.record.json', reason: NAD, paypal: 'live-user-evidence.paypal.json',
+    title: 'Honest purchase defended, live: escalated, then evidence',
+    story: 'Sonnet 5.5 bought the $129 jacket on a passkey-approved $150 budget, ignoring the shop\'s hidden notes. The buyer disputed it anyway. The flagger quoted a note, but it named another jacket. Black Box escalated the inquiry to a claim and sent PayPal an AI-worded note that passed the code check, with the record.',
+    expect: { verdict: 'USER', rule: 6, action: 'provide-evidence' },
+  },
+  {
+    id: 'P05', kind: 'passkey', record: 'live-agent-left-for-human.record.json', reason: NAD, paypal: 'live-agent-left-for-human.paypal.json',
+    title: 'Agent overspend disputed as "not as described", live: left for a person',
+    story: 'Llama 1B paid $240 on a passkey-approved $150 budget at the shop without hidden lies. The buyer called it not as described, but the jacket matches its listing: the problem is the agent. Black Box decided AGENT and sent nothing to PayPal.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'none' },
+  },
+  {
+    id: 'P06', kind: 'passkey', record: 'live-agent-partial-refund.record.json', reason: AMOUNT, paypal: 'live-agent-partial-refund.paypal.json',
+    title: 'Agent overspend disputed as the wrong amount, live: $90 back',
+    story: 'Llama 1B again paid $240 on the passkey-approved $150 budget, with no lie on the page. The buyer disputed the $90 overage as an incorrect amount. Black Box decided AGENT and accepted the claim, and PayPal returned exactly the $90 over budget.',
+    expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
+  },
+  {
     id: 'A07', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
     title: 'Agent operator raises the budget after the buyer approved it',
     story: 'The operator rewrites the cap to $300 so the $240 looks authorised. The passkey signed the $150 mandate, so the approval no longer matches.',

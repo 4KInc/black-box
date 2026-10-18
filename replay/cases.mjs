@@ -22,7 +22,8 @@ export function paypalFromLog(entries) {
   const txn = dispute.disputed_transactions?.[0] ?? {};
   const order = ok('get order').at(-1);
   const capture = ok('get capture').at(-1);
-  const executed = entries.find((e) => /^(accept-claim|make-offer|provide-evidence)/.test(e.step));
+  const executed = entries.find((e) => /^(accept-claim|make-offer|provide-evidence)/.test(e.step) && e.status < 300);
+  const escalated = entries.find((e) => e.step === 'escalate' && e.status < 300);
   const after = ok('get dispute (after)').at(-1);
   const flagger = entries.findLast((e) => e.step === 'flagger' && e.result)?.result ?? null;
   const evidence = entries.findLast((e) => e.step === 'evidence-note')?.note ?? null;
@@ -39,6 +40,7 @@ export function paypalFromLog(entries) {
     captured: amount(txn.gross_amount),
     flagger: flagger ? { flagged: flagger.flagged, passages: flagger.passages, model: flagger.model, at: flagger.at } : null,
     evidenceNote: evidence ? { text: evidence.text, source: evidence.source, model: evidence.model ?? null } : null,
+    escalated: escalated ? { at: escalated.at, debugId: escalated.debug_id ?? null } : null,
     executed: executed ? { action: executed.step, httpStatus: executed.status, at: executed.at, debugId: executed.debug_id ?? null } : null,
     after: after ? {
       status: after.status,

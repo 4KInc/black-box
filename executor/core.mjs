@@ -31,6 +31,14 @@ const LINK_FOR = {
   'provide-evidence': 'provide_evidence',
 };
 
+// How to accept a claim for the planned refund. A buyer who disputed only the overage (an
+// "incorrect amount" claim for $90) gets the planned amount by accepting in full; PayPal refuses
+// PARTIAL_REFUND there.
+export function claimAcceptance(plan, disputedCents) {
+  const full = plan.action === 'accept-claim' || plan.refundCents >= disputedCents;
+  return { type: full ? 'REFUND' : 'PARTIAL_REFUND', refundCents: Math.min(plan.refundCents, disputedCents) };
+}
+
 export function executionLog(root, disputeId) {
   if (!/^[A-Z0-9-]{6,64}$/.test(disputeId)) throw new TypeError(`not a dispute ID: ${disputeId}`);
   const dir = join(root, 'records', 'executions');
@@ -55,6 +63,9 @@ export function executionLog(root, disputeId) {
 //   'executed'       the action was sent and PayPal accepted it
 //   'already-done'   an earlier run already executed an action for this dispute
 //   'not-ready'      PayPal does not offer the planned action yet (try again later)
+//   'escalated'      the plan is provide-evidence but the dispute was still an inquiry, where PayPal
+//                    takes no evidence; it was escalated to a claim, and evidence follows once
+//                    PayPal offers it (try again later)
 //   'not-ours'       the disputed order carries no Black Box record
 // The flagger runs when an Anthropic key is set and FLAGGER is not "off". Without it, the verdict
 // is the code-only one (no flagged passages).
@@ -120,7 +131,14 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
   const p = result.plan;
   if (!execute || p.action === 'none') return { ...out, status: 'planned' };
   if (log.alreadyExecuted()) return { ...out, status: 'already-done' };
-  if (!links.includes(LINK_FOR[p.action])) return { ...out, status: 'not-ready' };
+  if (!links.includes(LINK_FOR[p.action])) {
+    // An honest purchase is defended with evidence, and PayPal takes evidence only on a claim. An
+    // inquiry is escalated once, by the same rule; the evidence goes on a later run.
+    const escalated = log.read().some((e) => e.step === 'escalate' && e.status >= 200 && e.status < 300);
+    if (p.action !== 'provide-evidence' || escalated || !links.includes('escalate')) return { ...out, status: 'not-ready' };
+    await must('escalate', 'POST', `/v1/customer/disputes/${disputeId}/escalate`, { note: `Black Box verdict ${result.verdict.verdict} (rule ${result.verdict.rule}): the purchase was within the buyer's mandate. Escalating so PayPal can review the evidence. Record ${txn.custom}.` });
+    return { ...out, status: 'escalated' };
+  }
   if (!log.lock()) return { ...out, status: 'already-done' };
   try {
     await act();
@@ -137,8 +155,8 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
     const amount = (c) => ({ currency_code: txn.gross_amount.currency_code, value: toValue(c) });
 
     if (p.action === 'accept-claim' || p.action === 'accept-claim-partial') {
-      const type = p.action === 'accept-claim' ? 'REFUND' : 'PARTIAL_REFUND';
-      await must(`accept-claim ${type}`, 'POST', `/v1/customer/disputes/${disputeId}/accept-claim`, { note, accept_claim_type: type, refund_amount: amount(p.refundCents) });
+      const { type, refundCents } = claimAcceptance(p, cents(dispute.dispute_amount?.value ?? txn.gross_amount.value));
+      await must(`accept-claim ${type}`, 'POST', `/v1/customer/disputes/${disputeId}/accept-claim`, { note, accept_claim_type: type, refund_amount: amount(refundCents) });
     } else if (p.action === 'make-offer') {
       await must('make-offer REFUND', 'POST', `/v1/customer/disputes/${disputeId}/make-offer`, { note, offer_type: 'REFUND', offer_amount: amount(p.refundCents) });
     } else if (p.action === 'provide-evidence') {

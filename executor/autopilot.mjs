@@ -4,6 +4,8 @@
 //   - one dispute is never handled twice at the same time (calls for it are queued)
 //   - settled disputes (executed, already done, planned, not ours) are not fetched again
 //   - "not ready" (PayPal does not offer the action yet) is retried later, a bounded number of times
+//   - "escalated" (an inquiry was escalated so evidence can follow) is retried the same way, with the
+//     count starting again
 // Whether it acts or only plans is fixed when it is created (execute), never per event.
 
 import { resolveDispute } from './core.mjs';
@@ -27,7 +29,9 @@ export function createAutopilot({
       return { disputeId, status: 'error', error: e.message };
     }
     report({ disputeId, source, status: out.status, verdict: out.result?.verdict?.verdict, rule: out.result?.verdict?.rule, action: out.result?.plan?.action });
-    if (out.status === 'not-ready') {
+    if (out.status === 'escalated') {
+      tries.set(disputeId, 0);
+    } else if (out.status === 'not-ready') {
       const n = (tries.get(disputeId) ?? 0) + 1;
       tries.set(disputeId, n);
       if (n >= maxRetries) settled.set(disputeId, 'gave-up');
@@ -48,7 +52,7 @@ export function createAutopilot({
   // For a pushed event: handle now, and if PayPal is not ready yet, try again later.
   async function handleWithRetry(disputeId, source) {
     const out = await handle(disputeId, source);
-    if (out.status === 'not-ready' && !settled.has(disputeId)) {
+    if ((out.status === 'not-ready' || out.status === 'escalated') && !settled.has(disputeId)) {
       const t = setTimeout(() => { timers.delete(t); handleWithRetry(disputeId, `${source} (retry)`); }, retryMs);
       t.unref?.();
       timers.add(t);

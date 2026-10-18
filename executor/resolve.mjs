@@ -34,6 +34,7 @@ const said = {
   planned: values.execute ? '\nnothing to execute for this verdict' : '\n(dry run: add --execute to carry out the plan)',
   'already-done': '\nalready executed for this dispute (see records/executions/); not sending it twice',
   'not-ready': '\nPayPal does not offer this action on the dispute yet; try again in a minute',
+  escalated: '\nthe dispute was an inquiry, which takes no evidence: escalated it to a claim; run again in a few minutes to send the evidence',
   executed: `\n✓ executed ${result.plan.action}\ndispute    now ${out.after?.status}  outcome=${out.after?.dispute_outcome?.outcome_code ?? '-'}`,
 };
 console.log(said[out.status]);

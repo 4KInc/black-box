@@ -444,6 +444,7 @@ function causePanel(c, j) {
   return `<div class="eyebrow"><b>●</b> PayPal ${p.executed ? 'carried it out' : 'dispute open'}</div>
 ${p.executed ? `<div class="amt">${credit ? money(credit.amount.cents, credit.amount.currency) : esc(p.executed.action)}<small>${credit ? 'back to the buyer' : 'sent to PayPal'}</small></div>` : `<div class="amt">${esc(planText(j.plan))}<small>planned, not yet executed</small></div>`}
 <div class="kv"><span>dispute</span><b>${esc(p.disputeId)}</b>
+${p.escalated ? `<span>escalated</span><b>${time(p.escalated.at)}</b>` : ''}
 ${p.executed ? `<span>action</span><b>${esc(p.executed.action)} · HTTP ${esc(p.executed.httpStatus)}</b><span>at</span><b>${time(p.executed.at)}</b>` : ''}
 ${refund ? `<span>refund</span><b>${esc(refund.id)}</b>` : ''}
 ${p.trigger ? `<span>trigger</span><b>${esc(p.trigger)}</b>` : ''}
@@ -461,6 +462,7 @@ function tape(c, j) {
   if (p) {
     if (p.orderCreatedAt) items.push([p.orderCreatedAt, 'Order', `PayPal order <span class="mono">${esc(p.orderId)}</span>, capture <span class="mono">${esc(p.captureId)}</span> ${money(p.captured?.cents)}`]);
     items.push([p.filedAt, 'Dispute', `${c.bench ? 'Bench dispute' : 'Buyer filed'} <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
+    if (p.escalated) items.push([p.escalated.at, 'Escalate', 'The dispute was an inquiry, where PayPal takes no evidence: Black Box escalated it to a claim']);
     if (p.executed) items.push([p.executed.at, 'Verdict', `<b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}), Black Box sent <span class="mono">${esc(p.executed.action)}</span>`, true]);
     for (const m of p.after?.moneyMovements ?? []) items.push([p.executed?.at, 'Money', `${esc(m.party)} ${esc(m.type)} ${money(m.amount?.cents)} <span class="k">${esc(m.reason)}</span>`]);
     if (p.after?.outcome) items.push([p.after.updatedAt, 'Closed', `<b>${esc(p.after.outcome.code)}</b> ${esc(p.after.outcome.reason ?? '')}${p.after.outcome.refunded ? `, ${money(p.after.outcome.refunded.cents)} refunded` : ''}`, true]);
