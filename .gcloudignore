@@ -1,0 +1,10 @@
+# What `gcloud run deploy --source` uploads: never secrets or local state.
+.env
+**/.env
+.git
+records/
+killtest/
+shop/.keys/
+.venv-mlx/
+_site/
+node_modules/

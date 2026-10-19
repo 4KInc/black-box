@@ -1,0 +1,10 @@
+# Never ship secrets or local state into the image.
+.env
+**/.env
+.git
+records/
+killtest/
+shop/.keys/
+.venv-mlx/
+_site/
+node_modules/

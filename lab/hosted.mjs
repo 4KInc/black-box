@@ -1,5 +1,5 @@
 // The hosted Black Box: the replay, the case bench, the study and the lab, served live from the
-// committed fixtures only (no local records, no keys, no PayPal calls). For Render or any host:
+// committed fixtures only (no local records, no keys, no PayPal calls). On Cloud Run (Dockerfile) or any host:
 //   HOST=0.0.0.0 PORT=10000 node lab/hosted.mjs
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';

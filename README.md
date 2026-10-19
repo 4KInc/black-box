@@ -6,8 +6,8 @@ the buyer approved with a passkey, applies an explicit responsibility policy, an
 PayPal dispute action that follows.
 
 **Try it, no keys needed:** [4kinc.github.io/black-box](https://4kinc.github.io/black-box/) shows
-every recorded purchase replayed, the study and the case bench. The hosted version adds **the lab**:
-tamper with a real case and the engine runs again on the server.
+every recorded purchase replayed, the study and the case bench. **[The lab](https://black-box-342881585799.us-central1.run.app/lab)**
+adds the live part: tamper with a real case and the engine runs again on the server.
 
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
@@ -168,11 +168,12 @@ npm run webhook -- --register https://…/paypal/webhook && AUTO_EXECUTE=on npm 
 node study/run.mjs                                    # re-run the study (see study/README.md)
 ```
 
-**Hosting.** `render.yaml` deploys the replay, bench, study and lab as one Render web service
+**Hosting.** The replay, bench, study and lab run as one Cloud Run service
+([live](https://black-box-342881585799.us-central1.run.app/lab)), built from the `Dockerfile`
 (`node lab/hosted.mjs`). It serves only the committed fixtures, holds no keys and never calls
-PayPal. Set the repository variable `LAB_URL` to its address: the Pages build then links the lab
-from the site, and `.github/workflows/keepwarm.yml` requests it every 10 minutes so the free
-instance does not fall asleep between visitors.
+PayPal; `.dockerignore` keeps `.env`, `records/`, `killtest/` and the shop keys out of the image.
+Deploy with `gcloud run deploy black-box --source . --region us-central1`. The repository
+variable `LAB_URL` holds its address, and the Pages build links the lab from the site.
 
 ## Layout
 
