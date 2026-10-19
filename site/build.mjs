@@ -8,7 +8,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { runBench } from '../bench/bench.mjs';
-import { judge, latestStudy, loadCases } from '../replay/cases.mjs';
+import { judge, latestStudies, loadCases } from '../replay/cases.mjs';
 import { benchPage, casePage, indexPage, pageHtml, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -67,8 +67,8 @@ try {
     write(`case/${c.hash}/page`, pageHtml(c.record), 3, RECORDED_CSP);
   }
 
-  const study = latestStudy(root);
-  if (study) write('study', studyPage(study), 1);
+  const studies = latestStudies(root);
+  if (studies.length) write('study', studyPage(studies), 1);
 
   const bench = runBench(root);
   write('bench', benchPage(bench), 1);

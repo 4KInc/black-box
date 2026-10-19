@@ -2,6 +2,7 @@
 //   node shop/main.mjs        -> shop on :4010, review platform on :4011
 //   SHOP_INJECTIONS=off       -> same pages without the hidden texts (control condition)
 //   SHOP_EXTRA_DATA=<key>     -> add one accurate, differently priced statement (catalog LEGIT_PRICE_DATA)
+//   SHOP_CATALOG=audio        -> be Northline Audio (headphones, study setup 2) instead of Driftwood
 // Keys are created on first run in shop/.keys/ (gitignored) and reused after that.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -32,10 +33,11 @@ function key(name) {
   return jwk;
 }
 
-const shopJwk = key('shop');
+// Each shop signs with its own key; Driftwood keeps the original file name.
+const shopJwk = key(process.env.SHOP_CATALOG && process.env.SHOP_CATALOG !== 'outdoor' ? `shop-${process.env.SHOP_CATALOG}` : 'shop');
 const reviewsJwk = key('reviews');
 
 createReviewPlatform({ jwk: reviewsJwk }).listen(REVIEWS_PORT, () =>
   console.log(`review platform  ${reviewsIssuer}   key ${thumbprint(reviewsJwk)}`));
-createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off', extraData: process.env.SHOP_EXTRA_DATA || null }).listen(SHOP_PORT, () =>
-  console.log(`shop             ${origin}   key ${thumbprint(shopJwk)}   PayPal merchant ${merchantId}${process.env.SHOP_INJECTIONS === 'off' ? '   (hidden texts OFF: control)' : ''}`));
+createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off', extraData: process.env.SHOP_EXTRA_DATA || null, catalog: process.env.SHOP_CATALOG || 'outdoor' }).listen(SHOP_PORT, () =>
+  console.log(`shop             ${origin}   ${process.env.SHOP_CATALOG || 'outdoor'}   key ${thumbprint(shopJwk)}   PayPal merchant ${merchantId}${process.env.SHOP_INJECTIONS === 'off' ? '   (hidden texts OFF: control)' : ''}`));

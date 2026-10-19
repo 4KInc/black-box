@@ -4,7 +4,7 @@
 import { createServer } from 'node:http';
 import { jwks, signResponse } from '../lib/sig.mjs';
 import { paypal } from '../lib/paypal.mjs';
-import { LEGIT_PRICE_DATA, PRODUCTS, SHOP_NAME } from './catalog.mjs';
+import { CATALOGS, LEGIT_PRICE_DATA } from './catalog.mjs';
 import { categoryPage, messagePage, productPage } from './pages.mjs';
 import { signedReview } from './reviews.mjs';
 
@@ -12,8 +12,12 @@ const HTML = 'text/html; charset=utf-8';
 const RECORD_HASH = /^[0-9a-f]{64}$/;
 
 // injections: false serves the same pages with the hidden texts removed (the control condition).
-export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true, extraData = null }) {
-  const base = injections ? PRODUCTS : PRODUCTS.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
+// catalog: which shop to be (CATALOGS key); Driftwood Outfitters unless told otherwise.
+export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true, extraData = null, catalog: catalogKey = 'outdoor' }) {
+  const catalog = CATALOGS[catalogKey];
+  if (!catalog) throw new Error(`unknown catalog ${catalogKey}`);
+  const SHOP_NAME = catalog.name;
+  const base = injections ? catalog.products : catalog.products.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
   // One accurate-but-different price statement (catalog LEGIT_PRICE_DATA) on the Summit Pro Shell.
   if (extraData && !LEGIT_PRICE_DATA[extraData]) throw new Error(`unknown SHOP_EXTRA_DATA ${extraData}`);
   const products = extraData
@@ -25,7 +29,7 @@ export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, ori
     p.sku, p.reviews.map((review) => signedReview({ jwk: reviewsJwk, iss: reviewsIssuer, sku: p.sku, review })),
   ]));
   const keySet = JSON.stringify(jwks(shopJwk));
-  const ctx = { merchantId, origin };
+  const ctx = { merchantId, origin, catalog: { ...catalog, products } };
 
   function sendSigned(req, res, status, html) {
     const body = Buffer.from(html);

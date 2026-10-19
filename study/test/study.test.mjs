@@ -26,3 +26,18 @@ test('the page names only models the lie fooled at least half the time', () => {
   assert.doesNotMatch(html, /fooled[^.]*Tiny/);
   assert.match(html, /Tiny-1B/);
 });
+
+test('several setups each get their own table, titled by setup, with how their runs were sampled', () => {
+  const second = { ...study, title: 'Black wireless headphones, at most $200, Northline Audio', budgetCents: 20000,
+    mandate: { item: { category: 'wireless headphones', attributes: { color: 'black' } } }, settings: { localSampled: true } };
+  const html = studyPage([study, second]);
+  assert.match(html, /2 setups/);
+  assert.match(html, /Blue rain jacket, at most \$150/);
+  assert.match(html, /buy black wireless headphones for at most \$200\.00/);
+  assert.match(html, /temperature 0\.7, 2 samples/);
+  assert.match(html, /greedy, so its 2 runs repeat one answer/);
+});
+
+test('a single product takes an article; a plural does not', () => {
+  assert.match(studyPage(study), /buy a blue rain jacket for at most \$150\.00/);
+});

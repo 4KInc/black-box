@@ -1,6 +1,6 @@
 // Self-contained pages: inline CSS and SVG only. No scripts, no external files, so the signed
 // bytes are everything the agent can read. The only <script> is JSON-LD, which is data.
-import { PRODUCTS, SHOP_NAME, dollars } from './catalog.mjs';
+import { CATALOGS, dollars } from './catalog.mjs';
 
 const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 
@@ -27,7 +27,17 @@ function jacketSvg(hex) {
     `<path d="M100 52 L100 175" stroke="#0003" stroke-width="3"/></svg>`;
 }
 
-function shell({ title, merchantId, origin, body, jsonLd }) {
+function headphonesSvg(hex) {
+  return `<svg viewBox="0 0 200 200" role="img" aria-label="headphones" style="width:100%;background:#eef2f6;border-radius:12px">` +
+    `<path d="M40 120 C40 60 70 35 100 35 C130 35 160 60 160 120" fill="none" stroke="${hex}" stroke-width="12"/>` +
+    `<rect x="26" y="110" width="36" height="58" rx="14" fill="${hex}"/><rect x="138" y="110" width="36" height="58" rx="14" fill="${hex}"/></svg>`;
+}
+const PICTURES = { jacket: jacketSvg, headphones: headphonesSvg };
+// "colour, size M" for a jacket; just the colour for a product without sizes.
+const sized = (p) => (p.size ? `${esc(p.color)}, size ${esc(p.size)}` : esc(p.color));
+
+function shell({ title, merchantId, origin, body, jsonLd, catalog = CATALOGS.outdoor }) {
+  const SHOP_NAME = catalog.name;
   return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>${esc(title)}</title>
@@ -41,46 +51,47 @@ ${jsonLd ? `<script type="application/ld+json">${JSON.stringify(jsonLd).replace(
 </main></body></html>`;
 }
 
-const seller = (merchantId) => ({
+const seller = (merchantId, catalog) => ({
   '@type': 'Organization',
-  name: SHOP_NAME,
+  name: catalog.name,
   identifier: { '@type': 'PropertyValue', propertyID: 'paypal-merchant-id', value: merchantId },
 });
 
-export function categoryPage({ merchantId, origin }) {
-  const listed = PRODUCTS.filter((p) => p.listed !== false);
-  const cards = listed.map((p) => `<a class="card" href="/p/${p.sku}">${jacketSvg(p.hex)}
-<h2>${esc(p.name)}</h2><div class="facts">${esc(p.color)}, size ${esc(p.size)}</div><div class="price">${dollars(p.priceCents)}</div></a>`).join('\n');
+export function categoryPage({ merchantId, origin, catalog = CATALOGS.outdoor }) {
+  const picture = PICTURES[catalog.picture];
+  const listed = catalog.products.filter((p) => p.listed !== false);
+  const cards = listed.map((p) => `<a class="card" href="/p/${p.sku}">${picture(p.hex)}
+<h2>${esc(p.name)}</h2><div class="facts">${sized(p)}</div><div class="price">${dollars(p.priceCents)}</div></a>`).join('\n');
   return shell({
-    title: `Rain jackets | ${SHOP_NAME}`, merchantId, origin,
-    body: `<h1>Rain jackets</h1><div class="grid">${cards}</div>`,
+    title: `${catalog.heading} | ${catalog.name}`, merchantId, origin, catalog,
+    body: `<h1>${catalog.heading}</h1><div class="grid">${cards}</div>`,
     jsonLd: {
-      '@context': 'https://schema.org', '@type': 'ItemList', name: 'Rain jackets', seller: seller(merchantId),
+      '@context': 'https://schema.org', '@type': 'ItemList', name: catalog.heading, seller: seller(merchantId, catalog),
       itemListElement: listed.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${origin}/p/${p.sku}`, name: p.name })),
     },
   });
 }
 
-export function productPage({ product: p, merchantId, origin, signedReviews }) {
+export function productPage({ product: p, merchantId, origin, signedReviews, catalog = CATALOGS.outdoor }) {
   const jsonLd = {
     '@context': 'https://schema.org', '@type': 'Product',
-    sku: p.sku, productID: p.sku, name: p.name, description: p.description, color: p.color, size: p.size, category: p.category,
-    offers: { '@type': 'Offer', price: (p.priceCents / 100).toFixed(2), priceCurrency: 'USD', availability: 'https://schema.org/InStock', seller: seller(merchantId) },
+    sku: p.sku, productID: p.sku, name: p.name, description: p.description, color: p.color, ...(p.size ? { size: p.size } : {}), category: p.category,
+    offers: { '@type': 'Offer', price: (p.priceCents / 100).toFixed(2), priceCurrency: 'USD', availability: 'https://schema.org/InStock', seller: seller(merchantId, catalog) },
     ...(p.productData ?? {}),
     ...(p.hiddenJsonLd ?? {}),
   };
-  const body = `<div class="product"><div>${jacketSvg(p.hex)}</div><div>
+  const body = `<div class="product"><div>${PICTURES[catalog.picture](p.hex)}</div><div>
 <h1>${esc(p.name)}</h1><div class="sku">SKU ${esc(p.sku)}</div>
-<p class="facts">Colour: ${esc(p.color)} · Size: ${esc(p.size)}</p>
+<p class="facts">Colour: ${esc(p.color)}${p.size ? ` · Size: ${esc(p.size)}` : ''}</p>
 <p class="price">${dollars(p.priceCents)}</p>
 <p>${esc(p.description)}</p>
 ${p.hiddenNote ? `<p style="${esc(p.hiddenNote.style)}">${esc(p.hiddenNote.text)}</p>
 ` : ''}<h2>Reviews</h2>
 ${signedReviews.join('\n')}
 </div></div>`;
-  return shell({ title: `${p.name} | ${SHOP_NAME}`, merchantId, origin, body, jsonLd });
+  return shell({ title: `${p.name} | ${catalog.name}`, merchantId, origin, body, jsonLd, catalog });
 }
 
-export function messagePage({ title, text, merchantId, origin }) {
-  return shell({ title, merchantId, origin, body: `<h1>${esc(title)}</h1><p>${esc(text)}</p><p><a href="/">Back to the shop</a></p>` });
+export function messagePage({ title, text, merchantId, origin, catalog }) {
+  return shell({ title, merchantId, origin, catalog, body: `<h1>${esc(title)}</h1><p>${esc(text)}</p><p><a href="/">Back to the shop</a></p>` });
 }

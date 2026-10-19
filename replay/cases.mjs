@@ -24,6 +24,8 @@ export function paypalFromLog(entries) {
   const capture = ok('get capture').at(-1);
   const executed = entries.find((e) => /^(accept-claim|make-offer|provide-evidence)/.test(e.step) && e.status < 300);
   const escalated = entries.find((e) => e.step === 'escalate' && e.status < 300);
+  const payout = entries.find((e) => e.step === 'payout' && e.status < 300);
+  const payoutAfter = entries.findLast((e) => e.step === 'get payout' && e.status < 300)?.response;
   const after = ok('get dispute (after)').at(-1);
   const flagger = entries.findLast((e) => e.step === 'flagger' && e.result)?.result ?? null;
   const evidence = entries.findLast((e) => e.step === 'evidence-note')?.note ?? null;
@@ -40,6 +42,13 @@ export function paypalFromLog(entries) {
     captured: amount(txn.gross_amount),
     flagger: flagger ? { flagged: flagger.flagged, passages: flagger.passages, model: flagger.model, at: flagger.at } : null,
     evidenceNote: evidence ? { text: evidence.text, source: evidence.source, model: evidence.model ?? null } : null,
+    payout: payout ? {
+      at: payout.at, httpStatus: payout.status, debugId: payout.debug_id ?? null,
+      batchId: payout.response?.batch_header?.payout_batch_id ?? null,
+      status: payoutAfter?.batch_header?.batch_status ?? payout.response?.batch_header?.batch_status ?? null,
+      amount: amount({ value: payout.request.items[0].amount.value, currency_code: payout.request.items[0].amount.currency }),
+      from: 'agent-operator', to: payout.request.items[0].receiver,
+    } : null,
     escalated: escalated ? { at: escalated.at, debugId: escalated.debug_id ?? null } : null,
     executed: executed ? { action: executed.step, httpStatus: executed.status, at: executed.at, debugId: executed.debug_id ?? null } : null,
     after: after ? {
@@ -103,9 +112,13 @@ export function judge({ hash, record, paypal }, { root, enrolment } = {}) {
   return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, flaggedPassages, enrolment: enrolment ?? (root ? enrolmentFrom(root) : undefined) }) };
 }
 
-// The most recent study (fixtures/study/study-<date>.json), or null.
-export function latestStudy(root) {
+// The most recent study for each setup (fixtures/study/study-<date>[-<setup>].json), jackets
+// first, or [] if there is none. A file without a setup suffix is the jackets study.
+export function latestStudies(root) {
   const dir = join(root, 'fixtures', 'study');
-  const files = existsSync(dir) ? readdirSync(dir).filter((f) => /^study-.*\.json$/.test(f)).sort() : [];
-  return files.length ? JSON.parse(readFileSync(join(dir, files.at(-1)), 'utf8')) : null;
+  const files = existsSync(dir) ? readdirSync(dir).filter((f) => /^study-\d{4}-\d{2}-\d{2}(-[a-z]+)?\.json$/.test(f)).sort() : [];
+  const bySetup = new Map();
+  for (const f of files) bySetup.set(f.match(/^study-\d{4}-\d{2}-\d{2}(?:-([a-z]+))?\.json$/)[1] ?? 'jackets', f);
+  const order = [...bySetup.keys()].sort((a, b) => (a === 'jackets' ? -1 : b === 'jackets' ? 1 : a.localeCompare(b)));
+  return order.map((k) => JSON.parse(readFileSync(join(dir, bySetup.get(k)), 'utf8')));
 }

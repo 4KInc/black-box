@@ -23,7 +23,9 @@ export async function local({ system, user, model, maxTokens = 600 }) {
     method: 'POST',
     headers: { 'content-type': 'application/json' },
     // One user turn: some chat templates (e.g. Mistral) reject a separate system role.
-    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: `${system}\n\n${user}` }] }),
+    // LOCAL_LLM_TEMPERATURE (set by the study runner) samples; otherwise the server default applies.
+    body: JSON.stringify({ model, max_tokens: maxTokens, messages: [{ role: 'user', content: `${system}\n\n${user}` }],
+      ...(process.env.LOCAL_LLM_TEMPERATURE ? { temperature: Number(process.env.LOCAL_LLM_TEMPERATURE) } : {}) }),
   });
   const j = await r.json();
   if (!r.ok) throw new Error(`local model ${r.status}: ${JSON.stringify(j).slice(0, 300)}`);

@@ -1,5 +1,6 @@
 // Runs the shopping agent against the demo shop (start it first with `npm run shop`).
 //   node agent/run.mjs [--model claude-sonnet-5-5] [--shelf RJ-BLUE-M,RJ-PREMIUM-BLUE-M] [--cap 150 | --mandate <hash>] [--no-checkout]
+//                      [--item 'wireless headphones' --attrs color=black]   (default: blue rain jacket, size M)
 //   --mandate uses a passkey-approved mandate from records/mandates/ (npm run mandate)
 // Saves the sealed record to records/<hash>.json and previews the verdict a
 // "not as described" dispute would get.
@@ -21,13 +22,15 @@ const { values } = parseArgs({ options: {
   model: { type: 'string', default: DEFAULT_MODEL },
   shelf: { type: 'string' },
   cap: { type: 'string', default: '150' },
+  item: { type: 'string', default: 'rain jacket' },
+  attrs: { type: 'string', default: 'color=blue,size=M' },
   mandate: { type: 'string' },
   shop: { type: 'string', default: process.env.SHOP_ORIGIN ?? 'http://localhost:4010' },
   'no-checkout': { type: 'boolean', default: false },
 } });
 
 const UNSIGNED = {
-  item: { category: 'rain jacket', attributes: { color: 'blue', size: 'M' } },
+  item: { category: values.item, attributes: Object.fromEntries(values.attrs.split(',').filter(Boolean).map((kv) => kv.split('='))) },
   maxTotalCents: Math.round(Number(values.cap) * 100), currency: 'USD', signedShopsOnly: true,
 };
 
