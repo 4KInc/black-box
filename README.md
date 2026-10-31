@@ -211,6 +211,11 @@ npm run webhook -- --register https://…/paypal/webhook && AUTO_EXECUTE=on npm 
 node study/run.mjs [--setup headphones]               # re-run the study (see study/README.md)
 ```
 
+**Live smoke test.** [scripts/smoke-live.md](scripts/smoke-live.md) runs one full sandbox chain on
+the current code, from passkey mandate to a REFUNDED capture. It starts with
+`node scripts/live.mjs preflight`, which fails loudly if the Anthropic key or the PayPal sandbox
+token is missing or broken: without the flagger, a MERCHANT case is held, not refunded.
+
 **Hosting.** The replay, bench, study and lab run as one Cloud Run service
 ([live](https://black-box-342881585799.us-central1.run.app/lab)), built from the `Dockerfile`
 (`node lab/hosted.mjs`). It serves only the committed fixtures, holds no keys and never calls
@@ -240,6 +245,7 @@ variable `LAB_URL` holds its address, and the Pages build links the lab from the
 | `site/` | static export for GitHub Pages |
 | `fixtures/` | recorded runs, live PayPal outcomes, the study |
 | `killtest/` | the first feasibility checks against the PayPal Disputes API |
+| `scripts/` | the live smoke test and its checks (preflight, capture status) |
 
 ## Design
 
