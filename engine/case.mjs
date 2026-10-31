@@ -6,7 +6,7 @@
 import { jsonLdBlocks } from '../lib/channels.mjs';
 import { recordFacts } from '../recorder/recorder.mjs';
 import { planAction } from './actions.mjs';
-import { findingsFor, mentionsItem } from './extract.mjs';
+import { findingsFor, mentionsItem, productNode } from './extract.mjs';
 import { summarize } from './findings.mjs';
 import { checkMandate } from './mandate.mjs';
 import { decide } from './verdict.mjs';
@@ -17,7 +17,8 @@ const toCents = (v) => Math.round(Number(v) * 100);
 export function signedProduct(record) {
   const page = record.fetches[record.purchase.page_index];
   const html = Buffer.from(page.body_b64, 'base64').toString('utf8');
-  const p = jsonLdBlocks(html).find((j) => j['@type'] === 'Product');
+  // The node for the SKU bought; pages that predate that rule carry one top-level Product.
+  const p = productNode(html, record.purchase.sku) ?? jsonLdBlocks(html).find((j) => j['@type'] === 'Product');
   if (!p) return null;
   const offer = [].concat(p.offers ?? [])[0]; // the listing's own offer comes first
   return {

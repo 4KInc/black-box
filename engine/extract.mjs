@@ -94,10 +94,47 @@ function visibleText(html, hidden, lower = true) {
 const wordCount = (s) => s.split(/\s+/).filter(Boolean).length;
 const MIN_WORDS = 5; // shorter strings are structure (names, SKUs, URLs), not instructions
 
-function* strings(value, path = '') {
-  if (typeof value === 'string') yield [path, value];
-  else if (Array.isArray(value)) for (const [i, v] of value.entries()) yield* strings(v, `${path}[${i}]`);
-  else if (value && typeof value === 'object') for (const [k, v] of Object.entries(value)) yield* strings(v, path ? `${path}.${k}` : k);
+// The JSON-LD node a string belongs to: the nearest enclosing Product (or ProductGroup) node.
+const PRODUCT_TYPES = new Set(['Product', 'ProductModel', 'IndividualProduct', 'SomeProducts', 'ProductGroup']);
+const types = (node) => [].concat(node?.['@type'] ?? []);
+const isProductNode = (node) => types(node).some((t) => PRODUCT_TYPES.has(t));
+const ids = (node) => [node?.sku, node?.productID].filter((x) => typeof x === 'string' && x);
+
+function* strings(value, path = '', owner = null) {
+  if (typeof value === 'string') yield [path, value, owner];
+  else if (Array.isArray(value)) for (const [i, v] of value.entries()) yield* strings(v, `${path}[${i}]`, owner);
+  else if (value && typeof value === 'object') {
+    const own = isProductNode(value) ? value : owner;
+    for (const [k, v] of Object.entries(value)) yield* strings(v, path ? `${path}.${k}` : k, own);
+  }
+}
+
+// Which product a JSON-LD string is about: its node's identifiers, or for a ProductGroup's own
+// fields, the identifiers of every variant in it (text on the group is about all of them).
+function subjectOf(owner) {
+  if (!owner) return null;
+  if (types(owner).includes('ProductGroup')) return { ids: [].concat(owner.hasVariant ?? []).flatMap(ids) };
+  return { ids: ids(owner) };
+}
+
+// Does a hidden text name the purchased item? By its SKU or exact name in the text, or by sitting
+// on the purchased product's own JSON-LD node (matched by sku or productID). Text on another
+// Product node, or on another variant, does not name it.
+export function namesPurchasedItem(h, item) {
+  return Boolean(mentionsItem(h.text, item) || (h.subject && h.subject.ids.includes(item.sku)));
+}
+
+// The purchased product's JSON-LD node, wherever it sits on the page (top level, @graph, hasVariant).
+export function productNode(html, sku) {
+  const all = [];
+  const walk = (n) => {
+    if (Array.isArray(n)) return n.forEach(walk);
+    if (!n || typeof n !== 'object') return;
+    if (isProductNode(n) && !types(n).includes('ProductGroup')) all.push(n);
+    Object.values(n).forEach(walk);
+  };
+  jsonLdBlocks(html).forEach(walk);
+  return all.find((n) => ids(n).includes(sku)) ?? null;
 }
 
 // All hidden texts on a page, with offsets into the page string.
@@ -108,12 +145,10 @@ export function findHidden(html) {
 
   for (const block of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi)) {
     const [obj] = jsonLdBlocks(block[0]);
-    for (const [path, value] of strings(obj)) {
+    for (const [path, value, owner] of strings(obj)) {
       const text = normalize(value);
       if (wordCount(text) >= MIN_WORDS && !visible.includes(text.toLowerCase())) {
-        // A field of the Product node itself is about that product, whether or not it repeats its name.
-        const productSku = obj?.['@type'] === 'Product' && !/[.[]/.test(path) ? obj.sku ?? null : null;
-        out.push({ channel: 'json-ld', method: 'JSON-LD field never rendered', path, text, productSku, start: block.index, end: block.index + block[0].length });
+        out.push({ channel: 'json-ld', method: 'JSON-LD field never rendered', path, text, subject: subjectOf(owner), start: block.index, end: block.index + block[0].length });
       }
     }
   }
@@ -253,10 +288,9 @@ export function contradictsListing(text, { priceCents, sku = null, attributes = 
 function* offersIn(node, product = null) {
   if (Array.isArray(node)) { for (const n of node) yield* offersIn(n, product); return; }
   if (!node || typeof node !== 'object') return;
-  const types = [].concat(node['@type'] ?? []);
-  if (types.includes('Offer')) yield { offer: node, product };
+  if (types(node).includes('Offer')) yield { offer: node, product };
   // An AggregateOffer's lowPrice/highPrice is a range, not a price; Offers inside it still count.
-  const inside = types.includes('Product') ? node : product;
+  const inside = isProductNode(node) && !types(node).includes('ProductGroup') ? node : product;
   for (const [k, v] of Object.entries(node)) if (k !== '@type') yield* offersIn(v, inside);
 }
 
@@ -276,7 +310,7 @@ function validAt(offer, at) {
 // sits on the purchased product's page (not inside another Product).
 export function offerContradicts(offer, product, { sku, priceCents, currency = 'USD', at = null }) {
   const offerSku = offer.sku ?? offer.itemOffered?.sku ?? null;
-  const applies = offerSku ? offerSku === sku : !product || product.sku === sku;
+  const applies = offerSku ? offerSku === sku : !product || ids(product).includes(sku);
   const cents = Math.round(Number(String(offer.price ?? '').replace(/,/g, '')) * 100);
   const contradicts = applies && Number.isFinite(cents) && offer.priceCurrency === currency && validAt(offer, at) && cents !== priceCents;
   return { applies, cents, contradicts };
@@ -320,7 +354,7 @@ export function findingsFor(record, item) {
     channel: h.channel,
     method: h.method,
     concealedInReadChannel: true,
-    namesPurchasedItem: h.offer ? h.offer.applies : Boolean(mentionsItem(h.text, item) || (h.productSku && h.productSku === item.sku)),
+    namesPurchasedItem: h.offer ? h.offer.applies : namesPurchasedItem(h, item),
     contradictsListing: h.offer ? h.offer.contradicts : contradictsListing(h.text, { ...item, at }),
     addressesAgents: AGENT.test(h.text),
     inModelInput: readByModel(h.text, record.model_inputs),

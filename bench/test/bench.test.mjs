@@ -32,3 +32,13 @@ test('recorded cases are untouched real runs; attacks change the record or the P
     else assert.ok(r.def.mutate || r.def.order, r.def.id);
   }
 });
+
+test('a lie on another product or variant node does not name the item bought (E10, E11)', () => {
+  for (const r of runBench().filter((x) => ['E10', 'E11'].includes(x.def.id))) {
+    const lie = r.j.findings.find((f) => /\$119/.test(f.text));
+    assert.ok(lie, r.def.id);
+    assert.equal(lie.namesPurchasedItem, false, r.def.id);
+    assert.equal(lie.contradictsListing, true, r.def.id);
+    assert.notEqual(r.got.verdict, 'MERCHANT', r.def.id);
+  }
+});
