@@ -1,5 +1,5 @@
 {
-  "_warning": "TEST ONLY. This private key is public: it is committed to the repository. The case bench uses it to re-sign pages it rewrites (E01-E09). No shop, lab, replay or site may publish or trust it; recordFacts rejects any record whose key set carries it unless the bench asks.",
+  "_warning": "TEST ONLY. This private key is public: it is committed to the repository. The case bench uses it to re-sign pages it rewrites (E01-E11). No shop, lab, replay or site may publish or trust it; recordFacts rejects any record whose key set carries it unless the bench asks.",
   "crv": "Ed25519",
   "d": "BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc",
   "x": "6kpsY-KcUgq-9VB7Ey7F-ZVHdq6-vnuSQh7qaRRG0iw",
