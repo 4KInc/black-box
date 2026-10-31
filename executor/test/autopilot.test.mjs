@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAutopilot } from '../autopilot.mjs';
+import { createAutopilot, flaggerWarning, heldDelay } from '../autopilot.mjs';
 import { executionLog } from '../core.mjs';
 import { createWebhookReceiver } from '../webhook.mjs';
 import { pollOnce } from '../watch.mjs';
@@ -94,13 +94,45 @@ test('an escalated inquiry is retried with a fresh count until the evidence is s
   assert.equal(ap.status('PP-D-345'), 'executed');
 });
 
-test('a dispute held for a missing flagger is retried, and proceeds once the flagger answers', async () => {
-  const resolve = fakeResolve('held', 'held', 'executed');
-  const ap = createAutopilot({ root, execute: true, resolve, retryMs: 2 });
-  await ap.handleWithRetry('PP-D-356', 'webhook');
-  await sleep(80);
-  assert.equal(resolve.calls.length, 3);
+test('a held dispute is retried with growing intervals, and proceeds once the flagger answers', async () => {
+  let t = 0;
+  const resolve = fakeResolve('held', 'held', 'held', 'executed');
+  const ap = createAutopilot({ root, execute: true, resolve, heldBaseMs: 1000, heldMaxMs: 30_000, now: () => t });
+  const at = async (time) => { t = time; return ap.handle('PP-D-356', 'watcher'); };
+  assert.equal((await at(0)).retryInMs, 1000);
+  assert.equal((await at(999)).cached, true);          // polled again too soon: answered from memory
+  assert.equal((await at(1000)).retryInMs, 2000);
+  assert.equal((await at(2999)).cached, true);
+  assert.equal((await at(3000)).retryInMs, 4000);
+  assert.equal((await at(6999)).cached, true);
+  assert.equal(resolve.calls.length, 3);               // resolved, and its hold logged, once per step
+  assert.equal((await at(7000)).status, 'executed');
   assert.equal(ap.status('PP-D-356'), 'executed');
+  assert.equal(resolve.calls.length, 4);
+});
+
+test('the hold backoff doubles and is capped at about 30 minutes', () => {
+  assert.deepEqual([1, 2, 3, 4].map((n) => heldDelay(n, 60_000, 30 * 60_000)), [60_000, 120_000, 240_000, 480_000]);
+  assert.equal(heldDelay(6, 60_000, 30 * 60_000), 30 * 60_000);
+  assert.equal(heldDelay(50, 60_000, 30 * 60_000), 30 * 60_000);
+});
+
+test('a pushed event for a held dispute schedules one retry per step, however often it is triggered', async () => {
+  const resolve = fakeResolve('held', 'held', 'executed');
+  const ap = createAutopilot({ root, execute: true, resolve, heldBaseMs: 10, heldMaxMs: 20 });
+  await ap.handleWithRetry('PP-D-357', 'webhook');
+  await ap.handleWithRetry('PP-D-357', 'webhook');      // a redelivery during the hold
+  await ap.handleWithRetry('PP-D-357', 'watcher');
+  await sleep(120);
+  assert.equal(resolve.calls.length, 3);
+  assert.equal(ap.status('PP-D-357'), 'executed');
+});
+
+test('at startup, acting without a flagger prints a warning that MERCHANT-type cases will be held', () => {
+  assert.match(flaggerWarning({ AUTO_EXECUTE: 'on' }), /ANTHROPIC_API_KEY is not set.*HELD/);
+  assert.match(flaggerWarning({ AUTO_EXECUTE: 'on', ANTHROPIC_API_KEY: 'k', FLAGGER: 'off' }), /FLAGGER=off.*HELD/);
+  assert.equal(flaggerWarning({ AUTO_EXECUTE: 'on', ANTHROPIC_API_KEY: 'k' }), null);
+  assert.equal(flaggerWarning({}), null); // a dry run acts on nothing
 });
 
 test('dry run is fixed when the autopilot is created', async () => {

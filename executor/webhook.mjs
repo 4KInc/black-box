@@ -17,7 +17,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadEnv } from '../lib/env.mjs';
 import { paypal } from '../lib/paypal.mjs';
-import { createAutopilot } from './autopilot.mjs';
+import { createAutopilot, flaggerWarning } from './autopilot.mjs';
 import { pollOnce } from './watch.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -94,6 +94,8 @@ if (import.meta.main) {
   const execute = process.env.AUTO_EXECUTE === 'on';
   const log = fileLog('webhook.jsonl');
   const autopilot = createAutopilot({ root: ROOT, execute, report: log });
+  const warning = flaggerWarning();
+  if (warning) console.warn(warning);
   createWebhookReceiver({ autopilot, verify: paypalVerifier(webhookId), log }).listen(Number(values.port), () =>
     console.log(`webhook  POST http://localhost:${values.port}/paypal/webhook   ${execute ? 'AUTO_EXECUTE=on: will act' : 'dry run (AUTO_EXECUTE=on to act)'}`));
   if (values.watch) {

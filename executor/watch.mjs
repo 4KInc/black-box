@@ -10,7 +10,7 @@ import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { loadEnv } from '../lib/env.mjs';
 import { paypal } from '../lib/paypal.mjs';
-import { createAutopilot } from './autopilot.mjs';
+import { createAutopilot, flaggerWarning } from './autopilot.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const OPEN = new Set(['WAITING_FOR_SELLER_RESPONSE', 'OPEN']);
@@ -36,9 +36,11 @@ if (import.meta.main) {
     if (e.cached) return;
     const line = { at: new Date().toISOString(), ...e };
     appendFileSync(join(dir, 'watch.jsonl'), JSON.stringify(line) + '\n');
-    console.log([line.at, e.disputeId, e.status, e.verdict && `${e.verdict} rule ${e.rule}`, e.action, e.error].filter(Boolean).join('  '));
+    console.log([line.at, e.disputeId, e.status, e.verdict && `${e.verdict} rule ${e.rule}`, e.action, e.retryInMs && `retry in ${Math.round(e.retryInMs / 1000)}s`, e.error].filter(Boolean).join('  '));
   };
   const autopilot = createAutopilot({ root: ROOT, execute, report });
+  const warning = flaggerWarning();
+  if (warning) console.warn(warning);
   console.log(`watching PayPal disputes every ${values.every}s   ${execute ? 'AUTO_EXECUTE=on: will act' : 'dry run (AUTO_EXECUTE=on to act)'}`);
   const tick = () => pollOnce(autopilot).catch((e) => console.error(`poll failed: ${e.message}`));
   await tick();
