@@ -106,8 +106,8 @@ export const CASES = [
   {
     id: 'R04', kind: 'recorded', record: LIVE, reason: AMOUNT,
     title: 'Same lie, disputed as "incorrect amount"',
-    story: 'The merchant is at fault, but it charged exactly its signed price, so there is no overcharge to refund.',
-    expect: { verdict: 'MERCHANT', rule: 2, action: 'none' },
+    story: 'The merchant is at fault and charged exactly its signed $240, on a $150 budget. The buyer disputes the amount, so the merchant refunds at least what an honest merchant would: the $90 over the budget. (Before, it refunded only the amount over its own price, $0, and escalated: the merchant that lied owed less than an honest one.)',
+    expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim-partial', refundCents: 9000 },
   },
   {
     id: 'R05', kind: 'recorded', record: LIVE, reason: NOT_RECEIVED,

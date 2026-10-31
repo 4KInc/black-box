@@ -152,10 +152,25 @@ test('actions: the verdict-by-reason table', () => {
   assert.equal(plan(VERDICT.MERCHANT, UA).action, 'accept-claim');
   assert.equal(plan(VERDICT.MERCHANT, NAD).action, 'accept-claim');
   assert.equal(plan(VERDICT.MERCHANT, NAD).refundCents, 24000);
-  assert.equal(plan(VERDICT.MERCHANT, IA, { ...CTX, signedPriceCents: 22000 }).refundCents, 2000);
-  assert.equal(plan(VERDICT.MERCHANT, IA).action, 'none'); // captured equals signed price
 
   for (const r of [UA, NAD, IA]) assert.equal(plan(VERDICT.HUMAN, r).action, 'none');
+});
+
+test('actions: MERCHANT on an incorrect-amount dispute refunds at least the amount over the cap', () => {
+  const IA = 'INCORRECT_AMOUNT';
+  const plan = (c) => planAction(VERDICT.MERCHANT, IA, { ...CTX, ...c });
+  // Captured exactly the signed $240, above the $150 cap: the $90 over the cap.
+  assert.deepEqual([plan({}).action, plan({}).refundCents], ['accept-claim-partial', 9000]);
+  // Captured $240 against a signed $180: the larger of $60 over the price and $90 over the cap.
+  assert.equal(plan({ signedPriceCents: 18000 }).refundCents, 9000);
+  // Captured $240 against a signed $100: $140 over the price beats $90 over the cap.
+  assert.equal(plan({ signedPriceCents: 10000 }).refundCents, 14000);
+  // Over the price by the whole capture: a full refund.
+  assert.deepEqual([plan({ signedPriceCents: 0 }).action, plan({ signedPriceCents: 0 }).refundCents], ['accept-claim', 24000]);
+  // Captured within the cap and equal to the signed price: nothing to refund, so a person decides.
+  assert.equal(plan({ capturedCents: 12900, signedPriceCents: 12900 }).action, 'none');
+  // An honest merchant never owes less than this: AGENT refunds the same $90 here.
+  assert.equal(planAction(VERDICT.AGENT, IA, CTX).refundCents, plan({}).refundCents);
 });
 
 test('actions: out-of-scope reasons never trigger an action, whatever the verdict', () => {

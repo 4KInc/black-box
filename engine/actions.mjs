@@ -48,9 +48,13 @@ export function planAction(verdict, reason, ctx) {
 
   if (verdict === VERDICT.MERCHANT) {
     if (reason === 'INCORRECT_AMOUNT') {
-      const diff = ctx.capturedCents - ctx.signedPriceCents;
-      if (diff <= 0) return none('Captured amount equals the signed price. Escalated to a human.');
-      return { action: 'accept-claim-partial', refundCents: diff, note: 'Refund the difference between the captured amount and the signed price.' };
+      // The buyer disputes the amount. The merchant owes at least what an honest merchant would: the
+      // amount over the buyer's cap, or the amount over its own signed price, whichever is larger.
+      const refund = Math.max(ctx.capturedCents - ctx.signedPriceCents, ctx.capturedCents - ctx.mandateCapCents);
+      if (refund <= 0) return none('Captured amount is within the signed price and the mandate. Escalated to a human.');
+      return refund >= ctx.capturedCents
+        ? { action: 'accept-claim', refundCents: ctx.capturedCents, note: 'Merchant accepts the claim in full; its own signed page is the evidence.' }
+        : { action: 'accept-claim-partial', refundCents: refund, note: 'Refund the larger of the amount over the signed price and the amount over the buyer\'s cap.' };
     }
     return { action: 'accept-claim', refundCents: ctx.capturedCents, note: 'Merchant accepts the claim; its own signed page is the evidence.' };
   }
