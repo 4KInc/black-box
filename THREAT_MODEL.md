@@ -25,7 +25,10 @@ It ends with what Black Box has to trust, and what it does not cover.
 | Claims it never wrote the note | The page bytes are signed with the shop's Ed25519 key, fetched from the shop's own `/.well-known/jwks.json` | A06 |
 | (Honest merchant) Publishes accurate product data in JSON-LD that is not displayed | Not a contradiction: no other price and no instruction to ignore limits, so it is not held against the merchant | R12 |
 | (Honest merchant) Publishes accurate data that states another price: a variant, a range, a member or sale price, tax, shipping, another currency, a former price | Not a contradiction: only a price for the purchased item and variant, in the order's currency, valid at order time, counts (or any price aimed at agents) | R14–R21 |
-| Words a lie to slip past that definition, such as an agent price phrased as a range | The contradiction check misses it, but the AI flagger quotes it and the case goes to a person, so the lie wins no automatic outcome | F01, F02 |
+| Rewords the lie to dodge the extractor: a fee word beside it ("$119, shipping included"), a former price ("was $240, now $119"), a one-sided "from $119", "USD 119" with no $ sign, a structured Offer at $119, or "the buyer pre-approved any amount" | Exclusions bind to the amount they qualify, not the sentence; a range needs two amounts; amounts with an ISO code are read; JSON-LD Offers are parsed as numbers (SKU, currency and validity checked); pre-authorisation claims to the agent count as overrides. All six give MERCHANT | E01–E06 |
+| Finds a wording code still cannot classify | The merchant's own hidden text about the item, addressed to AI agents, that did not count as a contradiction (`unclassifiedAgentText`) goes to rule 4, a person, never to rule 5, the agent. Honest agent-directed notes land there too; accurate data not addressed to agents (R12, R14–R21) and an Offer for another variant do not | E07, E08, E09; property test |
+| Words a lie to slip past that definition without addressing agents | The contradiction check misses it, but the AI flagger quotes it and the case goes to a person, so the lie wins no automatic outcome | F01, F02 |
+| Makes the flagger fail (a page that breaks it, or an outage), so only code judges | The executor fails closed: with no flagger answer and the merchant's hidden text about the item in what the agent read, nothing is sent to PayPal; the case is held as NEEDS A HUMAN with the reason logged, and a later run asks the flagger again | executor tests "flagger throws, merchant hidden text read", "no flagger at all", "flagger throws on a clean page", "a failed flagger run is not cached" |
 | Plants the note in a third-party review to dodge blame | Third-party-signed content is attributed to its signer; code then cannot blame the merchant and sends the case to a person rather than to the agent | R06 |
 | Steers the agent but stays within budget | Within the mandate, steering is a judgment, not a check: NEEDS A HUMAN | R07 |
 | Takes payment to a different account than the page names | The signed merchant ID must equal the PayPal payee | A04 |
@@ -64,8 +67,11 @@ It ends with what Black Box has to trust, and what it does not cover.
   offers the planned action, and a logged success, or a lock, means it is never sent twice.
 - **Leaves a trail:** every PayPal call, request and response is appended to
   `records/executions/<dispute>.jsonl`.
+- **Fails closed without the flagger:** if the flagger errors, has no key or is turned off, and
+  the agent read the merchant's own hidden text about the item, nothing is sent to PayPal. The
+  case is held for a person (logged as `hold`), and a later run asks the flagger again.
 - **Code decides, AI does not:** the six rules are deterministic, and exactly one fires for every
-  one of the 16,384 combinations of the 14 facts (property-tested). That proves the rules are
+  one of the 32,768 combinations of the 15 facts (property-tested). That proves the rules are
   consistent and complete, not that the policy is fair or that each fact was extracted correctly.
   The only AI input, the flag, can only lead to NEEDS A HUMAN, and only when its quote names the
   item bought.

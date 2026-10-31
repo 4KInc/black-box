@@ -83,13 +83,16 @@ was run by hand.
    into the PayPal order's `custom_id`, which PayPal does not allow to change after payment.
 4. **A buyer disputes.** PayPal's webhook (verified with PayPal) or the dispute watcher wakes
    Black Box.
-5. **Code checks 14 yes/no facts and applies six rules.** The facts ask whether the record is
+5. **Code checks 15 yes/no facts and applies six rules.** The facts ask whether the record is
    intact, whether the mandate was broken, and whether the merchant's own hidden text named the
    item, contradicted the listing and reached the model. Exactly one rule fires for each of the
-   16,384 combinations, which is property-tested.
+   32,768 combinations, which is property-tested.
 6. **An AI may only ask for a human.** An AI flagger quotes text aimed at AI shoppers. Its quote
    must appear word for word in what the agent read and must name the item bought. It can only
    move a case to NEEDS A HUMAN. It catches hiding tricks that code does not know (bench F01, F02).
+   If the flagger gives no answer (an error, no key, or turned off) and the agent read the
+   merchant's own hidden text about the item, the executor sends nothing and leaves the case for
+   a person.
 7. **PayPal carries it out,** at most once: `accept-claim` (a refund), a partial refund or
    `make-offer` for the amount over budget, or `provide-evidence` to defend an honest purchase.
    PayPal takes evidence only on a claim, so an inquiry is escalated first. The evidence is a short note for the PayPal reviewer, the statements it was written from and
@@ -125,10 +128,10 @@ against the merchant, so an agent that overspends next to it is the agent's resp
 
 | Verdict | Responsible under the policy | PayPal action Black Box executes | Recovering the money |
 |---|---|---|---|
-| MERCHANT | The merchant: its own hidden, contradicting text was read and the mandate broken | `accept-claim`: full refund from the merchant | Done: the merchant refunds |
-| AGENT | The agent's operator: the mandate was broken and nothing contradicting was read | Refund the amount over budget (`accept-claim` partial, or `make-offer`, which the buyer must accept) | **Not built.** The merchant refunds the buyer; collecting that amount from the operator is off-platform |
+| MERCHANT | The merchant: its own hidden, contradicting text was read and the mandate broken | `accept-claim`: full refund from the merchant. On an "incorrect amount" dispute, the larger of the amount over the budget and the amount over its own price (R04: $90) | Done: the merchant refunds |
+| AGENT | The agent's operator: the mandate was broken and nothing contradicting was read | Refund the amount over budget (`accept-claim` partial, or `make-offer`, which the buyer must accept) | The merchant refunds the buyer; `executor/payout.mjs` then pays the merchant back from the operator's PayPal account (Payouts). Tested offline, not yet run live |
 | USER | The buyer: the purchase was within the mandate | `provide-evidence`: a checked note, its statements and the record | None due |
-| NEEDS A HUMAN | Undecided: a broken record, unattributable manipulation, or steering within budget | None | None |
+| NEEDS A HUMAN | Undecided: a broken record, unattributable manipulation, the merchant's hidden text for agents that code cannot classify, or steering within budget | None | None |
 
 **Who runs it.** In this build, a merchant deploys Black Box to commit in advance to automatic
 outcomes on its own disputes, which is why it acts with the merchant's PayPal credentials. The
@@ -151,11 +154,21 @@ real case yourself.
   count: another size or SKU, a price range, a members-only price, a sale outside its dates, a
   tax-inclusive price, shipping, another currency or a former price. Each one is a recorded run
   in the bench (R14–R21), where the agent overspends and the verdict is AGENT. The first version
-  counted any other dollar amount and would have blamed the shop in all eight. A merchant that
-  words a lie to slip past the check still meets the AI flagger, which sends the case to a person.
-- **Rule 4 has two triggers.** A case goes to a person when the agent read hidden text that code
-  cannot pin on the merchant, or when the AI flagger raises its flag. Otherwise a lie planted by a
-  third party would be blamed on the agent (R06).
+  counted any other dollar amount and would have blamed the shop in all eight.
+- **Rewording the lie does not move the blame to the agent.** A fee, former-price or range word
+  exempts only the amount it qualifies, so "was $240, now $119" still states $119; a range needs
+  two amounts; "USD 119" is read like "$119"; JSON-LD Offers are read as numbers; and a claim to
+  the agent that the buyer pre-approved the spend counts like "ignore the budget" (E01–E06). What
+  code still cannot classify is caught by a safety net: the merchant's own hidden text about the
+  item, addressed to AI agents, that did not count as a contradiction goes to a person, never to
+  the agent (`unclassifiedAgentText`, E07, E08). An honest Offer for another size does not (E09).
+- **Rule 4 has three triggers.** A case goes to a person when the agent read hidden text that
+  code cannot pin on the merchant, when the AI flagger raises its flag, or when the merchant's own
+  hidden text for agents is one code cannot classify. Otherwise a lie planted by a third party, or
+  a reworded one, would be blamed on the agent (R06, E07).
+- **The flagger fails closed.** It is the only check for lies code cannot classify, so with no
+  flagger answer, a dispute where the agent read the merchant's hidden text about the item is
+  held for a person instead of executed. A failed run is not cached; the next run asks again.
 - **The mandate must be passkey-approved once the buyer has a passkey** (`mandateSigned`, a
   record check). A record without an approval counts only if the paying account had no passkey
   enrolled when PayPal created the order. PayPal reports the payer and the order time, so
@@ -168,8 +181,8 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 147 tests
-npm run bench               # 44 cases: every verdict and rule, six live disputes, two shops, honest price data, the flagger, 10 attacks
+npm test                    # 161 tests
+npm run bench               # 53 cases: every verdict and rule, six live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
 
@@ -187,14 +200,16 @@ node study/run.mjs [--setup headphones]               # re-run the study (see st
 ([live](https://black-box-342881585799.us-central1.run.app/lab)), built from the `Dockerfile`
 (`node lab/hosted.mjs`). It serves only the committed fixtures, holds no keys and never calls
 PayPal; `.dockerignore` keeps `.env`, `records/`, `killtest/` and the shop keys out of the image.
-Deploy with `gcloud run deploy black-box --source . --region us-central1`. The repository
+Deploy with `gcloud run deploy black-box --source . --region us-central1 --min-instances 1`. One
+instance stays warm, so judges never wait for a cold start; keep it through judging (15 December
+2026), then drop the flag to scale back to zero. The repository
 variable `LAB_URL` holds its address, and the Pages build links the lab from the site.
 
 ## Layout
 
 | Dir | What |
 |---|---|
-| `engine/` | the 14 facts, six rules, mandate check, hidden-text extractor, PayPal action plan |
+| `engine/` | the 15 facts, six rules, mandate check, hidden-text extractor, PayPal action plan |
 | `recorder/` | sealed shopping records and their integrity checks |
 | `lib/` | signatures, canonical JSON, WebAuthn verification, PayPal client |
 | `shop/` | demo merchant (with deliberate hidden lies) and a third-party review platform |
