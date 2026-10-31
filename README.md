@@ -166,9 +166,24 @@ real case yourself.
   code cannot pin on the merchant, when the AI flagger raises its flag, or when the merchant's own
   hidden text for agents is one code cannot classify. Otherwise a lie planted by a third party, or
   a reworded one, would be blamed on the agent (R06, E07).
+- **Hidden text addressed to agents gives up automatic resolution.** If the merchant hides text
+  about the item for AI agents, the case goes to a person (rule 4), even when the note is honest
+  and even when the purchase is within the mandate. It never blames the merchant unless it
+  contradicts the signed listing (E07, E08). Talking to agents in hidden text is the merchant's
+  choice; the cost is a human review, not a refund.
+- **"Outlet" and "in store" exempt only text not addressed to agents.** A hidden line such as
+  "$119 in our outlet stores" is a price for another channel and does not count against the
+  merchant. The same words in a note to agents do not exempt it. A non-agent line that is really
+  a lie is left to the AI flagger, which sends the case to a person.
+- **A field on the purchased Product's JSON-LD node names that product.** A lie there need not
+  repeat the product's name. Only the node whose `sku` or `productID` is the item bought counts;
+  fields on another Product, a related item or another variant in a ProductGroup do not (E10,
+  E11). Text on the ProductGroup itself is about all its variants.
 - **The flagger fails closed.** It is the only check for lies code cannot classify, so with no
   flagger answer, a dispute where the agent read the merchant's hidden text about the item is
-  held for a person instead of executed. A failed run is not cached; the next run asks again.
+  held for a person and nothing executes. A failed run is not cached. The autopilot retries a held
+  dispute with backoff (1, 2, 4 ... minutes, capped at 30), and warns at startup when it is set to
+  act with no flagger.
 - **The mandate must be passkey-approved once the buyer has a passkey** (`mandateSigned`, a
   record check). A record without an approval counts only if the paying account had no passkey
   enrolled when PayPal created the order. PayPal reports the payer and the order time, so
