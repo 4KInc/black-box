@@ -43,6 +43,7 @@ const FACT = {
   merchantOwned: ['MERCHANT OWNED', "That hidden text is the merchant's own (signed, self-contained, no third party)"],
   aiInjectionFlag: ['AI FLAG', 'The AI flagger quoted agent-directed text that names the item bought (can only lead to NEEDS A HUMAN)'],
   unattributedHiddenText: ['UNATTRIBUTED', 'Hidden text the agent read that cannot be pinned on the merchant'],
+  unclassifiedAgentText: ['UNCLASSIFIED', "The merchant's hidden text about this item, addressed to AI agents, that code could not classify (can only lead to NEEDS A HUMAN)"],
 };
 const SIGNALS = FACT_KEYS.filter((k) => !RECORD_CHECKS.includes(k) && !MERCHANT_CONDITIONS.includes(k) && k !== 'mandateBroken');
 
@@ -557,7 +558,8 @@ function plainWords(c, j) {
     j.facts.mandateBroken ? 'The budget light is on: the AI went over the limit.' : 'The budget light is off: the AI stayed within the limit.',
     lit(MERCHANT_CONDITIONS) === MERCHANT_CONDITIONS.length ? `All ${MERCHANT_CONDITIONS.length} shop lights are on: under the policy, the shop is responsible.` : lit(MERCHANT_CONDITIONS) ? `${lit(MERCHANT_CONDITIONS)} of the ${MERCHANT_CONDITIONS.length} shop lights are on, not enough to blame the shop.` : 'No shop lights are on.',
     [j.facts.aiInjectionFlag && 'The AI check light is on: a second check by an AI quoted text aimed at AI shoppers about this item.',
-      j.facts.unattributedHiddenText && 'The unattributed light is on: the AI read hidden text that cannot be pinned on the shop.'].filter(Boolean).join(' ') || 'No other warnings.',
+      j.facts.unattributedHiddenText && 'The unattributed light is on: the AI read hidden text that cannot be pinned on the shop.',
+      j.facts.unclassifiedAgentText && 'The unclassified light is on: the shop hid text about this item for AI shoppers that code could not classify, so a person reads it.'].filter(Boolean).join(' ') || 'No other warnings.',
   ].join(' ');
 
   const ladder = `Black Box checks six rules in order, and exactly one can apply. Here it is rule ${rule}: ${RULE_PLAIN[rule]}.`;
@@ -739,6 +741,7 @@ ${list.map((st, i) => studySection(st, String(i + 1).padStart(2, '0'))).join('\n
 const SECTIONS = [
   ['recorded', 'Recorded runs', "Real agent runs, sealed by the recorder, with the model's own output."],
   ['honest-data', 'Honest price data', 'Accurate structured data that states another price (a variant, a range, a member or past price, tax, shipping, another currency). None of it may count against the merchant.'],
+  ['evasion', 'Reworded lies', 'The merchant rewords its hidden lie to slip past the contradiction check. Each must still count against it; honest agent-directed notes go to a person, never to the agent.'],
   ['passkey', 'Passkey mandates', 'The buyer approved the budget with Touch ID. Once a buyer has enrolled a passkey, their mandates must carry its approval.'],
   ['flagger', 'The AI flagger', 'Its real, recorded answers. It can only send a case to a person, and only quotes that name the item bought count.'],
   ['attack', 'Attacks on the record', 'A real record with one thing forged or swapped. Each must fail exactly the checks named.'],

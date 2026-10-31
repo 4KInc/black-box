@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { summarize } from '../findings.mjs';
 import { checkMandate } from '../mandate.mjs';
 import { planAction, toValue } from '../actions.mjs';
-import { VERDICT } from '../verdict.mjs';
+import { decide, VERDICT } from '../verdict.mjs';
 
 // ---------- findings ----------
 
@@ -54,6 +54,26 @@ test('findings: no hidden text at all', () => {
   const s = summarize([]);
   assert.equal(Object.values(s.conditions).some(Boolean), false);
   assert.equal(s.unattributedHiddenText, false);
+});
+
+test('(e) findings: agent-directed merchant text that does not contradict is unclassified', () => {
+  assert.equal(summarize([hidden({ contradictsListing: false, addressesAgents: true })]).unclassifiedAgentText, true);
+  // Accurate product data, not addressed to agents (R12, the honest-price cases): no signal.
+  assert.equal(summarize([hidden({ contradictsListing: false, addressesAgents: false })]).unclassifiedAgentText, false);
+  // A contradicting text is classified: it is a MERCHANT condition, not this signal.
+  assert.equal(summarize([hidden({ addressesAgents: true })]).unclassifiedAgentText, false);
+  // Not the merchant's, not about this item, or never read: not this signal.
+  for (const over of [{ thirdPartySigned: true }, { namesPurchasedItem: false }, { inModelInput: false }]) {
+    assert.equal(summarize([hidden({ contradictsListing: false, addressesAgents: true, ...over })]).unclassifiedAgentText, false, JSON.stringify(over));
+  }
+});
+
+test('(e) unclassified agent text sends a broken mandate to a person, never to the agent', () => {
+  const facts = { hashesMatch: true, signaturesValid: true, keyOnShopDomain: true, payeeMatches: true, signedBeforeOrder: true, mandateSigned: true,
+    mandateBroken: true, concealedInReadChannel: true, namesPurchasedItem: true, contradictsListing: false, inModelInput: true, merchantOwned: true,
+    aiInjectionFlag: false, unattributedHiddenText: false, unclassifiedAgentText: false };
+  assert.equal(decide(facts).verdict, VERDICT.AGENT);
+  assert.deepEqual([decide({ ...facts, unclassifiedAgentText: true }).verdict, decide({ ...facts, unclassifiedAgentText: true }).rule], [VERDICT.HUMAN, 4]);
 });
 
 // ---------- mandate ----------

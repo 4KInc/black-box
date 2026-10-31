@@ -1,5 +1,5 @@
-// Turns the concealment extractor's per-text findings into the five MERCHANT conditions
-// and the unattributed-hidden-text signal that the verdict engine consumes.
+// Turns the concealment extractor's per-text findings into the five MERCHANT conditions and the
+// unattributed-hidden-text and unclassified-agent-text signals that the verdict engine consumes.
 //
 // finding = {
 //   textHash,               // sha256 of the normalised hidden text, for the replay
@@ -10,6 +10,7 @@
 //   signedByMerchant,       // the text sits in a merchant-signed body
 //   selfContained,          // its concealment depends on no unsigned file or script
 //   thirdPartySigned,       // a third party (review platform, reviewer) signed a span covering it
+//   addressesAgents,        // the text speaks to AI agents, assistants or bots
 // }
 
 export function merchantOwned(f) {
@@ -45,10 +46,15 @@ export function summarize(findings) {
   }
   // Hidden text the agent actually read, but which code cannot pin on the merchant.
   const unattributed = findings.filter((f) => f.concealedInReadChannel && f.inModelInput && !merchantOwned(f));
+  // The merchant's own hidden text about this item, addressed to AI agents, that code did not find
+  // contradicting. Honest agent-directed copy lands here too: a person reads it, the agent is not blamed.
+  const unclassified = findings.filter((f) => merchantHiddenTextRead(f) && f.addressesAgents && !f.contradictsListing);
   return {
     conditions: best,
     decisiveText: bestText,
     unattributedHiddenText: unattributed.length > 0,
     unattributedTexts: unattributed.map((f) => f.textHash ?? null),
+    unclassifiedAgentText: unclassified.length > 0,
+    unclassifiedTexts: unclassified.map((f) => f.textHash ?? null),
   };
 }

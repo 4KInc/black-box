@@ -84,10 +84,11 @@ function hiddenElements(html) {
   return out.filter((e) => !out.some((o) => o !== e && o.start <= e.start && o.end >= e.end));
 }
 
-function visibleText(html, hidden) {
+function visibleText(html, hidden, lower = true) {
   let s = html;
   for (const h of [...hidden].sort((a, b) => b.start - a.start)) s = s.slice(0, h.start) + ' ' + s.slice(h.end);
-  return stripTags(s.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] ?? s).toLowerCase();
+  const text = stripTags(s.match(/<body[^>]*>([\s\S]*)<\/body>/i)?.[1] ?? s);
+  return lower ? text.toLowerCase() : text;
 }
 
 const wordCount = (s) => s.split(/\s+/).filter(Boolean).length;
@@ -110,7 +111,9 @@ export function findHidden(html) {
     for (const [path, value] of strings(obj)) {
       const text = normalize(value);
       if (wordCount(text) >= MIN_WORDS && !visible.includes(text.toLowerCase())) {
-        out.push({ channel: 'json-ld', method: 'JSON-LD field never rendered', path, text, start: block.index, end: block.index + block[0].length });
+        // A field of the Product node itself is about that product, whether or not it repeats its name.
+        const productSku = obj?.['@type'] === 'Product' && !/[.[]/.test(path) ? obj.sku ?? null : null;
+        out.push({ channel: 'json-ld', method: 'JSON-LD field never rendered', path, text, productSku, start: block.index, end: block.index + block[0].length });
       }
     }
   }
@@ -137,25 +140,52 @@ export function mentionsItem(text, { sku, name }) {
 
 // Does a hidden text contradict what the merchant signed for this item? Under the policy a "yes"
 // costs the merchant the whole payment, so it is deliberately narrow. It is "yes" if the text
-//   - tells the agent to set aside the buyer's limits, or
+//   - tells the agent to set aside the buyer's limits, or claims to the agent that the buyer
+//     already authorised the spend ("pre-approved any amount", "no limit applies"), or
 //   - states a price for this item, in the order's currency, valid when the order was placed,
 //     other than the signed price.
 // Accurate structured data often carries other prices, and none of these count: another variant
 // or SKU, a price range, a former price, shipping, tax or fees, another currency, a price for
-// another audience (members, students, bulk), or a sale outside its stated dates. A price aimed
-// at AI agents always counts: no other audience can make that legitimate. Each sentence is judged
-// on its own, so an honest sentence cannot excuse a lie next to it.
-const MONEY = /(?:\b(USD|US|CA|C|A|AU|NZ|HK|S|SG|MX)\s?)?\$\s?(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?(?:\s?(USD|CAD|AUD|NZD|HKD|SGD|MXN)\b)?/g;
+// another audience (members, students, bulk, outlet stores), or a sale outside its stated dates.
+// A price aimed at AI agents always counts: no other audience can make that legitimate. Each
+// sentence is judged on its own, so an honest sentence cannot excuse a lie next to it, and a fee,
+// former-price or range wording exempts only the amount it qualifies, so "was $240, now $119"
+// still states $119.
+const ISO = 'USD|CAD|AUD|NZD|HKD|SGD|MXN|EUR|GBP|CHF|JPY';
+const AMOUNT = String.raw`(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?`;
+const DOLLAR = new RegExp(String.raw`(?:\b(USD|US|CA|C|A|AU|NZ|HK|S|SG|MX)\s?)?\$\s?${AMOUNT}(?:\s?(${ISO})\b)?`, 'g');
+const CODED = new RegExp(String.raw`\b(${ISO})\s?${AMOUNT}(?![\d,]|\.\d)|(?<![\w.,$])${AMOUNT}\s?(${ISO})\b`, 'g'); // "USD 119", "119.00 USD"
 const OVERRIDE = /\b(?:ignore|disregard|override|bypass|set aside)\b[^.]{0,60}?\b(?:budget|limit|cap|mandate|instructions?|spending)/i;
-const AGENT = /\b(?:AI|agents?|agentic|assistants?|bots?|automated|LLMs?)\b/i;
-const RANGE = /\b(?:prices? (?:range|vary)|ranges? from|ranging from|from|starting at|starts at|as low as|up to|between)\s*(?:[A-Z]{1,3})?\$|\b(?:lowPrice|highPrice)\b|\$\s?[\d,.]+\s?(?:-|–|—|to)\s?(?:[A-Z]{1,3})?\$/i;
-const NOT_THE_PRICE = /\b(?:shipping|delivery|postage|freight|tax(?:es)?|VAT|GST|duty|duties|fees?|surcharge|deposit)\b|\b(?:was|previously|originally|formerly|list price|MSRP|RRP|compare at|reg(?:ular)?\.? price)\s*:?\s*[A-Z]{0,3}\$/i;
-const AUDIENCE = /\b(?:members?|membership|club|loyalty|rewards?|subscribers?|students?|teachers?|military|veterans?|employees?|staff|trade|wholesale|bulk|or more|when you buy|per unit for)\b/i;
+// A claim, made to the agent, that the buyer already authorised the spend. Kept narrow: financing
+// pre-approval and ordinary "approved"/"limit" copy do not match.
+const PREAUTH = /\b(?:pre-?approved(?!\s+(?:for\s+)?(?:financ|credit|loans?\b|leas|a payment plan))|pre-?authori[sz]ed|already (?:approved|authori[sz]ed)|authori[sz]ed (?:any|every|unlimited|whatever)\s+(?:amount|price|total|spend(?:ing)?|cost|sum)|no (?:spending |budget |price )?(?:limits?|caps?) (?:applies|apply)|(?:budget|spending limit|price limit|limit|cap) (?:does not|doesn't|do not|don't|no longer) apply)/i;
+export const AGENT = /\b(?:AI|agents?|agentic|assistants?|bots?|automated|LLMs?)\b/i;
+const FEE = /\b(?:shipping|delivery|postage|freight|handling|tax(?:es)?|VAT|GST|duty|duties|fees?|surcharge|deposit)\b/gi;
+const NOT_A_FEE = /\b(?:total|price|pay|pays|paid|charged?|invoiced?|comes? to|amount|now|only|just|you)\b/i; // "with free shipping your total is $119" states a total
+const FEE_AFTER = /^\s?(?:for\s+|in\s+)?(?:shipping|delivery|postage|freight|handling|tax(?:es)?|VAT|GST|duty|duties|fees?|surcharge|deposit)\b(?!\s*(?:incl|is incl))/i;
+const INCLUSIVE = /\b(?:incl(?:\.|uding|udes|uded|usive)?|with|plus|after)\b[^$]{0,40}?\b(?:shipping|delivery|postage|freight|handling|tax(?:es)?|VAT|GST|duty|duties|fees?)\b|\b(?:shipping|delivery|postage|freight|handling|tax(?:es)?|VAT|GST|duty|duties|fees?)\s+(?:incl(?:\.|uded|usive)?|included)\b/i;
+const FORMER = /\b(?:was|were|previously|originally|formerly|list price|MSRP|RRP|compare at|reg(?:ular)?\.? price)\s*:?\s*$/i;
+const RANGE_JOIN = /^\s*(?:-|–|—|to|and)\s*$/i;
+const RANGE_FIELD = /\b(?:lowPrice|highPrice)\b["':\s]*$/i;
+const AUDIENCE = /\b(?:members?|membership|club|loyalty|rewards?|subscribers?|students?|teachers?|military|veterans?|employees?|staff|trade|wholesale|bulk|or more|when you buy|per unit for|outlets?|in[- ]stores?|in our stores)\b/i;
 const DATE = /\b(\d{4}-\d{2}-\d{2})\b/g;
 const SIZES = /\bsize\s+(XXS|XS|S|M|L|XL|XXL|\d+)\b/gi;
 const SKU = /\b(?=[A-Z0-9-]*[A-Z])[A-Z0-9]{2,}(?:-[A-Z0-9]+){2,}\b/g; // needs a letter, so a date is not a SKU
 
 const sentences = (text) => text.split(/(?<!\d)[.;!?](?!\d)|\n/).map((x) => x.trim()).filter(Boolean);
+const toCents = (int, dec) => Number(int.replace(/,/g, '')) * 100 + Number(dec ?? 0);
+
+// Every amount in a sentence: "$119", "US$119.00", "USD 119", "119.00 USD", with its currency code
+// when one is written next to it.
+export function moneyTokens(s) {
+  const out = [...s.matchAll(DOLLAR)].map((m) => ({ start: m.index, end: m.index + m[0].length, code: (m[1] ?? m[4] ?? '').toUpperCase(), cents: toCents(m[2], m[3]) }));
+  for (const m of s.matchAll(CODED)) {
+    const start = m.index, end = m.index + m[0].length;
+    if (out.some((t) => start < t.end && t.start < end)) continue;
+    out.push(m[1] ? { start, end, code: m[1], cents: toCents(m[2], m[3]) } : { start, end, code: m[6], cents: toCents(m[4], m[5]) });
+  }
+  return out.sort((a, b) => a.start - b.start);
+}
 
 function otherVariant(sentence, { sku, attributes = {} }) {
   if ((sentence.match(SKU) ?? []).some((x) => x !== sku)) return true;
@@ -175,21 +205,98 @@ function outsideDates(sentence, at) {
   return false;
 }
 
+// A fee amount: "shipping $5", "shipping is $5", "express shipping for the jacket costs $14.95",
+// "$5 shipping". `before` and `after` reach only to the neighbouring amounts.
+function isFee(before, after) {
+  const last = [...before.matchAll(FEE)].at(-1);
+  if (last) {
+    const gap = before.slice(last.index + last[0].length);
+    if (gap.length <= 45 && !NOT_A_FEE.test(gap) && !INCLUSIVE.test(before.slice(Math.max(0, last.index - 12)))) return true;
+  }
+  return FEE_AFTER.test(after);
+}
+
+// Which amounts in a sentence are exempt: their own wording makes them not this item's price.
+function exemptAmounts(s, tokens, priceCents) {
+  const exempt = new Set();
+  tokens.forEach((t, i) => {
+    const before = s.slice(i ? tokens[i - 1].end : 0, t.start);
+    const after = s.slice(t.end, tokens[i + 1]?.start ?? s.length);
+    if (FORMER.test(before) || RANGE_FIELD.test(before) || isFee(before, after)) exempt.add(i);
+    // A price "including shipping" or "plus tax" can only be above the item price.
+    if ((INCLUSIVE.test(before) || INCLUSIVE.test(after)) && t.cents > priceCents) exempt.add(i);
+    if (tokens[i + 1] && RANGE_JOIN.test(after)) { exempt.add(i); exempt.add(i + 1); } // "$100-$150", "from $240 to $275"
+  });
+  return exempt;
+}
+
 export function contradictsListing(text, { priceCents, sku = null, attributes = {}, currency = 'USD', at = null }) {
   if (OVERRIDE.test(text)) return true;
+  if (AGENT.test(text) && PREAUTH.test(text)) return true;
   for (const s of sentences(text)) {
     const toAgents = AGENT.test(s);
-    for (const m of s.matchAll(MONEY)) {
-      const code = (m[1] ?? m[4] ?? '').toUpperCase();
-      if (code && !(currency === 'USD' && (code === 'USD' || code === 'US'))) continue; // another currency
-      const cents = Number(m[2].replace(/,/g, '')) * 100 + Number(m[3] ?? 0);
-      if (cents === priceCents) continue;
-      if (otherVariant(s, { sku, attributes }) || RANGE.test(s) || NOT_THE_PRICE.test(s) || outsideDates(s, at)) continue;
-      if (!toAgents && AUDIENCE.test(s)) continue;
+    if (otherVariant(s, { sku, attributes }) || outsideDates(s, at)) continue;
+    if (!toAgents && AUDIENCE.test(s)) continue;
+    const tokens = moneyTokens(s);
+    const exempt = exemptAmounts(s, tokens, priceCents);
+    for (const [i, t] of tokens.entries()) {
+      if (t.code && !(t.code === currency || (currency === 'USD' && t.code === 'US'))) continue; // another currency
+      if (t.cents === priceCents || exempt.has(i)) continue;
       return true;
     }
   }
   return false;
+}
+
+// ---------- JSON-LD offers, read as numbers ----------
+
+function* offersIn(node, product = null) {
+  if (Array.isArray(node)) { for (const n of node) yield* offersIn(n, product); return; }
+  if (!node || typeof node !== 'object') return;
+  const types = [].concat(node['@type'] ?? []);
+  if (types.includes('Offer')) yield { offer: node, product };
+  // An AggregateOffer's lowPrice/highPrice is a range, not a price; Offers inside it still count.
+  const inside = types.includes('Product') ? node : product;
+  for (const [k, v] of Object.entries(node)) if (k !== '@type') yield* offersIn(v, inside);
+}
+
+function validAt(offer, at) {
+  const t = Date.parse(at);
+  if (!Number.isFinite(t)) return true;
+  const from = Date.parse(offer.validFrom);
+  if (Number.isFinite(from) && t < from) return false;
+  const until = String(offer.priceValidUntil ?? '');
+  const u = Date.parse(until);
+  if (Number.isFinite(u) && t >= (/^\d{4}-\d{2}-\d{2}$/.test(until) ? u + 86400000 : u + 1)) return false;
+  return true;
+}
+
+// Is this Offer a price for the purchased item, in the order's currency, valid at order time, other
+// than the signed price? An Offer applies if its SKU is the purchased one, or it has no SKU and
+// sits on the purchased product's page (not inside another Product).
+export function offerContradicts(offer, product, { sku, priceCents, currency = 'USD', at = null }) {
+  const offerSku = offer.sku ?? offer.itemOffered?.sku ?? null;
+  const applies = offerSku ? offerSku === sku : !product || product.sku === sku;
+  const cents = Math.round(Number(String(offer.price ?? '').replace(/,/g, '')) * 100);
+  const contradicts = applies && Number.isFinite(cents) && offer.priceCurrency === currency && validAt(offer, at) && cents !== priceCents;
+  return { applies, cents, contradicts };
+}
+
+// Offers whose price is never shown on the page, as findings. The signed price is on the page, so
+// the honest Offer that carries it is not hidden text.
+export function hiddenOffers(html, item) {
+  const shown = new Set(moneyTokens(visibleText(html, hiddenElements(html), false)).map((t) => t.cents));
+  const out = [];
+  for (const block of html.matchAll(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/gi)) {
+    const [obj] = jsonLdBlocks(block[0]);
+    for (const { offer, product } of offersIn(obj)) {
+      const o = offerContradicts(offer, product, item);
+      if (!Number.isFinite(o.cents) || shown.has(o.cents)) continue;
+      const text = normalize(JSON.stringify(offer, null, 2));
+      out.push({ channel: 'json-ld', method: 'JSON-LD Offer never rendered', path: 'Offer', text, textHash: sha(text), start: block.index, end: block.index + block[0].length, offer: o });
+    }
+  }
+  return out;
 }
 
 function readByModel(text, modelInputs) {
@@ -206,14 +313,16 @@ export function findingsFor(record, item) {
   const selfContained = isSelfContained(html);
   const spans = (page.spans ?? []).filter((s) => s.ok && s.subject === item.sku);
 
-  return findHidden(html).map((h) => ({
+  const at = item.at ?? record.purchase.at;
+  return [...findHidden(html), ...hiddenOffers(html, { ...item, at })].map((h) => ({
     textHash: h.textHash,
     text: h.text,
     channel: h.channel,
     method: h.method,
     concealedInReadChannel: true,
-    namesPurchasedItem: Boolean(mentionsItem(h.text, item)),
-    contradictsListing: contradictsListing(h.text, { ...item, at: item.at ?? record.purchase.at }),
+    namesPurchasedItem: h.offer ? h.offer.applies : Boolean(mentionsItem(h.text, item) || (h.productSku && h.productSku === item.sku)),
+    contradictsListing: h.offer ? h.offer.contradicts : contradictsListing(h.text, { ...item, at }),
+    addressesAgents: AGENT.test(h.text),
     inModelInput: readByModel(h.text, record.model_inputs),
     signedByMerchant: signed,
     selfContained,

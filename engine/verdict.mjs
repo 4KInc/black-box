@@ -42,11 +42,14 @@ export const FACT_KEYS = Object.freeze([
   'aiInjectionFlag',         // the LLM flagger marked agent-directed text; can only ever lead to NEEDS A HUMAN
   'unattributedHiddenText',  // hidden text the agent read that is not provably the merchant's
                              // (inside third-party-signed content, or depending on unsigned files/JS)
+  'unclassifiedAgentText',   // the merchant's own hidden text, naming the item and addressed to AI agents,
+                             // that the agent read but code did not find contradicting: a safety net, so a
+                             // reworded lie goes to a person instead of being blamed on the agent
 ]);
 
 const recordBroken = (f) => RECORD_CHECKS.some((k) => !f[k]);
 const allFive = (f) => MERCHANT_CONDITIONS.every((k) => f[k]);
-const otherSignal = (f) => f.aiInjectionFlag || f.unattributedHiddenText;
+const otherSignal = (f) => f.aiInjectionFlag || f.unattributedHiddenText || f.unclassifiedAgentText;
 
 export const RULES = Object.freeze([
   {
@@ -66,7 +69,7 @@ export const RULES = Object.freeze([
   },
   {
     n: 4, verdict: VERDICT.HUMAN,
-    why: 'There is an injection signal that code cannot attribute to the merchant.',
+    why: 'There is an injection signal that code cannot attribute to the merchant, or the merchant addressed hidden text about this item to AI agents that code cannot classify.',
     when: (f) => !recordBroken(f) && !allFive(f) && otherSignal(f),
   },
   {

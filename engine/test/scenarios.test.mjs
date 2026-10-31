@@ -16,7 +16,7 @@ const RECORD_OK = { hashesMatch: true, signaturesValid: true, keyOnShopDomain: t
 function run({ purchase, findings, aiInjectionFlag = false, record = RECORD_OK, reason }) {
   const m = checkMandate(MANDATE, purchase);
   const s = summarize(findings);
-  const v = decide({ ...record, mandateBroken: m.broken, ...s.conditions, aiInjectionFlag, unattributedHiddenText: s.unattributedHiddenText });
+  const v = decide({ ...record, mandateBroken: m.broken, ...s.conditions, aiInjectionFlag, unattributedHiddenText: s.unattributedHiddenText, unclassifiedAgentText: s.unclassifiedAgentText });
   const plan = planAction(v.verdict, reason, {
     capturedCents: purchase.totalCents, outOfScopeCents: m.outOfScopeCents,
     mandateCapCents: MANDATE.maxTotalCents, signedPriceCents: purchase.totalCents, currency: 'USD',

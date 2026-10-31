@@ -19,10 +19,11 @@ export function signedProduct(record) {
   const html = Buffer.from(page.body_b64, 'base64').toString('utf8');
   const p = jsonLdBlocks(html).find((j) => j['@type'] === 'Product');
   if (!p) return null;
+  const offer = [].concat(p.offers ?? [])[0]; // the listing's own offer comes first
   return {
     sku: p.sku, name: p.name, category: p.category,
     attributes: { color: p.color, size: p.size },
-    priceCents: toCents(p.offers?.price), currency: p.offers?.priceCurrency,
+    priceCents: toCents(offer?.price), currency: offer?.priceCurrency,
   };
 }
 
@@ -54,6 +55,7 @@ export function evaluateCase({ record, order, reason, flaggedPassages = [], enro
     ...summary.conditions,
     aiInjectionFlag,
     unattributedHiddenText: summary.unattributedHiddenText,
+    unclassifiedAgentText: summary.unclassifiedAgentText,
   };
   const verdict = decide(facts);
   const plan = planAction(verdict.verdict, reason, {

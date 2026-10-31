@@ -1,4 +1,4 @@
-// Exhaustive property test: every one of the 2^14 combinations of facts.
+// Exhaustive property test: every one of the 2^15 combinations of facts.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { decide, FACT_KEYS, RECORD_CHECKS, MERCHANT_CONDITIONS, RULES, VERDICT } from '../verdict.mjs';
@@ -18,15 +18,15 @@ function oracle(f) {
   if (!RECORD_CHECKS.every((k) => f[k])) return VERDICT.HUMAN;
   const five = MERCHANT_CONDITIONS.every((k) => f[k]);
   if (five) return f.mandateBroken ? VERDICT.MERCHANT : VERDICT.HUMAN;
-  if (f.aiInjectionFlag || f.unattributedHiddenText) return VERDICT.HUMAN;
+  if (f.aiInjectionFlag || f.unattributedHiddenText || f.unclassifiedAgentText) return VERDICT.HUMAN;
   return f.mandateBroken ? VERDICT.AGENT : VERDICT.USER;
 }
 
 const ALL = [...everyCombination()];
 
-test('the space is every combination of the 14 facts', () => {
-  assert.equal(FACT_KEYS.length, 14);
-  assert.equal(ALL.length, 16384);
+test('the space is every combination of the 15 facts', () => {
+  assert.equal(FACT_KEYS.length, 15);
+  assert.equal(ALL.length, 32768);
 });
 
 test('exactly one rule fires for every combination, and it gives the expected verdict', () => {

@@ -42,7 +42,7 @@ export function statementsFor({ record, j, hash, reason }) {
     `The agent bought "${p.name}" (SKU ${p.sku})${attrs(p.attributes) ? `, ${attrs(p.attributes)}` : ''}, listed at ${money(p.priceCents)} on the merchant's signed product page. PayPal captured ${money(captured)}.`,
     `${money(captured)} is within the ${money(m.maxTotalCents)} limit, and the item matches what the buyer asked for.`,
     `All ${pages} pages the agent read carry a valid merchant signature, made with the key published on the shop's own domain before the PayPal order was created.`,
-    !contradicting && !j.facts.unattributedHiddenText && !j.facts.aiInjectionFlag
+    !contradicting && !j.facts.unattributedHiddenText && !j.facts.unclassifiedAgentText && !j.facts.aiInjectionFlag
       ? "Nothing hidden in what the agent read stated a different price for this item or told the agent to ignore the buyer's limits."
       : null,
     decision?.reason ? `The agent's recorded reason: "${decision.reason.slice(0, 400)}"` : null,
