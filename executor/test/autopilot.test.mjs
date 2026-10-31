@@ -94,6 +94,15 @@ test('an escalated inquiry is retried with a fresh count until the evidence is s
   assert.equal(ap.status('PP-D-345'), 'executed');
 });
 
+test('a dispute held for a missing flagger is retried, and proceeds once the flagger answers', async () => {
+  const resolve = fakeResolve('held', 'held', 'executed');
+  const ap = createAutopilot({ root, execute: true, resolve, retryMs: 2 });
+  await ap.handleWithRetry('PP-D-356', 'webhook');
+  await sleep(80);
+  assert.equal(resolve.calls.length, 3);
+  assert.equal(ap.status('PP-D-356'), 'executed');
+});
+
 test('dry run is fixed when the autopilot is created', async () => {
   const resolve = fakeResolve('planned');
   await createAutopilot({ root, resolve }).handle('PP-D-555');

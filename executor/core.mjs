@@ -16,6 +16,8 @@ import { accessToken, API, paypal } from '../lib/paypal.mjs';
 import { loadRecord } from '../recorder/recorder.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { toValue } from '../engine/actions.mjs';
+import { merchantHiddenTextRead } from '../engine/findings.mjs';
+import { VERDICT } from '../engine/verdict.mjs';
 import { enrolmentFrom } from '../mandate/server.mjs';
 import { flagInjection } from '../flagger/flagger.mjs';
 import { evidenceFile, evidenceNote, statementsFor, templateNote } from '../evidence/evidence.mjs';
@@ -67,8 +69,12 @@ export function executionLog(root, disputeId) {
 //                    takes no evidence; it was escalated to a claim, and evidence follows once
 //                    PayPal offers it (try again later)
 //   'not-ours'       the disputed order carries no Black Box record
-// The flagger runs when an Anthropic key is set and FLAGGER is not "off". Without it, the verdict
-// is the code-only one (no flagged passages).
+//   'held'           the flagger gave no answer and the agent read the merchant's own hidden text
+//                    naming the item: NEEDS A HUMAN, nothing sent (try again once the flagger works)
+// The flagger runs when an Anthropic key is set and FLAGGER is not "off". It is the only check for
+// agent-directed lies code cannot classify, so it fails closed: with no flagger answer, a case
+// where the agent read the merchant's hidden text about the item is left for a person. Without
+// such text, the verdict is the code-only one (no flagged passages).
 const defaultFlag = (record) => (process.env.ANTHROPIC_API_KEY && process.env.FLAGGER !== 'off' ? flagInjection(record) : null);
 // The evidence note is worded by an AI when a key is set and NARRATOR is not "off"; otherwise, or
 // when the AI's note fails the check, it is the code-built statements themselves.
@@ -76,10 +82,12 @@ const defaultNarrate = (statements) => (process.env.ANTHROPIC_API_KEY && process
   ? evidenceNote(statements)
   : { text: templateNote(statements), source: 'template', model: null, rejected: null });
 
-export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag, narrate = defaultNarrate }) {
+export const HELD_WHY = 'flagger unavailable; merchant hidden text present';
+
+export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag, narrate = defaultNarrate, client = { paypal } }) {
   const log = executionLog(root, disputeId);
   async function must(step, method, path, json) {
-    const r = await paypal(method, path, json);
+    const r = await client.paypal(method, path, json);
     log.write({ step, source, method, path, status: r.status, debug_id: r.debugId, request: json ?? null, response: r.data });
     if (!r.ok) throw Object.assign(new Error(`${step} failed (${r.status}, debug ${r.debugId}): ${JSON.stringify(r.data).slice(0, 400)}`), { refused: true });
     return r.data;
@@ -101,8 +109,9 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
   const orderId = capture.supplementary_data?.related_ids?.order_id;
   const order = orderId ? await must('get order', 'GET', `/v2/checkout/orders/${orderId}`) : null;
 
-  // One flagger answer per record: retries and re-runs replay the logged one.
-  let flagger = log.read().findLast((e) => e.step === 'flagger' && e.custom === txn.custom)?.result ?? null;
+  // One flagger answer per record: retries and re-runs replay the logged one. A failure is logged
+  // but is not an answer, so a later run asks again.
+  let flagger = log.read().findLast((e) => e.step === 'flagger' && e.custom === txn.custom && e.result)?.result ?? null;
   if (!flagger) {
     try {
       const r = await flag(record);
@@ -112,7 +121,7 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
     }
   }
 
-  const result = evaluateCase({
+  let result = evaluateCase({
     record,
     flaggedPassages: flagger?.passages ?? [],
     order: {
@@ -125,8 +134,19 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
     reason: dispute.reason,
     enrolment: enrolmentFrom(root),
   });
+  const held = !flagger && result.findings.some(merchantHiddenTextRead);
+  if (held) {
+    log.write({ step: 'hold', source, why: HELD_WHY, codeVerdict: result.verdict, codePlan: result.plan });
+    result = {
+      ...result,
+      verdict: { ...result.verdict, verdict: VERDICT.HUMAN, rule: null, why: `Held for a person: ${HELD_WHY}. Code alone said ${result.verdict.verdict} (rule ${result.verdict.rule}), but without the flagger nothing checks this hidden text for a lie code cannot classify.` },
+      plan: { action: 'none', note: 'No automatic action while the flagger is unavailable. Left for a person.' },
+    };
+  }
   log.write({ step: 'verdict', source, verdict: result.verdict, plan: result.plan, facts: result.facts });
   const out = { ...base, record, txn, result, flagger };
+
+  if (held) return { ...out, status: 'held' };
 
   const p = result.plan;
   if (!execute || p.action === 'none') return { ...out, status: 'planned' };

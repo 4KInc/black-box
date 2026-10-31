@@ -16,6 +16,12 @@ export function merchantOwned(f) {
   return f.signedByMerchant && f.selfContained && !f.thirdPartySigned;
 }
 
+// The merchant's own hidden text, naming the item bought, that reached the model. Code may still
+// judge it honest; this only says that the text is there and is the merchant's.
+export function merchantHiddenTextRead(f) {
+  return f.concealedInReadChannel && f.inModelInput && f.namesPurchasedItem && merchantOwned(f);
+}
+
 export function conditionsFor(f) {
   return {
     concealedInReadChannel: f.concealedInReadChannel,

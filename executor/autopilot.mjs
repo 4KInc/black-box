@@ -6,6 +6,8 @@
 //   - "not ready" (PayPal does not offer the action yet) is retried later, a bounded number of times
 //   - "escalated" (an inquiry was escalated so evidence can follow) is retried the same way, with the
 //     count starting again
+//   - "held" (the flagger gave no answer, so nothing was sent) is retried like "not ready", in case
+//     the flagger is back
 // Whether it acts or only plans is fixed when it is created (execute), never per event.
 
 import { resolveDispute } from './core.mjs';
@@ -31,7 +33,7 @@ export function createAutopilot({
     report({ disputeId, source, status: out.status, verdict: out.result?.verdict?.verdict, rule: out.result?.verdict?.rule, action: out.result?.plan?.action });
     if (out.status === 'escalated') {
       tries.set(disputeId, 0);
-    } else if (out.status === 'not-ready') {
+    } else if (out.status === 'not-ready' || out.status === 'held') {
       const n = (tries.get(disputeId) ?? 0) + 1;
       tries.set(disputeId, n);
       if (n >= maxRetries) settled.set(disputeId, 'gave-up');
@@ -52,7 +54,7 @@ export function createAutopilot({
   // For a pushed event: handle now, and if PayPal is not ready yet, try again later.
   async function handleWithRetry(disputeId, source) {
     const out = await handle(disputeId, source);
-    if ((out.status === 'not-ready' || out.status === 'escalated') && !settled.has(disputeId)) {
+    if (['not-ready', 'escalated', 'held'].includes(out.status) && !settled.has(disputeId)) {
       const t = setTimeout(() => { timers.delete(t); handleWithRetry(disputeId, `${source} (retry)`); }, retryMs);
       t.unref?.();
       timers.add(t);
