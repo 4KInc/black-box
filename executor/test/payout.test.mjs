@@ -1,9 +1,9 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { payoutDue, reimburse } from '../payout.mjs';
+import { exportPayout, payoutDue, reimburse } from '../payout.mjs';
 import { executionLog } from '../core.mjs';
 
 const dispute = { step: 'get dispute', status: 200, response: { disputed_transactions: [{ seller: { merchant_id: 'MERCH1' } }] } };
@@ -36,5 +36,31 @@ test('reimburse pays the merchant by PayPal ID with the operator client, once, a
     assert.equal((await reimburse('PP-D-901', { root, client, execute: true })).status, 'nothing-due');
     assert.equal(calls.filter((c) => c.method === 'POST').length, 1);
     assert.match(readFileSync(log.path, 'utf8'), /"step":"payout"/);
+  } finally { rmSync(root, { recursive: true, force: true }); }
+});
+
+test('a logged payout is copied into the committed PayPal fixture, and nothing else changes', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'bb-payout-'));
+  try {
+    const name = 'live-agent-partial-refund';
+    const src = join(import.meta.dirname, '..', '..', 'fixtures', 'recorded', `${name}.paypal.json`);
+    const original = JSON.parse(readFileSync(src, 'utf8'));
+    mkdirSync(join(root, 'fixtures', 'recorded'), { recursive: true });
+    writeFileSync(join(root, 'fixtures', 'recorded', `${name}.paypal.json`), JSON.stringify(original));
+    const id = original.disputeId;
+    assert.equal(exportPayout(root, id, name).status, 'no-payout');
+    const log = executionLog(root, id);
+    for (const e of [dispute, verdict(true), refund(200)]) log.write(e);
+    const client = { paypal: async (method) => (method === 'POST'
+      ? { ok: true, status: 201, data: { batch_header: { payout_batch_id: 'B1', batch_status: 'PENDING' } } }
+      : { ok: true, status: 200, data: { batch_header: { payout_batch_id: 'B1', batch_status: 'SUCCESS' }, items: [{ payout_item_id: 'I1', transaction_status: 'SUCCESS' }] } }) };
+    await reimburse(id, { root, client, execute: true });
+    const out = exportPayout(root, id, name);
+    assert.equal(out.status, 'exported');
+    const after = JSON.parse(readFileSync(out.path, 'utf8'));
+    assert.deepEqual([after.payout.batchId, after.payout.status, after.payout.itemStatus, after.payout.amount.cents], ['B1', 'SUCCESS', 'SUCCESS', 9000]);
+    const { payout, ...rest } = after;
+    assert.deepEqual(rest, original);
+    assert.throws(() => exportPayout(root, 'PP-D-OTHER', name), /not PP-D-OTHER/);
   } finally { rmSync(root, { recursive: true, force: true }); }
 });

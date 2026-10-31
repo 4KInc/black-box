@@ -1,5 +1,7 @@
 // The agent operator pays the merchant back (PayPal Payouts), after an AGENT verdict was refunded.
-//   node executor/payout.mjs <dispute_id> [--execute]
+//   node executor/payout.mjs <dispute_id> [--execute] [--fixture <name>]
+//   --fixture copies the logged payout (batch id, batch and item status) into the committed
+//   fixtures/recorded/<name>.paypal.json, so the replay and the hosted site show it
 // The buyer's refund came out of the merchant's balance, but under the policy the overspend is the
 // agent operator's responsibility. This sends exactly the refunded amount from the operator's
 // PayPal account to the merchant's, once, and only when:
@@ -9,12 +11,13 @@
 // paid by its PayPal merchant ID, read from the dispute, and every call is appended to the same
 // records/executions/<dispute>.jsonl as the refund.
 
-import { existsSync, unlinkSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
 import { createPayPal } from '../lib/paypal.mjs';
 import { toValue } from '../engine/actions.mjs';
 import { executionLog } from './core.mjs';
+import { paypalFromLog } from '../replay/cases.mjs';
 
 const ok = (e) => e.status >= 200 && e.status < 300;
 
@@ -64,12 +67,25 @@ export async function reimburse(disputeId, { root, execute = false, client, sour
   return { status: 'executed', due, batchId, after: after?.data };
 }
 
+// Copies the payout logged for a dispute into its committed PayPal fixture. Nothing else in the
+// fixture changes, so the case's verdict, rule and action are as before.
+export function exportPayout(root, disputeId, name) {
+  if (!/^[a-z0-9-]+$/.test(name)) throw new TypeError(`not a fixture name: ${name}`);
+  const path = join(root, 'fixtures', 'recorded', `${name}.paypal.json`);
+  const fixture = JSON.parse(readFileSync(path, 'utf8'));
+  if (fixture.disputeId !== disputeId) throw new Error(`${name}.paypal.json is dispute ${fixture.disputeId}, not ${disputeId}`);
+  const payout = paypalFromLog(executionLog(root, disputeId).read())?.payout;
+  if (!payout) return { status: 'no-payout' };
+  writeFileSync(path, JSON.stringify({ ...fixture, payout }, null, 2) + '\n');
+  return { status: 'exported', path, payout };
+}
+
 if (import.meta.main) {
   const ROOT = join(import.meta.dirname, '..');
   const { readEnv } = await import('../lib/env.mjs');
-  const { values, positionals } = parseArgs({ allowPositionals: true, options: { execute: { type: 'boolean', default: false } } });
+  const { values, positionals } = parseArgs({ allowPositionals: true, options: { execute: { type: 'boolean', default: false }, fixture: { type: 'string' } } });
   const [disputeId] = positionals;
-  if (!disputeId) { console.error('usage: node executor/payout.mjs <dispute_id> [--execute]'); process.exit(2); }
+  if (!disputeId) { console.error('usage: node executor/payout.mjs <dispute_id> [--execute] [--fixture <name>]'); process.exit(2); }
   // The operator's credentials, kept apart from the merchant's.
   const envPath = join(ROOT, 'operator', '.env');
   if (!existsSync(envPath)) { console.error('operator/.env is missing (PAYPAL_CLIENT_ID and PAYPAL_CLIENT_SECRET of the operator\'s sandbox app)'); process.exit(2); }
@@ -77,5 +93,9 @@ if (import.meta.main) {
   const client = createPayPal({ id: operator.PAYPAL_CLIENT_ID, secret: operator.PAYPAL_CLIENT_SECRET });
   const out = await reimburse(disputeId, { root: ROOT, execute: values.execute, client });
   if (out.status === 'nothing-due') console.log(`nothing to pay: ${out.why}`);
-  else console.log(`${out.status}  operator → merchant ${out.due.merchantId}  ${out.due.currency} ${toValue(out.due.amountCents)}${out.batchId ? `  batch ${out.batchId}  ${out.after?.batch_header?.batch_status ?? ''}` : ''}${out.status === 'planned' ? '\n(dry run: add --execute to send it)' : ''}${out.response ? `\n${JSON.stringify(out.response).slice(0, 400)}` : ''}`);
+  else console.log(`${out.status}  operator → merchant ${out.due.merchantId}  ${out.due.currency} ${toValue(out.due.amountCents)}${out.batchId ? `  batch ${out.batchId}  ${out.after?.batch_header?.batch_status ?? ''}  item ${out.after?.items?.[0]?.transaction_status ?? '?'}` : ''}${out.status === 'planned' ? '\n(dry run: add --execute to send it)' : ''}${out.response ? `\n${JSON.stringify(out.response).slice(0, 400)}` : ''}`);
+  if (values.fixture) {
+    const ex = exportPayout(ROOT, disputeId, values.fixture);
+    console.log(ex.status === 'exported' ? `fixture    ${ex.path}  (batch ${ex.payout.batchId}, item ${ex.payout.itemStatus ?? '?'})` : 'fixture    no payout logged for this dispute yet; nothing exported');
+  }
 }

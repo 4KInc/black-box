@@ -449,7 +449,7 @@ ${p.executed ? `<div class="amt">${credit ? money(credit.amount.cents, credit.am
 ${p.escalated ? `<span>escalated</span><b>${time(p.escalated.at)}</b>` : ''}
 ${p.executed ? `<span>action</span><b>${esc(p.executed.action)} · HTTP ${esc(p.executed.httpStatus)}</b><span>at</span><b>${time(p.executed.at)}</b>` : ''}
 ${refund ? `<span>refund</span><b>${esc(refund.id)}</b>` : ''}
-${p.payout ? `<span>payout</span><b>${money(p.payout.amount?.cents)} operator → merchant · ${esc(p.payout.batchId)}</b>` : ''}
+${p.payout ? `<span>payout</span><b>${money(p.payout.amount?.cents)} operator → merchant · batch ${esc(p.payout.batchId)} ${esc(p.payout.status ?? '')}${p.payout.itemStatus ? ` · item ${esc(p.payout.itemStatus)}` : ''}</b>` : ''}
 ${p.trigger ? `<span>trigger</span><b>${esc(p.trigger)}</b>` : ''}
 ${p.after?.outcome ? `<span>closed</span><b>${esc(p.after.outcome.code)}${p.after.outcome.reason ? ` · ${esc(p.after.outcome.reason)}` : ''}</b>` : ''}</div>`;
 }
@@ -468,7 +468,7 @@ function tape(c, j) {
     if (p.escalated) items.push([p.escalated.at, 'Escalate', 'The dispute was an inquiry, where PayPal takes no evidence: Black Box escalated it to a claim']);
     if (p.executed) items.push([p.executed.at, 'Verdict', `<b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}), Black Box sent <span class="mono">${esc(p.executed.action)}</span>`, true]);
     for (const m of p.after?.moneyMovements ?? []) items.push([p.executed?.at, 'Money', `${esc(m.party)} ${esc(m.type)} ${money(m.amount?.cents)} <span class="k">${esc(m.reason)}</span>`]);
-    if (p.payout) items.push([p.payout.at, 'Payout', `The agent operator paid the merchant ${money(p.payout.amount?.cents)} back through PayPal Payouts <span class="k mono">batch ${esc(p.payout.batchId)} · ${esc(p.payout.status)}</span>`, true]);
+    if (p.payout) items.push([p.payout.at, 'Payout', `The agent operator paid the merchant ${money(p.payout.amount?.cents)} back through PayPal Payouts <span class="k mono">batch ${esc(p.payout.batchId)} · ${esc(p.payout.status)}${p.payout.itemStatus ? ` · item ${esc(p.payout.itemStatus)}` : ''}</span>`, true]);
     if (p.after?.outcome) items.push([p.after.updatedAt, 'Closed', `<b>${esc(p.after.outcome.code)}</b> ${esc(p.after.outcome.reason ?? '')}${p.after.outcome.refunded ? `, ${money(p.after.outcome.refunded.cents)} refunded` : ''}`, true]);
   }
   return `<ol class="tape">${items.map(([at, ev, h, hot]) => `<li${hot ? ' class="hot"' : ''}><span class="t" title="${time(at)}">${clock(at)}</span><span class="ev">${ev}</span><span>${h}</span></li>`).join('')}</ol>`;

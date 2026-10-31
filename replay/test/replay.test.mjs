@@ -1,11 +1,13 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { paypalFromLog } from '../cases.mjs';
 import { highlight } from '../page.mjs';
 import { createReplay } from '../server.mjs';
+import { recordHash } from '../../recorder/recorder.mjs';
+import { runBench } from '../../bench/bench.mjs';
 
 const REPO = join(import.meta.dirname, '..', '..');
 const LIVE = '61c79d751ce7311d6eeca9bcf83079ddeb7f7f354a13b4c2fcc29673f3fe8a8e';
@@ -93,4 +95,23 @@ test('the recorded page is served sandboxed, and unknown cases are 404', async (
 test('a fixture with third-party hidden text is NEEDS A HUMAN', async () => {
   const html = await (await fetch(base + '/')).text();
   assert.match(html, /<span class="vv">NEEDS A HUMAN<\/span><span class="rl">rule 4/);
+});
+
+test('an exported live payout shows on the AGENT case it repaid, and its verdict stays the same', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'replay-payout-'));
+  cpSync(join(REPO, 'fixtures'), join(dir, 'fixtures'), { recursive: true });
+  const side = join(dir, 'fixtures', 'recorded', 'live-agent-partial-refund.paypal.json');
+  const payout = { at: '2026-11-01T12:00:00Z', httpStatus: 201, debugId: 'd1', batchId: 'BATCH123', status: 'SUCCESS', itemId: 'ITEM1', itemStatus: 'SUCCESS',
+    amount: { cents: 9000, currency: 'USD' }, from: 'agent-operator', to: 'MCYKQUXGB936U' };
+  writeFileSync(side, JSON.stringify({ ...JSON.parse(readFileSync(side, 'utf8')), payout }));
+  const hash = recordHash(JSON.parse(readFileSync(join(dir, 'fixtures', 'recorded', 'live-agent-partial-refund.record.json'), 'utf8')));
+  const s = createReplay({ root: dir });
+  await new Promise((r) => s.listen(0, '127.0.0.1', r));
+  try {
+    const html = await (await fetch(`http://127.0.0.1:${s.address().port}/case/${hash}`)).text();
+    assert.match(html, /operator → merchant · batch BATCH123 SUCCESS · item SUCCESS/);
+    assert.match(html, /paid the merchant \$90\.00 back through PayPal Payouts/);
+    const p06 = runBench(dir).find((r) => r.def.id === 'P06');
+    assert.deepEqual([p06.pass, p06.got.verdict, p06.got.rule, p06.got.action, p06.got.refundCents], [true, 'AGENT', 5, 'accept-claim-partial', 9000]);
+  } finally { s.close(); rmSync(dir, { recursive: true, force: true }); }
 });

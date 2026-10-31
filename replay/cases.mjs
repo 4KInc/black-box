@@ -46,6 +46,8 @@ export function paypalFromLog(entries) {
       at: payout.at, httpStatus: payout.status, debugId: payout.debug_id ?? null,
       batchId: payout.response?.batch_header?.payout_batch_id ?? null,
       status: payoutAfter?.batch_header?.batch_status ?? payout.response?.batch_header?.batch_status ?? null,
+      itemId: payoutAfter?.items?.[0]?.payout_item_id ?? null,
+      itemStatus: payoutAfter?.items?.[0]?.transaction_status ?? null,
       amount: amount({ value: payout.request.items[0].amount.value, currency_code: payout.request.items[0].amount.currency }),
       from: 'agent-operator', to: payout.request.items[0].receiver,
     } : null,
