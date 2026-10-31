@@ -196,8 +196,8 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 177 tests
-npm run bench               # 55 cases: every verdict and rule, six live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
+npm test                    # 179 tests
+npm run bench               # 57 cases: every verdict and rule, six live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
 
@@ -241,7 +241,7 @@ variable `LAB_URL` holds its address, and the Pages build links the lab from the
 | `executor/` | dispute → record → verdict → PayPal action; webhook receiver, watcher, autopilot |
 | `replay/` | the replay UI (no scripts; recorded pages sandboxed) |
 | `lab/` | the live lab (tamper with a case, or set facts by hand) and the hosted entry point |
-| `bench/` | 55 cases, each with its expected verdict, rule, PayPal action and failing checks |
+| `bench/` | 57 cases, each with its expected verdict, rule, PayPal action and failing checks |
 | `study/` | the susceptibility study: runner, methods, limitations |
 | `site/` | static export for GitHub Pages |
 | `fixtures/` | recorded runs, live PayPal outcomes, the study |

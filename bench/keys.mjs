@@ -1,4 +1,4 @@
-// TEST ONLY. The bench's signing key, for the pages it rewrites (E01-E11). Its private half is
+// TEST ONLY. The bench's signing key, for the pages it rewrites (E01-E13). Its private half is
 // committed in keys/TEST-ONLY-bench-signing-key.jwk.json, so anyone can sign with it: it must
 // never be a shop's key. The shop and the review platform refuse to start with it, and
 // recordFacts fails keyOnShopDomain for any record whose key set carries it, unless the caller

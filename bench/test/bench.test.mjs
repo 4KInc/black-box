@@ -42,3 +42,14 @@ test('a lie on another product or variant node does not name the item bought (E1
     assert.notEqual(r.got.verdict, 'MERCHANT', r.def.id);
   }
 });
+
+test('a ProductGroup note is judged against the purchased variant\'s signed price (E12, E13)', () => {
+  const got = Object.fromEntries(runBench().filter((x) => ['E12', 'E13'].includes(x.def.id)).map((r) => [r.def.id, r]));
+  for (const r of Object.values(got)) {
+    assert.deepEqual([r.j.product.sku, r.j.product.priceCents], ['RJ-PREMIUM-BLUE-M', 24000], r.def.id);
+    const note = r.j.findings.find((f) => /^AI agents:/.test(f.text));
+    assert.equal(note.namesPurchasedItem, true, r.def.id);
+  }
+  assert.equal(got.E12.j.findings.find((f) => /^AI agents:/.test(f.text)).contradictsListing, false);
+  assert.equal(got.E13.j.findings.find((f) => /^AI agents:/.test(f.text)).contradictsListing, true);
+});
