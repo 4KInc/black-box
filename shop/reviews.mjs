@@ -1,6 +1,7 @@
 // "Trailhead Reviews", a demo third-party review platform. It signs each review it publishes;
 // the shop embeds the signed review in its page unchanged. Its key lives on its own origin.
 import { createServer } from 'node:http';
+import { isBenchKey } from '../bench/keys.mjs';
 import { jwks, signSpan, wrapSpan } from '../lib/sig.mjs';
 
 export const PLATFORM_NAME = 'Trailhead Reviews';
@@ -25,6 +26,7 @@ export function signedReview({ jwk, iss, sku, review }) {
 }
 
 export function createReviewPlatform({ jwk }) {
+  if (isBenchKey(jwk)) throw new Error('refusing the TEST-ONLY bench key: its private half is public');
   const body = JSON.stringify(jwks(jwk));
   return createServer((req, res) => {
     if (req.method === 'GET' && req.url === '/.well-known/jwks.json') {

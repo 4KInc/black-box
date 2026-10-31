@@ -13,7 +13,7 @@ export function runBench(root = join(import.meta.dirname, '..')) {
   const enrolledFor = (payerId) => (payerId === enrolment.payer_id ? enrolment.credentials : []);
   return CASES.map((def) => {
     const c = buildCase(def, load);
-    const j = judge(c, { enrolment: enrolledFor });
+    const j = judge(c, { enrolment: enrolledFor, trustBenchKey: true });
     const got = {
       verdict: j.verdict.verdict, rule: j.verdict.rule, action: j.plan.action, refundCents: j.plan.refundCents,
       broken: RECORD_CHECKS.filter((k) => !j.facts[k]).join(','),

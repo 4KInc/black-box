@@ -7,11 +7,11 @@
 // the verdict, rule and PayPal action that code must produce. Attacks also name exactly which
 // record checks must fail, so an attack cannot pass for the wrong reason.
 
-import { createPrivateKey } from 'node:crypto';
 import { recordHash } from '../recorder/recorder.mjs';
 import { softPasskey } from '../lib/testing/passkey.mjs';
 import { jsonLdBlocks, pageForModel } from '../lib/channels.mjs';
 import { jwks, sha256hex, signResponse } from '../lib/sig.mjs';
+import { loadBenchKey } from './keys.mjs';
 
 const NAD = 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED';
 const UNAUTH = 'UNAUTHORISED';
@@ -29,14 +29,13 @@ export const ENROLMENT = 'passkey-enrolment.json';
 const AFTER_CUTOFF = '2026-10-16T00:00:00Z';
 
 // ---- rewritten pages (the evasion cases) ----
-// A fixed Ed25519 key, added to the shop's published key set in the copied record only. It lets a
-// bench case show the merchant serving a different signed page without a new recorded run.
-const BENCH_KEY = createPrivateKey({ key: Buffer.concat([Buffer.from('302e020100300506032b657004220420', 'hex'), Buffer.alloc(32, 7)]), format: 'der', type: 'pkcs8' }).export({ format: 'jwk' });
-
 // Replaces the purchased page with edit(html), signed as the shop would sign it (same `created`
 // time), and updates the model input to what the agent would then have read. The agent's recorded
-// choice and reason stay as they were.
+// choice and reason stay as they were. The signature is made with the TEST-ONLY bench key
+// (bench/keys.mjs), added to the key set in this copied record only, so only a judge that is told
+// it is running the bench (trustBenchKey) accepts these pages.
 function rewritePage(r, edit) {
+  const BENCH_KEY = loadBenchKey();
   const p = purchasedPage(r);
   const before = Buffer.from(p.body_b64, 'base64').toString('utf8');
   const html = edit(before);

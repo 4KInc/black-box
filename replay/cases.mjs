@@ -101,7 +101,8 @@ const signedMerchantId = (record) => {
 // The verdict, exactly as the executor computes it. Without a dispute, the PayPal side is assumed
 // to be the honest one (custom_id = record hash, payee = the signed merchant, captured = the price,
 // payer = whoever enrolled the passkey that approved the mandate).
-export function judge({ hash, record, paypal }, { root, enrolment } = {}) {
+// trustBenchKey: only for case-bench cases (bench/cases.mjs), whose rewritten pages carry the TEST-ONLY key.
+export function judge({ hash, record, paypal }, { root, enrolment, trustBenchKey = false } = {}) {
   const preview = !paypal;
   const order = preview
     ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents,
@@ -109,7 +110,7 @@ export function judge({ hash, record, paypal }, { root, enrolment } = {}) {
     : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents, payerId: paypal.payerId ?? null };
   const reason = paypal?.reason ?? DEFAULT_REASON;
   const flaggedPassages = paypal?.flagger?.passages ?? [];
-  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, flaggedPassages, enrolment: enrolment ?? (root ? enrolmentFrom(root) : undefined) }) };
+  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, flaggedPassages, enrolment: enrolment ?? (root ? enrolmentFrom(root) : undefined), trustBenchKey }) };
 }
 
 // The most recent study for each setup (fixtures/study/study-<date>[-<setup>].json), jackets

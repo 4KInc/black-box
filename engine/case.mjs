@@ -29,8 +29,8 @@ export function signedProduct(record) {
 
 // order = { customId, payeeMerchantId, createdAt, capturedCents, payerId } from PayPal.
 // flaggedPassages = the flagger's grounded quotes ([{ quote, reason }]), or [] when it did not run.
-export function evaluateCase({ record, order, reason, flaggedPassages = [], enrolment }) {
-  const integrity = recordFacts(record, order, { enrolment });
+export function evaluateCase({ record, order, reason, flaggedPassages = [], enrolment, trustBenchKey = false }) {
+  const integrity = recordFacts(record, order, { enrolment, trustBenchKey });
   const product = signedProduct(record);
   const page = record.fetches[record.purchase.page_index];
 

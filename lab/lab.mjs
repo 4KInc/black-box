@@ -72,9 +72,9 @@ export function runLab(root, query) {
   if (chosen.length) { delete changed.paypal.executed; delete changed.paypal.after; }
   return {
     base, reason, chosen, before, noEffect,
-    was: judge(original, { enrolment }),
+    was: judge(original, { enrolment, trustBenchKey: true }),
     c: changed,
-    j: judge(changed, { enrolment }),
+    j: judge(changed, { enrolment, trustBenchKey: true }),
   };
 }
 

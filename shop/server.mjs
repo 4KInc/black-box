@@ -2,6 +2,7 @@
 // Checkout creates the PayPal order itself and puts the agent's record hash in custom_id,
 // using the signed price from the catalog, never a price sent by the client.
 import { createServer } from 'node:http';
+import { isBenchKey } from '../bench/keys.mjs';
 import { jwks, signResponse } from '../lib/sig.mjs';
 import { paypal } from '../lib/paypal.mjs';
 import { CATALOGS, LEGIT_PRICE_DATA } from './catalog.mjs';
@@ -16,6 +17,7 @@ const RECORD_HASH = /^[0-9a-f]{64}$/;
 export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true, extraData = null, catalog: catalogKey = 'outdoor' }) {
   const catalog = CATALOGS[catalogKey];
   if (!catalog) throw new Error(`unknown catalog ${catalogKey}`);
+  if (isBenchKey(shopJwk) || isBenchKey(reviewsJwk)) throw new Error('refusing the TEST-ONLY bench key: its private half is public');
   const SHOP_NAME = catalog.name;
   const base = injections ? catalog.products : catalog.products.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
   // One accurate-but-different price statement (catalog LEGIT_PRICE_DATA) on the Summit Pro Shell.

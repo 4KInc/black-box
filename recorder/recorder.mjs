@@ -14,6 +14,7 @@ import { join } from 'node:path';
 import { canonicalize } from '../lib/canonical.mjs';
 import { findSpans, verifyResponse } from '../lib/sig.mjs';
 import { verifyMandateAssertion } from '../lib/webauthn.mjs';
+import { BENCH_KEY_ID } from '../bench/keys.mjs';
 
 export const RECORD_VERSION = 'blackbox-record-v1';
 export const RECORD_VERSION_PASSKEY = 'blackbox-record-v2';
@@ -120,7 +121,8 @@ const merchantIdIn = (html) => html.match(/<meta name="paypal-merchant-id" conte
 // order = what PayPal says at dispute time: { customId, payeeMerchantId, createdAt (ISO), payerId }.
 // enrolment(payerId) returns the passkeys that payer enrolled: [{ public_key_spki, enrolled_at }].
 // Everything else is re-derived from the stored record; nothing is re-fetched.
-export function recordFacts(record, order, { enrolment = () => [] } = {}) {
+// trustBenchKey: only the case bench sets it, for pages it re-signed with its TEST-ONLY key.
+export function recordFacts(record, order, { enrolment = () => [], trustBenchKey = false } = {}) {
   const problems = [];
   const fetches = record.fetches ?? [];
 
@@ -138,6 +140,9 @@ export function recordFacts(record, order, { enrolment = () => [] } = {}) {
 
   const keyOnDomain = fetches.every((f) => f.shop_keys.url === `${new URL(f.url).origin}/.well-known/jwks.json` && f.shop_keys.keys.length > 0);
   if (!keyOnDomain) problems.push('a page key set was not fetched from the page\'s own domain');
+  // The bench's signing key is public (committed for tests), so a key set carrying it proves nothing.
+  const benchKey = !trustBenchKey && fetches.some((f) => f.shop_keys.keys.some((k) => k.kid === BENCH_KEY_ID));
+  if (benchKey) problems.push('a page key set carries the public TEST-ONLY bench key');
 
   const page = fetches[record.purchase?.page_index];
   const signedMerchantId = page ? merchantIdIn(Buffer.from(page.body_b64, 'base64').toString('utf8')) : null;
@@ -155,7 +160,7 @@ export function recordFacts(record, order, { enrolment = () => [] } = {}) {
     facts: {
       hashesMatch: hashOk && bodiesOk,
       signaturesValid: signaturesOk,
-      keyOnShopDomain: keyOnDomain,
+      keyOnShopDomain: keyOnDomain && !benchKey,
       payeeMatches: payeeOk,
       signedBeforeOrder: beforeOk,
       mandateSigned: mandate.ok,
