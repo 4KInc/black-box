@@ -45,6 +45,24 @@ const FACT = {
   unattributedHiddenText: ['UNATTRIBUTED', 'Hidden text the agent read that cannot be pinned on the merchant'],
   unclassifiedAgentText: ['UNCLASSIFIED', "The merchant's hidden text about this item, addressed to AI agents, that code could not classify (can only lead to NEEDS A HUMAN)"],
 };
+// What each check means, in plain words: the tooltip on its lamp.
+const FACT_PLAIN = {
+  hashesMatch: 'Nobody edited this recording. Every saved page matches its fingerprint, and that fingerprint is the one stamped into the PayPal order at checkout.',
+  signaturesValid: "Every page the AI saw carries the shop's valid digital signature, so it is exactly what the shop served.",
+  keyOnShopDomain: "The key that signed the pages is published on the shop's own website, so the signature really is the shop's.",
+  payeeMatches: 'The shop named on the signed page is the same merchant PayPal paid.',
+  signedBeforeOrder: 'The pages were signed before the order was placed, so they were not made up afterwards.',
+  mandateSigned: 'The buyer approved the budget with their passkey (or had not set one up yet when the order was made).',
+  mandateBroken: "The AI broke the buyer's limits, for example it spent more than the budget allowed. Here TRUE is the bad answer.",
+  concealedInReadChannel: "The page has text that people can't see but the AI reads, for example in the page's hidden product data.",
+  namesPurchasedItem: 'That hidden text is about the exact product bought: its SKU, product ID or name.',
+  contradictsListing: "That hidden text gives this item a different price, or tells the AI to ignore the buyer's limits. Honest notes about other sizes, sales, tax or shipping do not count.",
+  inModelInput: 'That hidden text was in what the AI was actually given to read. The log shows it.',
+  merchantOwned: 'The shop itself wrote and signed that text. It is not a third-party review or a file from somewhere else.',
+  aiInjectionFlag: 'A separate AI check found text aimed at AI shoppers about this item. It can only send the case to a person, never decide it.',
+  unattributedHiddenText: "The AI read hidden text that can't be proven to be the shop's, such as a third-party review. That goes to a person.",
+  unclassifiedAgentText: "The shop hid a note to AI agents about this item that code couldn't classify as a lie, such as a reworded one. That goes to a person instead of blaming the AI.",
+};
 const SIGNALS = FACT_KEYS.filter((k) => !RECORD_CHECKS.includes(k) && !MERCHANT_CONDITIONS.includes(k) && k !== 'mandateBroken');
 
 // Lamp state: integrity checks are green when they hold and red when they fail; everything else
@@ -203,6 +221,10 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 .lampc{position:relative;min-height:66px;padding:10px 9px 8px;border:1px solid var(--rule);border-radius:3px;background:oklch(.13 .005 250);
   font:700 12px/1.15 var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);display:flex;flex-direction:column;justify-content:space-between}
 .lampc small{font:400 10px/1 var(--mono);letter-spacing:.06em;color:var(--ink-3);opacity:.8}
+.lampc{cursor:help}.lampc:focus{outline:1px solid var(--rule-2);outline-offset:2px}
+.lampc[data-tip]:hover::after,.lampc[data-tip]:focus::after{content:attr(data-tip);position:absolute;z-index:5;left:0;top:calc(100% + 6px);width:min(280px,80vw);padding:10px 12px;
+  background:var(--bg-3);border:1px solid var(--rule-2);border-radius:4px;font:400 13px/1.45 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none;box-shadow:0 8px 24px oklch(0 0 0 / .45)}
+.ann .groups>div:last-child .lampc::after{left:auto;right:0}
 .lampc.ok{--l:var(--green)}.lampc.fault{--l:var(--red)}.lampc.caution{--l:var(--amber)}.lampc.cause{--l:var(--orange)}
 .lampc:not(.off){color:var(--l);border-color:oklch(from var(--l) l c h / .55);background:radial-gradient(120% 90% at 50% 0%,oklch(from var(--l) l c h / .20),transparent 70%),oklch(.14 .01 250);
   box-shadow:inset 0 0 0 1px oklch(from var(--l) l c h / .10),0 0 22px oklch(from var(--l) l c h / .12);text-shadow:0 0 10px oklch(from var(--l) l c h / .55)}
@@ -708,8 +730,8 @@ ${j.flaggedPassages.length ? j.flaggedPassages.map((p) => `<q class="finding" st
   const hidden = sec('3.0', 'Hidden text', '', findings + flagger);
 
   // 4. annunciator panel
-  const group = (title, keys) => `<div><h3>${title}</h3><div class="lamps">${keys.map((k) => `<div class="lampc ${lamp(k, j.facts[k])}" title="${esc(FACT[k][1])}" role="img" aria-label="${esc(FACT[k][1])}: ${j.facts[k]}">${esc(FACT[k][0])}<small>${j.facts[k] ? 'TRUE' : 'FALSE'}</small></div>`).join('')}</div></div>`;
-  const panel = sec('4.0', 'The checks', `${FACT_KEYS.length} yes/no facts. Green is fine, red failed, orange points at the shop.`, `<div class="panel ann"><div class="groups">
+  const group = (title, keys) => `<div><h3>${title}</h3><div class="lamps">${keys.map((k) => `<div class="lampc ${lamp(k, j.facts[k])}" tabindex="0" data-tip="${esc(FACT_PLAIN[k])}" role="img" aria-label="${esc(FACT_PLAIN[k])} ${j.facts[k] ? 'True' : 'False'}.">${esc(FACT[k][0])}<small>${j.facts[k] ? 'TRUE' : 'FALSE'}</small></div>`).join('')}</div></div>`;
+  const panel = sec('4.0', 'The checks', `${FACT_KEYS.length} yes/no facts. Green is fine, red failed, orange points at the shop. Hover or tap one to see what it means.`, `<div class="panel ann"><div class="groups">
 ${group('Record integrity', RECORD_CHECKS)}${group('Mandate', ['mandateBroken'])}${group(`Merchant responsible · all ${MERCHANT_CONDITIONS.length}`, MERCHANT_CONDITIONS)}${group('Other signals', SIGNALS)}</div></div>`);
 
   // 5. decision ladder

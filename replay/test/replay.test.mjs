@@ -82,6 +82,15 @@ test('a case explains itself in plain words, from the case\'s own facts', async 
   assert.match(html, /\$240\.00 refunded/);
 });
 
+test('every check lamp has a plain-word tooltip', async () => {
+  const html = await (await fetch(`${base}/case/${LIVE}`)).text();
+  const tips = [...html.matchAll(/<div class="lampc [^"]*" tabindex="0" data-tip="([^"]+)"/g)].map((m) => m[1]);
+  assert.equal(tips.length, 15);
+  assert.equal(new Set(tips).size, 15);
+  assert.ok(tips.some((t) => t.startsWith('Nobody edited this recording.')));
+  assert.doesNotMatch(html, /class="lampc[^>]*title=/);
+});
+
 test('fonts are served from the replay itself, and only known font files', async () => {
   const r = await fetch(`${base}/fonts/B612-400.woff2`);
   assert.equal(r.status, 200);
