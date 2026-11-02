@@ -10,6 +10,9 @@ import { pollOnce } from '../watch.mjs';
 
 const root = mkdtempSync(join(tmpdir(), 'autopilot-'));
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+// Waits until check() is true (or gives up after timeoutMs), instead of a fixed sleep that a slow
+// machine can outrun.
+const until = async (check, timeoutMs = 2000) => { const end = Date.now() + timeoutMs; while (!check() && Date.now() < end) await sleep(5); };
 
 // A stand-in for core.resolveDispute that returns scripted outcomes and counts calls.
 function fakeResolve(...outcomes) {
@@ -123,9 +126,22 @@ test('a pushed event for a held dispute schedules one retry per step, however of
   await ap.handleWithRetry('PP-D-357', 'webhook');
   await ap.handleWithRetry('PP-D-357', 'webhook');      // a redelivery during the hold
   await ap.handleWithRetry('PP-D-357', 'watcher');
-  await sleep(120);
+  await until(() => ap.status('PP-D-357') === 'executed');
+  await sleep(60);                                       // time for any extra retry to fire, if one were scheduled
   assert.equal(resolve.calls.length, 3);
   assert.equal(ap.status('PP-D-357'), 'executed');
+});
+
+test('a scheduled retry of a held dispute runs even if its timer fires before the hold ends by the clock', async () => {
+  // A frozen clock: by Date.now() every hold is still running. A timer can fire a little early,
+  // and a retry must not mistake itself for a duplicate trigger, or the retries stop.
+  const resolve = fakeResolve('held', 'held', 'executed');
+  const ap = createAutopilot({ root, execute: true, resolve, heldBaseMs: 10, heldMaxMs: 20, now: () => 0 });
+  await ap.handleWithRetry('PP-D-358', 'webhook');
+  await ap.handleWithRetry('PP-D-358', 'webhook');      // a redelivery during the hold is still ignored
+  await until(() => ap.status('PP-D-358') === 'executed');
+  assert.equal(resolve.calls.length, 3);
+  assert.equal(ap.status('PP-D-358'), 'executed');
 });
 
 test('at startup, acting without a flagger prints a warning that MERCHANT-type cases will be held', () => {

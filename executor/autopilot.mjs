@@ -36,10 +36,12 @@ export function createAutopilot({
   const held = new Map();     // disputeId -> { n: holds so far, until: time of the next attempt }
   const timers = new Set();
 
-  async function run(disputeId, source) {
+  // retry: this is the retry scheduled for a hold, so it runs even if its timer fired a moment
+  // before the hold's end by the clock; only other triggers during a hold are answered from cache.
+  async function run(disputeId, source, { retry = false } = {}) {
     if (settled.has(disputeId)) return { disputeId, status: settled.get(disputeId), cached: true };
     const h = held.get(disputeId);
-    if (h && now() < h.until) return { disputeId, status: 'held', cached: true, retryAt: h.until };
+    if (h && !retry && now() < h.until) return { disputeId, status: 'held', cached: true, retryAt: h.until };
     let out;
     try {
       out = await resolve(disputeId, { root, execute, source });
@@ -69,20 +71,20 @@ export function createAutopilot({
   }
 
   // Serialises calls per dispute, so a webhook and the watcher can never act on it together.
-  function handle(disputeId, source = 'event') {
+  function handle(disputeId, source = 'event', opts = {}) {
     const prev = queue.get(disputeId) ?? Promise.resolve();
-    const next = prev.then(() => run(disputeId, source));
+    const next = prev.then(() => run(disputeId, source, opts));
     queue.set(disputeId, next.finally(() => { if (queue.get(disputeId) === next) queue.delete(disputeId); }));
     return next;
   }
 
   // For a pushed event: handle now, and if PayPal is not ready yet, try again later.
-  async function handleWithRetry(disputeId, source) {
-    const out = await handle(disputeId, source);
+  async function handleWithRetry(disputeId, source, { retry = false } = {}) {
+    const out = await handle(disputeId, source, { retry });
     if (out.status === 'held' && out.cached) return out; // a retry for it is already scheduled
     if (['not-ready', 'escalated', 'held'].includes(out.status) && !settled.has(disputeId)) {
       const wait = out.status === 'held' ? out.retryInMs : retryMs;
-      const t = setTimeout(() => { timers.delete(t); handleWithRetry(disputeId, `${source} (retry)`); }, wait);
+      const t = setTimeout(() => { timers.delete(t); handleWithRetry(disputeId, `${source} (retry)`, { retry: out.status === 'held' }); }, wait);
       t.unref?.();
       timers.add(t);
     }
