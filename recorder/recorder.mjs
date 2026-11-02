@@ -167,6 +167,7 @@ export function recordFacts(record, order, { enrolment = () => [], trustBenchKey
     },
     mandate,
     signedMerchantId,
+    pagesValid: reverified.map((v) => v.ok),
     problems,
   };
 }

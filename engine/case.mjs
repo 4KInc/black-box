@@ -66,5 +66,5 @@ export function evaluateCase({ record, order, reason, flaggedPassages = [], enro
     signedPriceCents: product?.priceCents ?? order.capturedCents,
   });
 
-  return { verdict, plan, facts, mandate, findings, product, integrityProblems: integrity.problems, mandateAuth: integrity.mandate, flaggedPassages: flagged };
+  return { verdict, plan, facts, mandate, findings, product, integrityProblems: integrity.problems, pagesValid: integrity.pagesValid, mandateAuth: integrity.mandate, flaggedPassages: flagged };
 }

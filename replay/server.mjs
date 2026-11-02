@@ -9,7 +9,7 @@ import { judge, loadCases } from './cases.mjs';
 import { runBench } from '../bench/bench.mjs';
 import { benchPage, casePage, indexPage, pageHtml, siteIntro, studyPage } from './page.mjs';
 import { latestStudies } from './cases.mjs';
-import { factsPage, labPage, labResult } from '../lab/lab.mjs';
+import { factsPage, labPage, labResult, runLab } from '../lab/lab.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const PORT = Number(process.env.PORT ?? process.env.REPLAY_PORT ?? 4030);
@@ -47,6 +47,7 @@ export function createReplay({ root = ROOT, intro = '' } = {}) {
       if (pathname === '/') return send(200, indexPage(loadCases(root).map((c) => ({ c, j: judge(c, { root }) })), { intro }));
       if (pathname === '/lab') return send(200, labPage());
       if (pathname === '/lab/run') return send(200, labResult(root, searchParams));
+      if (pathname === '/lab/page') { res.writeHead(200, RECORDED); return res.end(pageHtml(runLab(root, searchParams).c.record)); }
       if (pathname === '/lab/facts') return send(200, factsPage(searchParams));
       if (pathname === '/bench') return send(200, benchPage(runBench(root)));
       if (pathname === '/study') { const st = latestStudies(root); return st.length ? send(200, studyPage(st)) : send(404, 'No study yet: node study/run.mjs'); }

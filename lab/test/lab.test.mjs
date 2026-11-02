@@ -52,3 +52,27 @@ test('the facts page applies the six rules to the facts as ticked', () => {
   assert.match(factsPage(new URLSearchParams()), /<h1>USER <em>· rule 6/);
   assert.match(factsPage(new URLSearchParams('set=1&on=hashesMatch')), /<h1>NEEDS A HUMAN <em>· rule 1/);
 });
+
+test('a lab run reads true: its own page preview, re-checked signatures, the cause only, under Lab', async () => {
+  const html = labResult(ROOT, new URLSearchParams('case=R01&t=edit-page'));
+  assert.match(html, /src="\/lab\/page\?case=R01&amp;t=edit-page"/);
+  assert.match(html, /<a href="[^"]*lab"[^>]*aria-current="page">Lab<\/a>/);
+  // The edited page fails its re-check in the timeline, as on the checks; the others still verify.
+  assert.match(html, /\/p\/RJ-BLUE-M<\/span> from [^·]+· signature <span style="color:var\(--red\)">invalid/);
+  assert.match(html, /\/p\/RJ-STORM-BLUE-M<\/span> from [^·]+· signature valid/);
+  // The timing check fails only because the signature does; the story names the cause, not the knock-on.
+  assert.match(html, /signature is fake or damaged/);
+  assert.doesNotMatch(html, /signed after the payment/);
+  assert.match(html, /PayPal order, captured \$129\.00/);
+  assert.doesNotMatch(html, /PayPal order <span class="mono"><\/span>/);
+
+  const { createReplay } = await import('../../replay/server.mjs');
+  const s = createReplay({ root: ROOT });
+  await new Promise((r) => s.listen(0, '127.0.0.1', r));
+  try {
+    const r = await fetch(`http://127.0.0.1:${s.address().port}/lab/page?case=R01&t=edit-page`);
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('content-security-policy'), /^sandbox;/);
+    assert.match(await r.text(), /<h1>[XY]oastline Rain Jacket/);
+  } finally { s.close(); }
+});

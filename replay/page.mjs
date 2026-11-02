@@ -560,13 +560,13 @@ ${p.after?.outcome ? `<span>closed</span><b>${esc(p.after.outcome.code)}${p.afte
 function tape(c, j) {
   const r = c.record;
   const items = [];
-  r.fetches.forEach((f) => items.push([f.fetched_at, 'Fetch', `<span class="mono">${esc(f.path)}</span> from ${esc(f.authority)} · signature ${f.verification?.ok ? `valid <span class="k mono">key ${short(f.verification.keyid)}</span>` : '<span style="color:var(--red)">invalid</span>'}`]));
+  r.fetches.forEach((f, i) => items.push([f.fetched_at, 'Fetch', `<span class="mono">${esc(f.path)}</span> from ${esc(f.authority)} · signature ${(j.pagesValid?.[i] ?? f.verification?.ok) ? `valid <span class="k mono">key ${short(f.verification.keyid)}</span>` : '<span style="color:var(--red)">invalid</span>'}`]));
   r.model_inputs.forEach((m) => items.push([m.at, 'Model in', `${m.text.length.toLocaleString('en-US')} characters sent to the model <span class="k mono">sha256 ${short(m.sha256)}</span>`]));
   r.decisions.forEach((d) => items.push([d.at, 'Decision', `<b>${esc(d.model)}</b>: ${esc(d.action)} <span class="mono">${esc(d.sku ?? '')}</span>`, true]));
   items.push([r.purchase.at, 'Seal', `Record sealed, sent to checkout at ${money(r.purchase.price_cents)} <span class="k mono">custom_id ${short(c.hash)}</span>`]);
   const p = c.paypal;
   if (p) {
-    if (p.orderCreatedAt) items.push([p.orderCreatedAt, 'Order', `PayPal order <span class="mono">${esc(p.orderId)}</span>, capture <span class="mono">${esc(p.captureId)}</span> ${money(p.captured?.cents)}`]);
+    if (p.orderCreatedAt) items.push([p.orderCreatedAt, 'Order', `PayPal order${p.orderId ? ` <span class="mono">${esc(p.orderId)}</span>` : ''}, ${p.captureId ? `capture <span class="mono">${esc(p.captureId)}</span>` : 'captured'} ${money(p.captured?.cents)}`]);
     items.push([p.filedAt, 'Dispute', `${c.bench ? 'Bench dispute' : 'Buyer filed'} <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
     if (p.escalated) items.push([p.escalated.at, 'Escalate', 'The dispute was an inquiry, where PayPal takes no evidence: Black Box escalated it to a claim']);
     if (p.executed) items.push([p.executed.at, 'Verdict', `<b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}), Black Box sent <span class="mono">${esc(p.executed.action)}</span>`, true]);
@@ -620,7 +620,8 @@ function plainWords(c, j) {
   const price = (t) => t.match(/\$\d[\d,]*\.\d{2}/)?.[0];
   const lie = merchantHidden ?? thirdParty;
   const liePrice = lie ? price(lie.text) : flagged[0] ? price(flagged[0].quote) : null;
-  const broken = RECORD_CHECKS.filter((k) => !j.facts[k]);
+  // The timing check needs a valid signature, so a broken signature fails it too: name only the cause.
+  const broken = RECORD_CHECKS.filter((k) => !j.facts[k] && !(k === 'signedBeforeOrder' && !j.facts.signaturesValid));
 
   const story = {
     [VERDICT.MERCHANT]: `The shop hid a note only the AI would read${liePrice ? `, saying the price was ${liePrice}` : ''}. The AI spent ${money(paid)} on a ${money(m.maxTotalCents)} budget. The shop planted the lie, so the shop refunds the buyer.`,
@@ -679,7 +680,7 @@ export function casePage(c, j) {
   const marked = inputs.reduce((n, i) => n + i.count, 0);
   const m = r.mandate;
   const integrity = RECORD_CHECKS.every((k) => j.facts[k]);
-  const pageSrc = `${c.bench ? `/bench/${esc(c.bench.id)}` : `/case/${c.hash}`}/page`;
+  const pageSrc = c.pageSrc ?? `${c.bench ? `/bench/${esc(c.bench.id)}` : `/case/${c.hash}`}/page`;
 
   const b = c.benchResult;
   const benchCard = b ? `<section class="benchcard ${b.pass ? 'PASS' : 'FAIL'}"><span class="id">${esc(b.def.id)}</span>
@@ -764,7 +765,7 @@ ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((
 <details><summary>The ${statements.length} statements</summary><ol class="evlist">${statements.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>
 <div class="k" style="margin-top:10px;font-size:12.5px">Attached: the full record, as <span class="mono">blackbox-evidence.txt</span>.</div></div>`) : '';
 
-  return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.bench ? 'bench' : 'recordings' });
+  return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.nav ?? (c.bench ? 'bench' : 'recordings') });
 }
 
 // ---------------------------------------------------------------- study

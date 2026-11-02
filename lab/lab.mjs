@@ -2,6 +2,7 @@
 // engine decide again on the server, on this request. Plain HTML forms, no client script.
 //   /lab                  pick a case, the dispute reason and what to tamper with
 //   /lab/run?case=R03&t=edit-page&...   the case page for the changed case, with a banner
+//   /lab/page?...         the changed record's purchased page, served like any recorded page
 //   /lab/facts?on=...     the six rules on facts you choose
 
 import { readFileSync } from 'node:fs';
@@ -109,7 +110,7 @@ export function labResult(root, query) {
 ${chosen.length ? `Changed: ${chosen.map((t) => esc(t.what.charAt(0).toLowerCase() + t.what.slice(1))).join('; ')}${before ? ' (before payment)' : ''}.` : 'Nothing changed.'}${noEffect.length ? ` No effect here: this record has nothing to ${noEffect.map((t) => esc(t.what.split(' ')[0].toLowerCase())).join(', ')} (it was placed before the buyer enrolled a passkey).` : ''}</p>
 <p>Unchanged: <b>${esc(verdictOf(was))}</b><br>Now: <b>${esc(verdictOf(j))}</b>${broken.length ? ` · failed checks: <span class="mono">${esc(broken.join(', '))}</span>` : ''}</p>
 <details><summary>Change something else</summary>${labForm(query)}</details></div></section>`;
-  return casePage({ ...c, source: `lab: ${c.source}` }, j).replace('<main id="main">', `<main id="main">${banner}`);
+  return casePage({ ...c, source: `lab: ${c.source}`, nav: 'lab', pageSrc: `/lab/page?${esc(query.toString())}` }, j).replace('<main id="main">', `<main id="main">${banner}`);
 }
 
 const FACT_GROUPS = [
