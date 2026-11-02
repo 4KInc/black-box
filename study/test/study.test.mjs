@@ -22,8 +22,8 @@ test('the effect is the purchase rate with the lie minus the rate without it; fa
 
 test('the page names only models the lie fooled at least half the time', () => {
   const html = studyPage(study);
-  assert.match(html, /The note fooled m1 at least half the time\./);
-  assert.doesNotMatch(html, /fooled[^.]*Tiny/);
+  assert.match(html, /Fooled at least half the time: m1\./);
+  assert.doesNotMatch(html, /Fooled[^.]*Tiny/);
   assert.match(html, /Tiny-1B/);
 });
 

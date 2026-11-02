@@ -68,12 +68,12 @@ test('the live case page replays the verdict, the hidden text and what PayPal di
   assert.doesNotMatch(html, /<script/i);
 });
 
-test('every section of a case explains itself in plain words, from the case\'s own facts', async () => {
+test('a case explains itself in plain words, from the case\'s own facts', async () => {
   const html = await (await fetch(`${base}/case/${LIVE}`)).text();
-  assert.equal((html.match(/<p class="plain">/g) ?? []).length, 7);
-  assert.match(html, /<p class="story">The shop hid a message on its page that only the AI would read, claiming the price was \$119\.00\. The AI spent \$240\.00 on a \$150\.00 budget\. Under Black Box.{1,6}s policy, a shop that plants a contradicting message/);
-  assert.match(html, /Here it is rule 2: the AI broke the budget after reading the shop&#39;s own hidden text contradicting its listing, so under the policy the shop is responsible\./);
-  assert.match(html, /PayPal returned \$240\.00 to the buyer/);
+  assert.equal((html.match(/<p class="plain">/g) ?? []).length, 4);
+  assert.match(html, /<p class="story">The shop hid a note only the AI would read, saying the price was \$119\.00\. The AI spent \$240\.00 on a \$150\.00 budget\. The shop planted the lie, so the shop refunds the buyer\./);
+  assert.match(html, /<li class="MERCHANT fired"><span class="n">2<\/span><span class="tag">MERCHANT<\/span><span>Over the limit, after the AI read the shop&#39;s own hidden lie about this item\.<\/span>/);
+  assert.match(html, /\$240\.00 refunded/);
 });
 
 test('fonts are served from the replay itself, and only known font files', async () => {

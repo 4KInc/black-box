@@ -8,7 +8,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildCase, CASES, ENROLMENT } from '../bench/cases.mjs';
 import { judge } from '../replay/cases.mjs';
-import { casePage, layout } from '../replay/page.mjs';
+import { casePage, layout, RULE_SHORT } from '../replay/page.mjs';
 import { decide, FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES, VERDICT } from '../engine/verdict.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -92,12 +92,11 @@ export function labForm(query = new URLSearchParams()) {
 }
 
 export function labPage() {
-  return layout('Black Box · lab', `<section class="hero"><div><div class="eyebrow"><b>●</b> Lab · live engine, nothing precomputed</div>
+  return layout('Black Box · lab', `<section class="hero"><div><div class="eyebrow"><b>●</b> Lab · live engine</div>
 <h1>Try to <em>cheat it.</em></h1></div>
-<div><p>Pick a real recorded case, choose how the buyer disputes it, and change something a merchant, buyer or agent operator might try.
-The server rebuilds the case and runs the same engine the autopilot uses, on this request. The lab holds no signing keys, so it can change bytes
-but cannot forge a signature, just like an attacker. It never calls PayPal.</p>
-<p>Or skip the record and <a href="/lab/facts">set the facts by hand</a> to see which of the six rules fires.</p></div></section>
+<div><p>Pick a real case, choose how the buyer disputes it, and tamper with it the way a shop, buyer or agent operator might.
+The server re-runs the real engine on your request. Like an attacker, it has no signing keys. It never calls PayPal.</p>
+<p>Or <a href="/lab/facts">set the facts by hand</a> and see which rule applies.</p></div></section>
 <section class="sec">${labForm()}</section>`, { active: 'lab' });
 }
 
@@ -105,7 +104,7 @@ export function labResult(root, query) {
   const { base, reason, chosen, before, noEffect, was, c, j } = runLab(root, query);
   const verdictOf = (x) => `${label(x.verdict.verdict)} · rule ${x.verdict.rule} · ${x.plan.action}${x.plan.refundCents ? ` ${money(x.plan.refundCents)}` : ''}`;
   const broken = RECORD_CHECKS.filter((k) => !j.facts[k]);
-  const banner = `<section class="sec labbar"><div class="panel"><div class="eyebrow"><b>●</b> Lab run · engine re-ran on this request</div>
+  const banner = `<section class="sec labbar"><div class="panel"><div class="eyebrow"><b>●</b> Lab run</div>
 <p><b>${esc(base.id)}</b> ${esc(base.title)}, disputed as <span class="mono">${esc(reason)}</span>.
 ${chosen.length ? `Changed: ${chosen.map((t) => esc(t.what.charAt(0).toLowerCase() + t.what.slice(1))).join('; ')}${before ? ' (before payment)' : ''}.` : 'Nothing changed.'}${noEffect.length ? ` No effect here: this record has nothing to ${noEffect.map((t) => esc(t.what.split(' ')[0].toLowerCase())).join(', ')} (it was placed before the buyer enrolled a passkey).` : ''}</p>
 <p>Unchanged: <b>${esc(verdictOf(was))}</b><br>Now: <b>${esc(verdictOf(j))}</b>${broken.length ? ` · failed checks: <span class="mono">${esc(broken.join(', '))}</span>` : ''}</p>
@@ -128,7 +127,7 @@ export function factsPage(query) {
   const boxes = FACT_GROUPS.map(([title, keys]) => `<fieldset><legend>${esc(title)}</legend>${keys.map((k) => `<label class="chk"><input type="checkbox" name="on" value="${k}"${facts[k] ? ' checked' : ''}><span class="mono">${k}</span></label>`).join('')}</fieldset>`).join('');
   return layout('Black Box · lab · facts', `<section class="hero"><div><div class="eyebrow"><b>●</b> Lab · the rules alone</div>
 <h1>${esc(label(v.verdict))} <em>· rule ${v.rule}</em></h1></div>
-<div><p>${esc(v.why)}</p><p>These are the ${FACT_KEYS.length} yes/no facts the engine decides from. Tick any combination: exactly one of the six rules fires for each of the ${(2 ** FACT_KEYS.length).toLocaleString('en-US')} combinations, which the test suite checks one by one. On a real case, code computes the facts from the record and PayPal; here you set them.</p></div></section>
+<div><p>${esc(RULE_SHORT[v.rule])}</p><p>The engine decides from these ${FACT_KEYS.length} yes/no facts. Tick any combination: exactly one rule applies, and the tests check all ${(2 ** FACT_KEYS.length).toLocaleString('en-US')} combinations.</p></div></section>
 <section class="sec"><form class="panel lab" method="get" action="/lab/facts"><input type="hidden" name="set" value="1">${boxes}<button type="submit">Decide</button></form>
-<ol class="ladder">${RULES.map((r) => `<li class="${r.verdict}${r.n === v.rule ? ' fired' : ''}"><span class="n">${r.n}</span><span class="tag">${label(r.verdict)}</span><span>${esc(r.why)}</span></li>`).join('')}</ol></section>`, { active: 'lab' });
+<ol class="ladder">${RULES.map((r) => `<li class="${r.verdict}${r.n === v.rule ? ' fired' : ''}"><span class="n">${r.n}</span><span class="tag">${label(r.verdict)}</span><span>${esc(RULE_SHORT[r.n])}</span></li>`).join('')}</ol></section>`, { active: 'lab' });
 }

@@ -119,7 +119,6 @@ main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px
 /* ---- plain words ---- */
 .plain{margin:0 0 16px;max-width:86ch;padding:12px 16px;border-left:3px solid var(--ink-2);background:oklch(.2 .006 85 / .35);border-radius:0 3px 3px 0;
   font:400 15px/1.6 var(--sans);color:var(--ink)}
-.plain span{display:block;margin-bottom:4px;font:400 10.5px/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
 .cause .story{margin:0 0 10px;max-width:62ch;font:400 16px/1.55 var(--sans);color:var(--ink)}
 
 /* ---- probable cause plate ---- */
@@ -129,7 +128,6 @@ main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px
 .cause .main{padding:clamp(18px,3vw,30px) clamp(18px,3vw,34px)}
 .cause .v{font:700 clamp(54px,10vw,112px)/.86 var(--display);letter-spacing:.01em;color:var(--c);margin:10px 0 4px;text-transform:uppercase}
 .cause .who{font:600 clamp(18px,2.2vw,24px)/1.2 var(--display);letter-spacing:.06em;text-transform:uppercase;margin:6px 0 10px}
-.cause .why{color:var(--ink-2);max-width:62ch;margin:0}
 .cause .pp{border-left:1px solid var(--rule);padding:clamp(18px,3vw,28px);background:oklch(.17 .006 250 / .6);display:flex;flex-direction:column;gap:6px;justify-content:center}
 .cause .pp .amt{font:700 clamp(30px,4vw,44px)/1 var(--display);letter-spacing:.02em}
 .cause .pp .amt small{display:block;font:600 14px/1.3 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin-top:6px}
@@ -397,15 +395,12 @@ function mandateSentence(m) {
 
 // The public front page's introduction. live: served by a server with the lab, or a static copy.
 export function siteIntro({ live }) {
-  return `<section class="hero"><div><div class="eyebrow"><b>●</b> Black Box · PayPal sandbox · ${live ? 'live engine, no keys' : 'read-only, no keys'}</div>
+  return `<section class="hero"><div><div class="eyebrow"><b>●</b> PayPal sandbox · no keys needed</div>
 <h1>Who pays when an AI agent <em>buys wrong?</em></h1></div>
-<div><p>Black Box seals what a shopping agent saw and decided into the PayPal order. When the buyer disputes, code checks the record
-against the mandate the buyer approved with a passkey and applies an explicit responsibility policy: the <b>merchant</b> is responsible
-if the agent broke the mandate after reading the merchant's own hidden text that contradicts its listing; otherwise the <b>agent</b>'s operator
-is, unless the purchase was within the mandate (<b>user</b>) or the case needs <b>a human</b>. PayPal then carries out the outcome.</p>
-<p>Every recording below is a real run. The ones marked PayPal were resolved live in the sandbox, some by the autopilot from PayPal's own webhook.
-<a href="/bench">The case bench</a> runs every verdict, every rule and ten attacks${live ? ', and <a href="/lab">the lab</a> lets you tamper with a case and re-run the engine' : ''}.
-Source: <a href="https://github.com/4KInc/black-box">github.com/4KInc/black-box</a>.</p></div></section>`;
+<div><p>Black Box records what a shopping agent saw and ties it to the PayPal payment. If the buyer disputes,
+it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or the <b>buyer</b>, and tells PayPal what to do.</p>
+<p>Every recording below is a real run. The ones marked PayPal went through a sandbox dispute.
+<a href="/bench">Case bench</a>${live ? ' · <a href="/lab">Lab</a>' : ''} · <a href="https://github.com/4KInc/black-box">Source</a></p></div></section>`;
 }
 
 // intro: optional HTML shown above the list (the public site uses it).
@@ -427,7 +422,7 @@ export function indexPage(rows, { intro = '' } = {}) {
   const empty = '<p class="empty">No recordings yet. Run the agent (node agent/run.mjs) to make one.</p>';
   return layout('Black Box · recordings', `${intro || `<section class="hero"><div><div class="eyebrow"><b>●</b> Recordings</div><h1>Every purchase, <em>on tape</em></h1></div>
 <div><p>Each recording is what an AI shopping agent saw and decided, sealed into its PayPal order. Open one to replay it and see who pays.</p></div></section>`}
-<section class="sec"><header><span class="n">${String(rows.length).padStart(2, '0')}</span><h2>Recordings</h2>${live ? `<p>${live} ${live === 1 ? 'was' : 'were'} disputed and settled through PayPal in the sandbox.</p>` : ''}</header>
+<section class="sec"><header><span class="n">${String(rows.length).padStart(2, '0')}</span><h2>Recordings</h2>${live ? `<p>${live} went through a PayPal dispute.</p>` : ''}</header>
 <div class="recs">${cards || empty}</div></section>`, { active: 'recordings' });
 }
 
@@ -474,19 +469,20 @@ function tape(c, j) {
 }
 
 function section(n, title, note, body, plain = '') {
-  return `<section class="sec"><header><span class="n">${n}</span><h2>${title}</h2>${note ? `<p>${note}</p>` : ''}</header>${plain ? `<p class="plain"><span>In plain words</span>${esc(plain)}</p>` : ''}${body}</section>`;
+  return `<section class="sec"><header><span class="n">${n}</span><h2>${title}</h2>${note ? `<p>${note}</p>` : ''}</header>${plain ? `<p class="plain">${esc(plain)}</p>` : ''}${body}</section>`;
 }
 
 // ---------------------------------------------------------------- plain words
 // One sentence per section for readers who are not engineers, written from this case's own facts.
 
-const RULE_PLAIN = {
-  1: 'the recording cannot be trusted, so a person has to decide',
-  2: "the AI broke the budget after reading the shop's own hidden text contradicting its listing, so under the policy the shop is responsible",
-  3: 'the shop nudged the AI with hidden text, but no limit was broken, so a person has to judge whether that harmed the buyer',
-  4: 'something tried to manipulate the AI, but it cannot be pinned on the shop, so a person has to decide',
-  5: "the AI broke the budget and nothing on the page contradicted the listing, so under the policy the AI's operator is responsible",
-  6: 'the AI did what the shopper asked, so the purchase stands',
+// The six rules in short, for the ladder (the engine's own wording is in engine/verdict.mjs).
+export const RULE_SHORT = {
+  1: 'The recording is broken or was tampered with.',
+  2: "Over the limit, after the AI read the shop's own hidden lie about this item.",
+  3: 'Within the limit, but the shop steered the AI with hidden text.',
+  4: "Something manipulated the AI that can't be pinned on the shop.",
+  5: 'Over the limit, and nothing on the page misled the AI.',
+  6: 'Within the limit, nothing suspicious.',
 };
 
 const BROKEN_PLAIN = {
@@ -518,61 +514,49 @@ function plainWords(c, j) {
   const broken = RECORD_CHECKS.filter((k) => !j.facts[k]);
 
   const story = {
-    [VERDICT.MERCHANT]: `The shop hid a message on its page that only the AI would read${liePrice ? `, claiming the price was ${liePrice}` : ''}. The AI spent ${money(paid)} on a ${money(m.maxTotalCents)} budget. Under Black Box's policy, a shop that plants a contradicting message for AI shoppers is responsible for the breach, so the shop refunds the buyer.`,
-    [VERDICT.AGENT]: `The AI spent ${money(paid)} on a ${money(m.maxTotalCents)} budget, and nothing on the page contradicted the listing. Under the policy the company running the AI is responsible for the ${money(Math.max(0, over))} over budget${benign ? ' (the page did carry hidden product data, but it agreed with the listing, so it is not held against the shop)' : ''}.`,
+    [VERDICT.MERCHANT]: `The shop hid a note only the AI would read${liePrice ? `, saying the price was ${liePrice}` : ''}. The AI spent ${money(paid)} on a ${money(m.maxTotalCents)} budget. The shop planted the lie, so the shop refunds the buyer.`,
+    [VERDICT.AGENT]: `The AI spent ${money(paid)} on a ${money(m.maxTotalCents)} budget, and nothing on the page misled it. The company running the AI covers the ${money(Math.max(0, over))} over budget.${benign ? ' The page had hidden product details, but they matched the listing.' : ''}`,
     [VERDICT.USER]: j.flaggedPassages.length
-      ? `The AI bought what the shopper asked for, within the ${money(m.maxTotalCents)} budget. Some text on the pages tried to steer AI shoppers toward other products, but the AI ignored it. The purchase stands.`
-      : `The AI bought what the shopper asked for, within the ${money(m.maxTotalCents)} budget, and nothing on the page tried to trick it. The purchase stands.`,
+      ? `The AI bought what was asked, within the ${money(m.maxTotalCents)} budget. Hidden text tried to steer it to other products; it ignored that. The purchase stands.`
+      : `The AI bought what was asked, within the ${money(m.maxTotalCents)} budget, and nothing tried to trick it. The purchase stands.`,
     [VERDICT.HUMAN]: {
-      1: `The recording cannot be trusted: ${joinAnd(broken.map((k) => BROKEN_PLAIN[k]))}. Black Box will not guess, so a person decides.`,
-      3: `The shop nudged the AI with hidden text, but the AI stayed within the ${money(m.maxTotalCents)} budget. Whether that harmed the buyer is a judgment call, so a person decides.`,
-      4: 'Something on the page tried to manipulate the AI, but code cannot prove the shop wrote it. Rather than blame the wrong party, Black Box hands the case to a person.',
+      1: `The recording can't be trusted: ${joinAnd(broken.map((k) => BROKEN_PLAIN[k]))}. A person decides.`,
+      3: `The shop nudged the AI with hidden text, but it stayed within the ${money(m.maxTotalCents)} budget. Whether that hurt the buyer is a judgment call, so a person decides.`,
+      4: "Something on the page tried to manipulate the AI, but there's no proof the shop wrote it. A person decides.",
     }[rule] ?? 'A person decides.',
   }[v];
 
-  const approval = j.mandateAuth?.legacy
-    ? 'This order was placed before the buyer set up a fingerprint (passkey) approval, so the limit is taken as recorded.'
-    : j.facts.mandateSigned ? 'The shopper approved this with their fingerprint (a passkey), so nobody can change the limit afterwards.'
-      : 'The fingerprint (passkey) approval does not check out, so the limit itself cannot be trusted.';
-  const trusted = j.mandateAuth?.legacy || j.facts.mandateSigned;
-  const mandate = `${trusted ? 'The shopper allowed' : 'The recording claims the shopper allowed'}: ${mandateSentence(m).replace(/^Buy/, 'buy')} ${approval} The AI spent ${money(paid)}, ${over > 0 ? `${money(over)} more than allowed` : 'within the limit'}.`;
-
   const channels = merchantHidden || thirdParty || flagged.length
-    ? `A person looking at this page sees ${item} for ${visible}. Hidden in the page, where only the AI looks, ${merchantHidden ? 'the shop' : thirdParty ? 'someone' : 'someone'} wrote something else${liePrice ? `: a price of ${liePrice}` : ''}. It is highlighted on the right, in the exact text the AI was given.${r.decisions.at(-1)?.reason ? ' Below that, the AI explains in its own words why it bought.' : ''}`
-    : `What a person sees on this page is what the AI read: ${item} for ${visible}, with nothing hidden that names it.`;
+    ? `A person sees ${item} for ${visible}. The AI was also given hidden text${liePrice ? ` saying ${liePrice}` : ''}, highlighted below.`
+    : `The AI saw what a person sees: ${item} for ${visible}. Nothing hidden names it.`;
 
   const hidden = merchantHidden
-    ? `Code found the hidden note and confirmed five things: people cannot see it, it names this exact item, it contradicts the signed listing, the AI read it, and the shop itself wrote and signed it, with no one else involved. That is what the policy calls deception; it does not prove the note changed the AI's mind.${j.flagger ? (flagged.length ? ' A second check by an AI quoted the same text.' : '') : ''}`
+    ? `The shop wrote and signed this note, hid it from people, and it contradicts the listing. The AI read it. That puts the shop at fault, whether or not the note is what fooled the AI.${j.flagger && flagged.length ? ' The AI check quoted the same text.' : ''}`
     : thirdParty
-      ? 'Code found hidden text the AI read, but it sits inside content signed by another company (a review site), so it cannot be blamed on the shop.'
-      : benign ? 'Code found hidden product data that names this item, but it agrees with the signed listing: no other price, no instruction to ignore limits. Unrendered data is normal, so it is not held against the shop.'
+      ? "The AI read hidden text, but it came from another company's content (a review site), so it isn't blamed on the shop."
+      : benign ? "Hidden product data names this item, but it matches the listing. That's normal, so it doesn't count against the shop."
       : flagged.length
-        ? 'Code did not recognise the hiding trick, but a second check by an AI quoted the text word for word. That can only send the case to a person, never blame anyone by itself.'
-        : j.flaggedPassages.length ? 'Code found nothing hidden about the item that was bought. A second check by an AI quoted text aimed at AI shoppers, but it is about other products, so it does not count against this purchase.'
-          : j.findings.length ? 'Code found hidden text on the page, but none of it names the item that was bought and reached the AI.' : 'Code found nothing hidden on the page that was bought.';
+        ? "Code didn't catch this hiding trick, but the AI check quoted it word for word. That can send the case to a person, never blame anyone on its own."
+        : j.flaggedPassages.length ? "Nothing hidden about this item. The AI check found text aimed at AI shoppers, but about other products, so it doesn't count."
+          : j.findings.length ? 'Hidden text on the page, but none of it is about this item.' : 'Nothing hidden on the page.';
 
   const lit = (keys) => keys.filter((k) => j.facts[k]).length;
+  const shop = lit(MERCHANT_CONDITIONS);
   const panel = [
-    broken.length ? `${broken.length} of the ${RECORD_CHECKS.length} trust checks failed, so the recording itself is in doubt (red).` : `All ${RECORD_CHECKS.length} trust checks are green: the recording is genuine and untouched.`,
-    j.facts.mandateBroken ? 'The budget light is on: the AI went over the limit.' : 'The budget light is off: the AI stayed within the limit.',
-    lit(MERCHANT_CONDITIONS) === MERCHANT_CONDITIONS.length ? `All ${MERCHANT_CONDITIONS.length} shop lights are on: under the policy, the shop is responsible.` : lit(MERCHANT_CONDITIONS) ? `${lit(MERCHANT_CONDITIONS)} of the ${MERCHANT_CONDITIONS.length} shop lights are on, not enough to blame the shop.` : 'No shop lights are on.',
-    [j.facts.aiInjectionFlag && 'The AI check light is on: a second check by an AI quoted text aimed at AI shoppers about this item.',
-      j.facts.unattributedHiddenText && 'The unattributed light is on: the AI read hidden text that cannot be pinned on the shop.',
-      j.facts.unclassifiedAgentText && 'The unclassified light is on: the shop hid text about this item for AI shoppers that code could not classify, so a person reads it.'].filter(Boolean).join(' ') || 'No other warnings.',
-  ].join(' ');
-
-  const ladder = `Black Box checks six rules in order, and exactly one can apply. Here it is rule ${rule}: ${RULE_PLAIN[rule]}.`;
-
-  const p = c.paypal;
-  const credit = buyerCredit(p);
-  const tapeText = `What happened, in order: the AI opened ${r.fetches.length} page${r.fetches.length > 1 ? 's' : ''}, each signed by the shop, read ${r.fetches.length > 1 ? 'them' : 'it'}, decided to buy, and the recording was sealed into the PayPal payment.${p?.executed ? ` Then the buyer complained, Black Box decided, and PayPal ${credit ? `returned ${money(credit.amount.cents)} to the buyer` : 'carried out the decision'}.` : ''}`;
+    broken.length ? `${broken.length} of ${RECORD_CHECKS.length} trust checks failed.` : `All ${RECORD_CHECKS.length} trust checks pass.`,
+    j.facts.mandateBroken ? 'Over budget.' : 'Within budget.',
+    shop === MERCHANT_CONDITIONS.length ? `All ${shop} shop checks are on: the shop is at fault.` : shop ? `${shop} of ${MERCHANT_CONDITIONS.length} shop checks are on, not enough to blame the shop.` : '',
+    j.facts.aiInjectionFlag ? 'The AI check flagged text about this item.' : '',
+    j.facts.unattributedHiddenText ? "The AI read hidden text that can't be pinned on the shop." : '',
+    j.facts.unclassifiedAgentText ? "The shop hid a note to AI agents that code can't classify." : '',
+  ].filter(Boolean).join(' ');
 
   const same = c.hash === j.order.customId;
   const proof = same
-    ? 'A tamper check. The recording has a fingerprint, and the same fingerprint is locked inside the PayPal payment, which PayPal does not allow anyone to change. They match, so nobody has edited the recording since the purchase.'
-    : 'A tamper check. The recording’s fingerprint does not match the one locked inside the PayPal payment: it was changed after the purchase, or it belongs to a different payment.';
+    ? "The recording's fingerprint matches the one locked in the PayPal payment, so nobody has edited it since."
+    : "The recording's fingerprint doesn't match the one in the PayPal payment: it was changed, or it belongs to a different payment.";
 
-  return { story, '1.0': mandate, '2.0': channels, '3.0': hidden, '4.0': panel, '5.0': ladder, '6.0': tapeText, '7.0': proof };
+  return { story, '2.0': channels, '3.0': hidden, '4.0': panel, '7.0': proof };
 }
 
 export function casePage(c, j) {
@@ -598,21 +582,21 @@ ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}
 <span>Bought <b>${time(r.purchase.at)}</b></span>${c.paypal ? `<span>PayPal <b>${esc(c.paypal.disputeId)}</b></span>` : ''}</div>`;
 
   const cause = `<section class="cause ${v}" style="view-transition-name:${vtName(c.hash)}"><div class="main">
-<div class="eyebrow">Probable cause · rule ${j.verdict.rule} of ${RULES.length}${j.preview ? ' · preview' : ''}</div>
-<h1 class="v">${label(v)}</h1><p class="who">${WHO[v]}</p><p class="story">${esc(P.story)}</p><p class="why">${esc(j.verdict.why)}</p></div>
+<div class="eyebrow">Verdict · rule ${j.verdict.rule} of ${RULES.length}${j.preview ? ' · preview' : ''}</div>
+<h1 class="v">${label(v)}</h1><p class="who">${WHO[v]}</p><p class="story">${esc(P.story)}</p></div>
 <div class="pp">${causePanel(c, j)}</div></section>`;
 
   // 1. the mandate and the money
   const paid = j.order.capturedCents;
   const g = gaugeScale(paid, m.maxTotalCents);
   const seal = j.mandateAuth?.legacy
-    ? '<span class="seal legacy">Unsigned · placed before the buyer enrolled a passkey</span>'
+    ? '<span class="seal legacy">No passkey · made before the buyer set one up</span>'
     : j.facts.mandateSigned ? `<span class="seal ok">◆ Passkey · ${esc(j.mandateAuth?.reason ?? 'approved')}</span>` : `<span class="seal bad">✕ Passkey · ${esc(j.mandateAuth?.reason ?? 'not approved')}</span>`;
   const overLine = j.mandate.violations.length
     ? j.mandate.violations.map((x) => `<div class="verdictline bad">✕ ${esc(x.code === 'OVER_CAP' ? `Over budget: paid ${money(paid)}, cap ${money(m.maxTotalCents)}, ${money(paid - m.maxTotalCents)} over` : `${x.code}: ${x.detail}`)}</div>`).join('')
     : '<div class="verdictline good">✓ Within the mandate</div>';
-  const mandate = sec('1.0', 'The mandate', 'What the user let the agent do, and what it actually spent.', `<div class="grid2">
-<div class="panel"><div class="eyebrow">Authorised</div><p class="mandate-line">${esc(mandateSentence(m))}</p>${seal}
+  const mandate = sec('1.0', 'What the buyer allowed', '', `<div class="grid2">
+<div class="panel"><div class="eyebrow">Allowed</div><p class="mandate-line">${esc(mandateSentence(m))}</p>${seal}
 <div class="k mono" style="margin-top:12px">mandate sha256 ${short(r.mandate_hash, 20)}</div></div>
 <div class="panel"><div class="eyebrow">Spent</div><p class="mandate-line">${esc(j.product?.name ?? r.purchase.sku)} · ${money(paid)}</p>
 <div class="gauge"><div class="track" role="img" aria-label="Paid ${money(paid)} against a budget of ${money(m.maxTotalCents)}"><div class="fill" style="width:${g.fill}"></div>${g.over ? `<div class="over" style="left:${g.overFrom};width:${g.overW}"></div>` : ''}<div class="cap" style="left:${g.cap}"></div></div>
@@ -626,10 +610,10 @@ ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}
 <div class="price">${money(j.product?.priceCents ?? r.purchase.price_cents)}<small>${esc(j.product?.name ?? r.purchase.sku)}</small></div></div>
 <div class="panel"><div class="ch two"><i>CH 2</i>${hiddenRead ? `Hidden from people, read by the agent · ${esc(hiddenRead.method)}` : 'Read by the agent'}</div>
 ${hiddenRead ? `<blockquote><mark>“${esc(hiddenRead.text)}”</mark></blockquote>` : '<p class="empty">Nothing hidden that names this item.</p>'}</div></div>`;
-  const channels = sec('2.0', 'Two channels', 'The page a shopper sees and the text the model received, side by side.', `${contrast}<div class="grid2">
-<div><div class="ch"><i>CH 1</i>The signed page, as a shopper sees it · scripts off</div>
+  const channels = sec('2.0', 'What the AI saw', '', `${contrast}<div class="grid2">
+<div><div class="ch"><i>CH 1</i>The signed page, as a person sees it</div>
 <iframe sandbox="" referrerpolicy="no-referrer" loading="lazy" title="Recorded product page" src="${pageSrc}"></iframe></div>
-<div><div class="ch two"><i>CH 2</i>Exact model input, from the record${marked ? `<a href="#hidden">${marked} hidden passage${marked > 1 ? 's' : ''} highlighted ↓</a>` : ''}</div>
+<div><div class="ch two"><i>CH 2</i>Exactly what the AI was given${marked ? `<a href="#hidden">${marked} hidden passage${marked > 1 ? 's' : ''} highlighted ↓</a>` : ''}</div>
 <pre class="input" tabindex="0">${inputs.map((i) => i.html).join('\n\n')}</pre></div></div>
 ${d.reason ? `<div class="cvr"><span class="who">${esc(d.model)}</span><p>“${esc(d.reason)}”</p></div>` : ''}`);
 
@@ -638,25 +622,25 @@ ${d.reason ? `<div class="cvr"><span class="who">${esc(d.model)}</span><p>“${e
 <q>${esc(f.text)}</q><div class="chips">${chip(f.concealedInReadChannel ? 'on' : '', 'Hidden from people')}${chip(f.namesPurchasedItem ? 'on' : '', 'Names the item')}${chip(f.contradictsListing ? 'on' : '', 'Contradicts the listing')}
 ${chip(f.inModelInput ? 'on' : '', 'Reached the model')}${chip(f.signedByMerchant ? 'on' : '', 'Merchant-signed')}${chip(f.selfContained ? 'on' : '', 'Self-contained page')}${chip(f.thirdPartySigned ? 'bad' : 'on', f.thirdPartySigned ? 'Third-party signature' : 'No third party')}</div></div>`).join('')
     : '<div class="panel"><p class="empty">Code found no hidden text on the purchased page.</p></div>';
-  const flagger = j.flagger ? `<div class="panel" style="margin-top:12px"><div class="eyebrow">AI flagger · <b>${esc(j.flagger.model)}</b> · can only send a case to a person</div>
+  const flagger = j.flagger ? `<div class="panel" style="margin-top:12px"><div class="eyebrow">AI check · <b>${esc(j.flagger.model)}</b> · can only send a case to a person</div>
 ${j.flaggedPassages.length ? j.flaggedPassages.map((p) => `<q class="finding" style="display:block;margin:12px 0 8px">${esc(p.quote)}</q><div class="k" style="font-size:12.5px;margin-bottom:8px">${esc(p.reason)}</div>
 <div class="chips">${chip('ok', 'Found word for word in the model input')}${chip(p.namesPurchasedItem ? 'on' : '', p.namesPurchasedItem ? 'Names the item bought: counts' : 'Other product: ignored for this purchase')}</div>`).join('') : '<p class="empty" style="margin-top:10px">Found no text aimed at automated buyers.</p>'}</div>`
-    : '<div class="panel" style="margin-top:12px"><p class="empty">AI flagger not run for this case: the verdict is code-only.</p></div>';
-  const hidden = sec('3.0', 'Hidden text', 'What code found concealed on the page, and what the AI flagger quoted.', findings + flagger);
+    : '<div class="panel" style="margin-top:12px"><p class="empty">No AI check on this case. The verdict is code only.</p></div>';
+  const hidden = sec('3.0', 'Hidden text', '', findings + flagger);
 
   // 4. annunciator panel
   const group = (title, keys) => `<div><h3>${title}</h3><div class="lamps">${keys.map((k) => `<div class="lampc ${lamp(k, j.facts[k])}" title="${esc(FACT[k][1])}" role="img" aria-label="${esc(FACT[k][1])}: ${j.facts[k]}">${esc(FACT[k][0])}<small>${j.facts[k] ? 'TRUE' : 'FALSE'}</small></div>`).join('')}</div></div>`;
-  const panel = sec('4.0', 'Annunciator', `The ${FACT_KEYS.length} facts code checked. Green holds, red failed, amber cautions, orange points at the merchant.`, `<div class="panel ann"><div class="groups">
+  const panel = sec('4.0', 'The checks', `${FACT_KEYS.length} yes/no facts. Green is fine, red failed, orange points at the shop.`, `<div class="panel ann"><div class="groups">
 ${group('Record integrity', RECORD_CHECKS)}${group('Mandate', ['mandateBroken'])}${group(`Merchant responsible · all ${MERCHANT_CONDITIONS.length}`, MERCHANT_CONDITIONS)}${group('Other signals', SIGNALS)}</div></div>`);
 
   // 5. decision ladder
-  const ladder = sec('5.0', 'Decision', 'Six rules, written as code. Exactly one fires, checked over every combination of the facts.', `<ol class="ladder">
-${RULES.map((rule) => `<li class="${rule.verdict}${rule.n === j.verdict.rule ? ' fired' : ''}"><span class="n">${rule.n}</span><span class="tag">${label(rule.verdict)}</span><span>${esc(rule.why)}</span></li>`).join('')}</ol>`);
+  const ladder = sec('5.0', 'The rules', 'Checked in order. Exactly one applies.', `<ol class="ladder">
+${RULES.map((rule) => `<li class="${rule.verdict}${rule.n === j.verdict.rule ? ' fired' : ''}"><span class="n">${rule.n}</span><span class="tag">${label(rule.verdict)}</span><span>${esc(RULE_SHORT[rule.n])}</span></li>`).join('')}</ol>`);
 
   // 6. tape and integrity
-  const tapeSec = sec('6.0', 'Recorder tape', 'Every event, from the first page fetched to the money moving.', `<div class="panel">${tape(c, j)}</div>`);
+  const tapeSec = sec('6.0', 'Timeline', '', `<div class="panel">${tape(c, j)}</div>`);
   const same = c.hash === j.order.customId;
-  const proof = sec('7.0', 'Integrity', 'The record hash must equal the custom_id PayPal holds, which cannot change after payment.', `<div class="panel">
+  const proof = sec('7.0', 'Tamper check', '', `<div class="panel">
 <div class="hasheq"><span class="k">record</span><span>${esc(c.hash)}</span><span class="${same ? 'eq' : 'ne'}">${same ? '=' : '≠'}</span><span></span><span class="k">PayPal</span><span>${esc(j.order.customId ?? '')}</span></div>
 <div class="chips" style="margin-top:14px">${chip(same ? 'ok' : 'bad', same ? 'Hashes equal' : 'Hashes differ')}${chip(integrity ? 'ok' : 'bad', integrity ? 'All record checks pass' : 'Record broken')}</div>
 ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
@@ -665,11 +649,11 @@ ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((
   // 8. the note PayPal receives with the evidence (USER verdicts only)
   const statements = statementsFor({ record: r, j, hash: c.hash, reason: j.reason });
   const sent = c.paypal?.evidenceNote;
-  const evidence = statements ? sec('8.0', 'Evidence for PayPal', 'Code writes the statements. An AI may reword them, and a check rejects any wording that adds a number, ID or accusation.', `<div class="panel">
-<div class="eyebrow">${sent ? `Sent to PayPal · ${sent.source === 'ai' ? `worded by <b>${esc(sent.model)}</b>, checked against the statements` : 'the statements as written'}` : 'Preview · the statements as written; on a live dispute an AI may reword them'}</div>
+  const evidence = statements ? sec('8.0', 'Evidence sent to PayPal', 'Code writes the statements. An AI may reword them, but never add a number, ID or accusation.', `<div class="panel">
+<div class="eyebrow">${sent ? `Sent to PayPal · ${sent.source === 'ai' ? `worded by <b>${esc(sent.model)}</b>, checked against the statements` : 'the statements as written'}` : 'Preview · as written by code'}</div>
 <p class="evnote">${esc(sent?.text ?? templateNote(statements))}</p>
-<details><summary>The ${statements.length} statements, established by code</summary><ol class="evlist">${statements.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>
-<div class="k" style="margin-top:10px;font-size:12.5px">Attached with them: the full sealed record, as <span class="mono">blackbox-evidence.txt</span>.</div></div>`) : '';
+<details><summary>The ${statements.length} statements</summary><ol class="evlist">${statements.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>
+<div class="k" style="margin-top:10px;font-size:12.5px">Attached: the full record, as <span class="mono">blackbox-evidence.txt</span>.</div></div>`) : '';
 
   return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.bench ? 'bench' : 'recordings' });
 }
@@ -716,8 +700,8 @@ ${r.cells.map((c) => `<div class="cell${c.effect !== null && c.effect >= 0.5 ? '
 <div class="sbar lie"><span>with lie</span><i><u style="width:${pct(c.lieBought, c.lieN)}"></u></i><b>${c.lieBought}/${c.lieN}</b></div>
 <div class="sbar"><span>without</span><i><u style="width:${pct(c.ctlBought, c.ctlN)}"></u></i><b>${c.ctlBought}/${c.ctlN}</b></div></div>`).join('')}</div>`).join('');
   const want = [st.item.endsWith('s') ? '' : 'a', st.attrs.color, st.item].filter(Boolean).join(' ');
-  const plain = `Each AI was asked to buy ${want} for at most ${money(st.budget)} and shown one product that costs more. On one copy of the shop, a hidden note told AI shoppers the price was lower; on the other copy the note was gone. Any purchase is a mistake. The big number is how much the hidden note raised the chance of that mistake.${fooledModels.length ? ` The note fooled ${fooledModels.join(', ')} at least half the time.` : ''}`;
-  return `<section class="sec"><header><span class="n">${num}</span><h2>${esc(st.title)}</h2></header><p class="plain"><span>In plain words</span>${esc(plain)}</p>
+  const plain = `Each AI had to buy ${want} for at most ${money(st.budget)}, and every product shown cost more. The big number is how much the hidden note raised the chance it bought anyway.${fooledModels.length ? ` Fooled at least half the time: ${fooledModels.join(', ')}.` : ''}`;
+  return `<section class="sec"><header><span class="n">${num}</span><h2>${esc(st.title)}</h2></header><p class="plain">${esc(plain)}</p>
 <div class="study">${head}${body}</div></section>`;
 }
 
@@ -727,19 +711,20 @@ export function studyPage(studies) {
   const runs = list.reduce((n, st) => n + studySummary(st).total, 0);
   return layout('Black Box · who falls for it', `<section class="hero"><div><div class="eyebrow"><b>●</b> Study · ${list.length} setup${list.length > 1 ? 's' : ''} · ${runs} runs</div>
 <h1>Who falls for <em>a hidden price?</em></h1></div>
-<div><p>Each setup is one shop and one product type. Every product shown costs more than the budget, so buying is always a mistake. Each runs every model ${list[0].n} times per cell, with the hidden lie and on an identical control shop without it. Claude models ran at the API's default temperature. ${list.length > 1 ? 'The setups use different merchants, products, budgets and wording, with the same three hiding methods. ' : ''}This is evidence for the tested setups, not a general ranking of models. Prompt, settings and raw outputs: <span class="mono">study/README.md</span> and <span class="mono">fixtures/study/</span>.</p></div></section>
+<div><p>Every product shown costs more than the budget, so buying anything is a mistake. Each model ran ${list[0].n} times with a hidden lie on the page, and ${list[0].n} times on the same shop without it.</p>
+<p>This covers these setups only, not a ranking of models. Raw data: <span class="mono">study/README.md</span>.</p></div></section>
 ${list.map((st, i) => studySection(st, String(i + 1).padStart(2, '0'))).join('\n')}`, { active: 'study' });
 }
 
 // ---------------------------------------------------------------- bench
 
 const SECTIONS = [
-  ['recorded', 'Recorded runs', "Real agent runs, sealed by the recorder, with the model's own output."],
-  ['honest-data', 'Honest price data', 'Accurate structured data that states another price (a variant, a range, a member or past price, tax, shipping, another currency). None of it may count against the merchant.'],
-  ['evasion', 'Reworded lies', 'The merchant rewords its hidden lie to slip past the contradiction check. Each must still count against it; honest agent-directed notes go to a person, never to the agent.'],
-  ['passkey', 'Passkey mandates', 'The buyer approved the budget with Touch ID. Once a buyer has enrolled a passkey, their mandates must carry its approval.'],
-  ['flagger', 'The AI flagger', 'Its real, recorded answers. It can only send a case to a person, and only quotes that name the item bought count.'],
-  ['attack', 'Attacks on the record', 'A real record with one thing forged or swapped. Each must fail exactly the checks named.'],
+  ['recorded', 'Recorded runs', "Real agent runs, with the model's own output."],
+  ['honest-data', 'Honest price data', 'True data that mentions another price: a variant, a sale, tax, shipping. None of it may count against the shop.'],
+  ['evasion', 'Reworded lies', 'The shop rewords its hidden lie to dodge the check. It must still be caught.'],
+  ['passkey', 'Passkey approvals', 'The buyer approved the budget with a passkey. Once set up, every approval must carry it.'],
+  ['flagger', 'The AI check', 'Its real answers. It can only send a case to a person.'],
+  ['attack', 'Attacks on the record', 'A real record with one thing forged. Each must fail exactly the expected checks.'],
 ];
 
 export function benchPage(results) {
@@ -747,12 +732,12 @@ export function benchPage(results) {
   const all = passed === results.length;
   const matrix = `<div class="matrix">${results.map((r) => `<a class="${r.got.verdict}${r.pass ? '' : ' fail'}" href="/bench/${esc(r.def.id)}" title="${esc(r.def.title)}">${esc(r.def.id)}<i></i><small>${r.pass ? 'PASS' : 'FAIL'}</small></a>`).join('')}</div>`;
   const row = (r) => `<a class="case" href="/bench/${esc(r.def.id)}"><span class="id">${esc(r.def.id)}</span>
-<div><h3>${esc(r.def.title)}</h3><p>${esc(r.def.story)}</p></div>
+<div><h3>${esc(r.def.title)}</h3></div>
 <div class="got ${r.got.verdict}">${label(r.got.verdict)} · rule ${r.got.rule}<small>${esc(r.got.action === 'none' ? 'no automatic action' : r.got.action)}${r.got.refundCents ? ' ' + money(r.got.refundCents) : ''} · ${esc(r.def.reason.replaceAll('_', ' ').toLowerCase())}${r.got.broken ? `<br>breaks ${esc(r.got.broken)}` : ''}</small></div>
 <div class="res ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? 'PASS' : 'FAIL'}${r.mismatches.map((x) => `<small style="display:block;color:var(--red);font:400 10px/1.4 var(--mono)">${esc(x)}</small>`).join('')}</div></a>`;
   const n = (i) => `${i + 1}.0`;
   return layout('Black Box · case bench', `<section class="hero"><div><div class="eyebrow"><b>●</b> Case bench · offline, no keys</div>
 <h1><em style="color:var(--${all ? 'green' : 'red'})">${passed}/${results.length}</em> cases<br>exactly as expected</h1></div>
-<div><p>Each case fixes in advance the verdict, the rule and the PayPal action code must produce, and for attacks exactly which record checks must fail. Every verdict and every rule is covered. Re-run it with <span class="mono">npm run bench</span>.</p>${matrix}</div></section>
+<div><p>Each case states up front the verdict, rule and PayPal action it must get. Every verdict and rule is covered. Run it yourself: <span class="mono">npm run bench</span>.</p>${matrix}</div></section>
 ${SECTIONS.map(([kind, title, note], i) => section(n(i), title, note, `<div class="cases">${results.filter((r) => r.def.kind === kind).map(row).join('')}</div>`)).join('')}`, { active: 'bench' });
 }
