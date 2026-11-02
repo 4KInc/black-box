@@ -92,5 +92,20 @@
       "issue": "INVALID_ACCEPT_CLAIM_TYPE",
       "debugId": "ca4c95ada2ff7"
     }
-  ]
+  ],
+  "payout": {
+    "at": "2026-11-02T07:26:01.572Z",
+    "httpStatus": 201,
+    "debugId": "f13980133035f",
+    "batchId": "VCNS2FXR525FS",
+    "status": "SUCCESS",
+    "itemId": "PVM8NRTEVATZU",
+    "itemStatus": "SUCCESS",
+    "amount": {
+      "cents": 9000,
+      "currency": "USD"
+    },
+    "from": "agent-operator",
+    "to": "MCYKQUXGB936U"
+  }
 }

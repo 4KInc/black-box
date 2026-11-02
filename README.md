@@ -129,7 +129,7 @@ against the merchant, so an agent that overspends next to it is the agent's resp
 | Verdict | Responsible under the policy | PayPal action Black Box executes | Recovering the money |
 |---|---|---|---|
 | MERCHANT | The merchant: its own hidden, contradicting text was read and the mandate broken | `accept-claim`: full refund from the merchant. On an "incorrect amount" dispute, the larger of the amount over the budget and the amount over its own price (R04: $90) | Done: the merchant refunds |
-| AGENT | The agent's operator: the mandate was broken and nothing contradicting was read | Refund the amount over budget (`accept-claim` partial, or `make-offer`, which the buyer must accept) | The merchant refunds the buyer; `executor/payout.mjs` then pays the merchant back from the operator's PayPal account (Payouts). Tested offline, not yet run live |
+| AGENT | The agent's operator: the mandate was broken and nothing contradicting was read | Refund the amount over budget (`accept-claim` partial, or `make-offer`, which the buyer must accept) | The merchant refunds the buyer; `executor/payout.mjs` then pays the merchant back from the operator's PayPal account (Payouts). Run live on P06: $90.00, batch `VCNS2FXR525FS`, SUCCESS |
 | USER | The buyer: the purchase was within the mandate | `provide-evidence`: a checked note, its statements and the record | None due |
 | NEEDS A HUMAN | Undecided: a broken record, unattributable manipulation, the merchant's hidden text for agents that code cannot classify, or steering within budget | None | None |
 

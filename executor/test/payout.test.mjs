@@ -79,7 +79,8 @@ test('a logged payout is copied into the committed PayPal fixture, and nothing e
   try {
     const name = 'live-agent-partial-refund';
     const src = join(import.meta.dirname, '..', '..', 'fixtures', 'recorded', `${name}.paypal.json`);
-    const original = JSON.parse(readFileSync(src, 'utf8'));
+    // The committed fixture may already carry the live payout; start from one without it.
+    const { payout: _live, ...original } = JSON.parse(readFileSync(src, 'utf8'));
     mkdirSync(join(root, 'fixtures', 'recorded'), { recursive: true });
     writeFileSync(join(root, 'fixtures', 'recorded', `${name}.paypal.json`), JSON.stringify(original));
     const id = original.disputeId;
