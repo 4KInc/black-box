@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { exportPayout, payoutDue, reimburse } from '../payout.mjs';
+import { exportPayout, payoutDue, refreshPayout, reimburse } from '../payout.mjs';
+import { paypalFromLog } from '../../replay/cases.mjs';
 import { executionLog } from '../core.mjs';
 
 const dispute = { step: 'get dispute', status: 200, response: { disputed_transactions: [{ seller: { merchant_id: 'MERCH1' } }] } };
@@ -15,6 +16,40 @@ test('a payout is due only after an AGENT verdict whose refund PayPal accepted, 
   assert.match(payoutDue([dispute, verdict(false), refund(200)]).why, /no payout/);
   assert.match(payoutDue([dispute, verdict(true), refund(400)]).why, /not been refunded/);
   assert.match(payoutDue([dispute, verdict(true), refund(200), { step: 'payout', status: 201 }]).why, /already paid/);
+  // A payout whose item PayPal failed paid nothing, so it is still due; a pending one is not.
+  const sent = { step: 'payout', status: 201, response: { batch_header: { payout_batch_id: 'B1' } } };
+  const looked = (item) => ({ step: 'get payout', status: 200, response: { batch_header: { payout_batch_id: 'B1' }, items: [{ transaction_status: item }] } });
+  assert.equal(payoutDue([dispute, verdict(true), refund(200), sent, looked('FAILED')]).amountCents, 9000);
+  assert.match(payoutDue([dispute, verdict(true), refund(200), sent, looked('PENDING')]).why, /already paid/);
+  assert.match(payoutDue([dispute, verdict(true), refund(200), sent, looked('FAILED'), looked('SUCCESS')]).why, /already paid/);
+});
+
+test('after a failed payout is logged by --refresh, the next attempt gets its own lock and batch ID', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'bb-payout-'));
+  try {
+    const log = executionLog(root, 'PP-D-902');
+    for (const e of [dispute, verdict(true), refund(200)]) log.write(e);
+    let item = 'PENDING';
+    const posts = [];
+    const client = { paypal: async (method, path, json) => {
+      if (method === 'POST') { posts.push(json); return { ok: true, status: 201, data: { batch_header: { payout_batch_id: `B${posts.length}`, batch_status: 'PENDING' } } }; }
+      const id = path.split('/').at(-1);
+      return { ok: true, status: 200, data: { batch_header: { payout_batch_id: id, batch_status: 'PENDING' }, items: [{ payout_item_id: `I-${id}`, transaction_status: item }] } };
+    } };
+    assert.equal((await reimburse('PP-D-902', { root, client, execute: true })).status, 'executed');
+    // Still pending: the lock holds and nothing more is sent.
+    assert.equal((await reimburse('PP-D-902', { root, client, execute: true })).status, 'nothing-due');
+    item = 'FAILED';
+    assert.deepEqual(await refreshPayout('PP-D-902', { root, client }), { status: 'refreshed', batchId: 'B1', batchStatus: 'PENDING', itemStatus: 'FAILED' });
+    assert.equal(paypalFromLog(log.read()).payout, null, 'a failed payout is not shown as the payout');
+    assert.equal((await reimburse('PP-D-902', { root, client })).attempt, 2);
+    item = 'SUCCESS';
+    assert.equal((await reimburse('PP-D-902', { root, client, execute: true })).status, 'executed');
+    assert.deepEqual(posts.map((p) => p.sender_batch_header.sender_batch_id), ['blackbox-PP-D-902', 'blackbox-PP-D-902-2']);
+    assert.deepEqual([paypalFromLog(log.read()).payout.batchId, paypalFromLog(log.read()).payout.itemStatus], ['B2', 'SUCCESS']);
+    assert.equal((await reimburse('PP-D-902', { root, client, execute: true })).status, 'nothing-due');
+    assert.equal(posts.length, 2);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });
 
 test('reimburse pays the merchant by PayPal ID with the operator client, once, and logs it', async () => {

@@ -196,7 +196,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 179 tests
+npm test                    # 180 tests
 npm run bench               # 57 cases: every verdict and rule, six live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
@@ -207,7 +207,7 @@ npm run mandate                                       # :4050 enrol a passkey, a
 node agent/run.mjs --mandate <hash> --model claude-haiku-4-5-20251001 --shelf RJ-PREMIUM-BLUE-M
 node executor/resolve.mjs <dispute_id> [--execute]    # resolve one dispute by hand
 AUTO_EXECUTE=on npm run watch                         # resolve new disputes automatically (polling)
-node executor/payout.mjs <dispute_id> [--execute] [--fixture <name>]   # AGENT: the operator repays the merchant (operator/.env)
+node executor/payout.mjs <dispute_id> [--execute | --refresh] [--fixture <name>]   # AGENT: the operator repays the merchant (operator/.env); --refresh logs the batch status, and a FAILED item can be retried
 npm run webhook -- --register https://…/paypal/webhook && AUTO_EXECUTE=on npm run webhook -- --watch 30
 node study/run.mjs [--setup headphones]               # re-run the study (see study/README.md)
 ```

@@ -13,6 +13,20 @@ import { enrolmentFrom, payerForKey } from '../mandate/server.mjs';
 const cents = (v) => Math.round(Number(v) * 100);
 const amount = (a) => (a ? { cents: cents(a.value), currency: a.currency_code } : null);
 
+// A payout item in one of these states paid nothing; the operator may try again.
+export const PAYOUT_FAILED = new Set(['FAILED', 'DENIED', 'RETURNED', 'BLOCKED']);
+
+// Every payout PayPal accepted, oldest first, each with the latest logged look at its batch.
+// failed: the item is known to have paid nothing. An unknown or pending status is not failed.
+export function payoutAttempts(entries) {
+  return entries.filter((e) => e.step === 'payout' && e.status < 300).map((entry) => {
+    const batchId = entry.response?.batch_header?.payout_batch_id ?? null;
+    const after = entries.findLast((e) => e.step === 'get payout' && e.status < 300 && batchId && e.response?.batch_header?.payout_batch_id === batchId)?.response ?? null;
+    const itemStatus = after?.items?.[0]?.transaction_status ?? null;
+    return { entry, batchId, after, itemStatus, failed: PAYOUT_FAILED.has(itemStatus) };
+  });
+}
+
 // The PayPal facts the replay needs, taken from an executor log. Only IDs, amounts, times and
 // statuses are kept: no buyer or seller names or emails.
 export function paypalFromLog(entries) {
@@ -24,8 +38,10 @@ export function paypalFromLog(entries) {
   const capture = ok('get capture').at(-1);
   const executed = entries.find((e) => /^(accept-claim|make-offer|provide-evidence)/.test(e.step) && e.status < 300);
   const escalated = entries.find((e) => e.step === 'escalate' && e.status < 300);
-  const payout = entries.find((e) => e.step === 'payout' && e.status < 300);
-  const payoutAfter = entries.findLast((e) => e.step === 'get payout' && e.status < 300)?.response;
+  // The payout that counts: the latest one not known to have failed.
+  const attempt = payoutAttempts(entries).findLast((a) => !a.failed);
+  const payout = attempt?.entry;
+  const payoutAfter = attempt?.after;
   const after = ok('get dispute (after)').at(-1);
   const flagger = entries.findLast((e) => e.step === 'flagger' && e.result)?.result ?? null;
   const evidence = entries.findLast((e) => e.step === 'evidence-note')?.note ?? null;
