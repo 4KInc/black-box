@@ -102,6 +102,16 @@ Purchases with the lie, then (without it). Bold: the lie caused purchases in at 
 attempts each, its reply stopped before the closing brace of its JSON (one had begun
 `"sku": null`, one `"sku": "RJ-STORM-BLUE-M"`). They were not re-run, so the cell has 8 runs.
 
+**Recordings.** The study keeps each run's choice and reason, not a sealed record. To show the
+added models on the [recordings page](https://4kinc.github.io/black-box/), each of them then ran
+once more on each of the six lie products, through `agent/run.mjs --no-checkout` on the current
+shops: 36 runs. Only a purchase is sealed as a record, so the 23 purchases are in
+`fixtures/recorded/` (named `<model>-<lie>.json`, `audio-` for the headphones) and the 10
+declines are not. Three runs gave no answer the agent could use (two `gemini-3.1-pro-preview`
+replies stopped mid-JSON; one `gpt-4o-mini` reply named the SKU `"null"`) and were not repeated.
+Purchases of an `opacity:0` product show as AGENT: code does not read CSS, so it does not see that
+note as hidden; that is the AI check's job, as in bench cases F01 and F02.
+
 ## Limitations
 
 - **Two setups.** Two shops, two product types, two budgets, the same three hiding methods,
