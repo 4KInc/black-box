@@ -49,3 +49,12 @@ test('each cell says at a glance, and in its tooltip, whether the lie caused the
   assert.match(html, /<small>overspends anyway<\/small>/);
   assert.match(html, /class="skey"/);
 });
+
+test('the study can be filtered by model type and by result, with CSS alone', () => {
+  const html = studyPage(study);
+  assert.match(html, /<div class="srow" data-m="open">/);
+  assert.match(studyPage({ ...study, models: ['claude-x'], runs: [] }), /<div class="srow" data-m="claude">/);
+  assert.match(html, /main:has\(#fc-r-hit:checked\) \.study \.cell:not\(\[data-r~="hit"\]\)\{opacity:\.15\}/);
+  assert.match(html, /<label for="fs-m-open">Open models<small>2<\/small><\/label>/);
+  assert.doesNotMatch(html, /<script/i);
+});

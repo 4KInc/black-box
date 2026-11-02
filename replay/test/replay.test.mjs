@@ -56,6 +56,10 @@ test('the case list shows the live case as MERCHANT with the refund', async () =
   const html = await r.text();
   assert.match(html, new RegExp(`/case/${LIVE}`));
   assert.match(html, /\$240\.00 refunded to the buyer/);
+  // Filter chips, CSS only: each card carries what the chips filter on.
+  assert.match(html, /<a class="rec MERCHANT" href="\/case\/[0-9a-f]+" data-v="MERCHANT" data-src="paypal" data-m="claude">/);
+  assert.match(html, /main:has\(#fr-v-MERCHANT:checked\) \.rec:not\(\[data-v~="MERCHANT"\]\)\{display:none\}/);
+  assert.match(html, /<label for="fr-src-paypal">PayPal dispute<small>\d+<\/small><\/label>/);
 });
 
 test('the live case page replays the verdict, the hidden text and what PayPal did, with no scripts', async () => {

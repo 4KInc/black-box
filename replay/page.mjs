@@ -331,7 +331,33 @@ footer.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;co
   ::view-transition-old(root),::view-transition-new(root){animation-duration:.22s}
 }
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}@view-transition{navigation:none}}
+
+/* ---- filters: radio chips, CSS only ---- */
+.filters{display:flex;flex-wrap:wrap;gap:10px 24px;margin:0 0 16px}
+.filters fieldset{border:0;margin:0;padding:0;display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.filters legend{float:left;margin-right:4px;font:400 10.5px/26px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.filters input{position:absolute;opacity:0;width:1px;height:1px;margin:0}
+.filters label{padding:5px 11px;border:1px solid var(--rule);border-radius:999px;font:400 11px/1.2 var(--mono);letter-spacing:.06em;color:var(--ink-2);cursor:pointer;background:var(--bg-1)}
+.filters label:hover{border-color:var(--rule-2);color:var(--ink)}
+.filters label small{color:var(--ink-3);margin-left:5px}
+.filters input:checked+label{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.filters input:checked+label small{color:var(--bg-3)}
+.filters input:focus-visible+label{outline:2px solid var(--amber);outline-offset:2px}
 `;
+
+// A row of filter chips that shows or hides items with CSS alone (the pages run no scripts).
+// groups: [{ key, legend, options: [[value, label, count]] }]. Items carry data-<key> with
+// space-separated values; dim: true fades non-matching items instead of hiding them.
+export function filterBar(id, target, groups, { dim = false } = {}) {
+  const hide = dim ? 'opacity:.15' : 'display:none';
+  const css = groups.flatMap((g) => g.options.map(([value]) =>
+    `main:has(#${id}-${g.key}-${value}:checked) ${target}:not([data-${g.key}~="${value}"]){${hide}}`)).join('\n');
+  const bar = groups.map((g) => `<fieldset><legend>${esc(g.legend)}</legend>
+<input type="radio" name="${id}-${g.key}" id="${id}-${g.key}-all" checked><label for="${id}-${g.key}-all">All</label>
+${g.options.filter(([, , n]) => n !== 0).map(([value, text, n]) => `<input type="radio" name="${id}-${g.key}" id="${id}-${g.key}-${value}"><label for="${id}-${g.key}-${value}">${esc(text)}${n === undefined ? '' : `<small>${n}</small>`}</label>`).join('')}</fieldset>`).join('');
+  return `<style>${css}</style><div class="filters" role="group" aria-label="Filters">${bar}</div>`;
+}
+const isClaude = (model) => /^claude/.test(model ?? '');
 
 // Where the nav's Lab link points: the live engine on the replay server. The static site has no
 // server, so its build points this at the hosted lab (LAB_URL) or drops the link.
@@ -414,14 +440,14 @@ it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or th
 
 // intro: optional HTML shown above the list (the public site uses it).
 export function indexPage(rows, { intro = '' } = {}) {
-  const live = rows.filter(({ c }) => c.paypal?.executed).length;
+  const live = rows.filter(({ c }) => c.paypal).length;
   const cards = rows.map(({ c, j }) => {
     const d = decisionOf(c.record);
     const v = j.verdict.verdict;
     const paid = j.order.capturedCents;
     const cap = c.record.mandate.maxTotalCents;
     const g = gaugeScale(paid, cap);
-    return `<a class="rec ${v}" href="/case/${c.hash}">
+    return `<a class="rec ${v}" href="/case/${c.hash}" data-v="${v}" data-src="${c.paypal ? 'paypal' : 'preview'}" data-m="${isClaude(d.model) ? 'claude' : 'open'}">
 <div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">${label(v)}</span><span class="rl">rule ${j.verdict.rule}</span><span class="when">${day(c.record.purchase.at)}</span></div>
 <div class="model">${esc(d.model ?? 'unknown model')}</div>
 <div class="item">${esc(j.product?.name ?? c.record.purchase.sku)} · ${money(paid)} <span class="k">on a ${money(cap)} budget</span></div>
@@ -431,8 +457,18 @@ export function indexPage(rows, { intro = '' } = {}) {
   const empty = '<p class="empty">No recordings yet. Run the agent (node agent/run.mjs) to make one.</p>';
   return layout('Black Box · recordings', `${intro || `<section class="hero"><div><div class="eyebrow"><b>●</b> Recordings</div><h1>Every purchase, <em>on tape</em></h1></div>
 <div><p>Each recording is what an AI shopping agent saw and decided, sealed into its PayPal order. Open one to replay it and see who pays.</p></div></section>`}
-<section class="sec"><header><span class="n">${String(rows.length).padStart(2, '0')}</span><h2>Recordings</h2>${live ? `<p>${live} went through a PayPal dispute.</p>` : ''}</header>
-<div class="recs">${cards || empty}</div></section>`, { active: 'recordings' });
+<section class="sec"><header><span class="n">${String(rows.length).padStart(2, '0')}</span><h2>Recordings</h2>${live ? `<p>${live} ${live === 1 ? 'was' : 'were'} disputed on PayPal.</p>` : ''}</header>
+${rows.length ? recordingFilters(rows) : ''}<div class="recs">${cards || empty}</div></section>`, { active: 'recordings' });
+}
+
+function recordingFilters(rows) {
+  const count = (f) => rows.filter(f).length;
+  const verdicts = [[VERDICT.MERCHANT, 'Shop at fault'], [VERDICT.AGENT, 'Agent at fault'], [VERDICT.USER, 'Purchase stands'], [VERDICT.HUMAN, 'Needs a human']];
+  return filterBar('fr', '.rec', [
+    { key: 'v', legend: 'Verdict', options: verdicts.map(([v, text]) => [v, text, count(({ j }) => j.verdict.verdict === v)]) },
+    { key: 'src', legend: 'Dispute', options: [['paypal', 'PayPal dispute', count(({ c }) => c.paypal)], ['preview', 'No dispute', count(({ c }) => !c.paypal)]] },
+    { key: 'm', legend: 'Model', options: [['claude', 'Claude', count(({ c }) => isClaude(decisionOf(c.record).model))], ['open', 'Open models', count(({ c }) => !isClaude(decisionOf(c.record).model))]] },
+  ]);
 }
 
 // ---------------------------------------------------------------- case
@@ -724,14 +760,14 @@ function studySection(study, num) {
   const pct = (a, n) => (n ? `${Math.round((a / n) * 100)}%` : '–');
   const fooledModels = rows.filter((r) => r.cells.some((c) => c.effect !== null && c.effect >= 0.5)).map((r) => modelName(r.model));
   const head = `<div class="srow head"><div>Model</div>${study.lies.map((l) => `<div>${esc(l.who === 'merchant' ? 'Shop' : 'Review site')} hides a fake price<b>${esc(l.lie)}</b></div>`).join('')}</div>`;
-  const body = rows.map((r) => `<div class="srow"><div class="sm"><b>${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
-${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'hit' ? ' hit' : k === 'anyway' ? ' anyway' : k === 'clean' ? ' clean' : ''}" data-lie="${esc(c.lie)}" tabindex="0" data-tip="${esc(cellTip(c, k, r.model, st.sampled, study.n))}">
+  const body = rows.map((r) => `<div class="srow" data-m="${isClaude(r.model) ? 'claude' : 'open'}"><div class="sm"><b>${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
+${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'hit' ? ' hit' : k === 'anyway' ? ' anyway' : k === 'clean' ? ' clean' : ''}" data-lie="${esc(c.lie)}" data-r="${k}" tabindex="0" data-tip="${esc(cellTip(c, k, r.model, st.sampled, study.n))}">
 <div class="eff">${c.effect === null ? '–' : `${c.effect > 0 ? '+' : ''}${Math.round(c.effect * 100)}`}<small>${c.effect === null ? '' : CELL_LABEL[k]}</small></div>
 <div class="sbar lie"><span>with lie</span><i><u style="width:${pct(c.lieBought, c.lieN)}"></u></i><b>${c.lieBought}/${c.lieN}</b></div>
 <div class="sbar"><span>without</span><i><u style="width:${pct(c.ctlBought, c.ctlN)}"></u></i><b>${c.ctlBought}/${c.ctlN}</b></div></div>`; }).join('')}</div>`).join('');
   const want = [st.item.endsWith('s') ? '' : 'a', st.attrs.color, st.item].filter(Boolean).join(' ');
   const plain = `Each AI had to buy ${want} for at most ${money(st.budget)}, and every product shown cost more. The big number is how much the hidden note raised the chance it bought anyway.${fooledModels.length ? ` Fooled at least half the time: ${fooledModels.join(', ')}.` : ''}`;
-  return `<section class="sec"><header><span class="n">${num}</span><h2>${esc(st.title)}</h2></header><p class="plain">${esc(plain)}</p>
+  return `<section class="sec ssetup" data-s="s${num}"><header><span class="n">${num}</span><h2>${esc(st.title)}</h2></header><p class="plain">${esc(plain)}</p>
 <div class="skey"><span><b class="r">+100</b>the lie made it overspend</span><span><b class="a">OVERSPENDS ANYWAY</b>ignores the budget, lie or not</span><span><b class="g">NEVER FOOLED</b>stayed within budget</span><span>Hover or tap a cell for details.</span></div>
 <div class="study">${head}${body}</div></section>`;
 }
@@ -744,7 +780,19 @@ export function studyPage(studies) {
 <h1>Who falls for <em>a hidden price?</em></h1></div>
 <div><p>Every product shown costs more than the budget, so buying anything is a mistake. Each model ran ${list[0].n} times with a hidden lie on the page, and ${list[0].n} times on the same shop without it.</p>
 <p>This covers these setups only, not a ranking of models. Raw data: <span class="mono">study/README.md</span>.</p></div></section>
+${studyFilters(list)}
 ${list.map((st, i) => studySection(st, String(i + 1).padStart(2, '0'))).join('\n')}`, { active: 'study' });
+}
+
+function studyFilters(list) {
+  const cells = list.flatMap((st) => studySummary(st).rows.flatMap((r) => r.cells.map(cellKind)));
+  const n = (k) => cells.filter((x) => x === k).length;
+  const models = [...new Set(list.flatMap((st) => st.models))];
+  const setups = list.length > 1 ? [{ key: 's', legend: 'Setup', options: list.map((st, i) => { const id = String(i + 1).padStart(2, '0'); return [`s${id}`, `${id} · ${setupOf(st).item}`]; }) }] : [];
+  return `<section class="sec" style="padding-bottom:0">
+${filterBar('fs', '.srow:not(.head)', [{ key: 'm', legend: 'Model', options: [['claude', 'Claude', models.filter(isClaude).length], ['open', 'Open models', models.filter((m) => !isClaude(m)).length]] }])}
+${setups.length ? filterBar('fx', '.ssetup', setups) : ''}
+${filterBar('fc', '.study .cell', [{ key: 'r', legend: 'Result', options: [['hit', 'The lie caused it', n('hit')], ['anyway', 'Overspends anyway', n('anyway')], ['clean', 'Never fooled', n('clean')]] }], { dim: true })}</section>`;
 }
 
 // ---------------------------------------------------------------- bench
