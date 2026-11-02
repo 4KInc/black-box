@@ -295,6 +295,8 @@ ol.tape li.hot .ev{color:var(--orange)}
 @media (max-width:860px){.srow{grid-template-columns:1fr}.srow.head{display:none}.cell::before{content:attr(data-lie);font:400 10px/1.3 var(--mono);color:var(--ink-3);letter-spacing:.08em;text-transform:uppercase}}
 
 /* ---- bench ---- */
+.vkey{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;font:400 11px/1.4 var(--mono);letter-spacing:.06em;color:var(--ink-2)}
+.vkey span{display:inline-flex;align-items:center;gap:7px}.vkey i{width:22px;height:4px;background:var(--c);box-shadow:0 0 8px var(--c);border-radius:1px}
 .matrix{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-top:18px}
 .matrix a{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:9px 8px;border:1px solid var(--rule);border-radius:3px;text-decoration:none;background:var(--bg-1);font:700 15px/1 var(--display);letter-spacing:.06em}
 .matrix a i{width:100%;height:4px;background:var(--c);box-shadow:0 0 10px var(--c);border-radius:1px}
@@ -413,7 +415,7 @@ const paypalStatus = (p) => {
 
 const planText = (plan) => (plan.action === 'none' ? 'No automatic action' : `${plan.action}${plan.refundCents ? ' ' + money(plan.refundCents) : ''}`);
 // The same plan in plain words, for a purchase nobody disputed.
-const REASON_PLAIN = { MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: 'not as described', UNAUTHORISED: 'unauthorised', INCORRECT_AMOUNT: 'wrong amount' };
+const REASON_PLAIN = { MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: 'not as described', MERCHANDISE_OR_SERVICE_NOT_RECEIVED: 'not received', UNAUTHORISED: 'unauthorised', INCORRECT_AMOUNT: 'wrong amount', DUPLICATE_TRANSACTION: 'charged twice', CREDIT_NOT_PROCESSED: 'refund not processed' };
 const reasonPlain = (reason) => REASON_PLAIN[reason] ?? String(reason ?? '').replaceAll('_', ' ').toLowerCase();
 const planPlain = (plan) => ({
   none: 'a person decides',
@@ -422,7 +424,11 @@ const planPlain = (plan) => ({
   'make-offer': `offer ${money(plan.refundCents)} back`,
   'provide-evidence': 'defend the sale',
 }[plan.action] ?? plan.action);
-const expectText = (e) => `${label(e.verdict)}, rule ${e.rule}, ${e.action}${e.refundCents ? ' ' + money(e.refundCents) : ''}${e.broken?.length ? `; breaks ${e.broken.join(', ')}` : ''}`;
+// The record checks, in short, for "fails: ..." on bench cases.
+const CHECK_PLAIN = { hashesMatch: 'record matches the payment', signaturesValid: 'page signatures', keyOnShopDomain: "key on the shop's site",
+  payeeMatches: 'right payee', signedBeforeOrder: 'signed before the order', mandateSigned: 'passkey approval' };
+const failsText = (broken) => { const ks = [].concat(broken ?? []).flatMap((x) => String(x).split(',')).filter(Boolean); return ks.length ? `fails: ${ks.map((k) => CHECK_PLAIN[k] ?? k).join(', ')}` : ''; };
+const expectText = (e) => `${label(e.verdict)}, rule ${e.rule}; ${planPlain(e)}${failsText(e.broken) ? `; ${failsText(e.broken)}` : ''}`;
 
 // Price against budget, as fractions of a common scale, for the gauges.
 function gaugeScale(paidCents, capCents) {
@@ -824,11 +830,13 @@ export function benchPage(results) {
   const matrix = `<div class="matrix">${results.map((r) => `<a class="${r.got.verdict}${r.pass ? '' : ' fail'}" href="/bench/${esc(r.def.id)}" title="${esc(r.def.title)}">${esc(r.def.id)}<i></i><small>${r.pass ? 'PASS' : 'FAIL'}</small></a>`).join('')}</div>`;
   const row = (r) => `<a class="case" href="/bench/${esc(r.def.id)}"><span class="id">${esc(r.def.id)}</span>
 <div><h3>${esc(r.def.title)}</h3></div>
-<div class="got ${r.got.verdict}">${label(r.got.verdict)} · rule ${r.got.rule}<small>${esc(r.got.action === 'none' ? 'no automatic action' : r.got.action)}${r.got.refundCents ? ' ' + money(r.got.refundCents) : ''} · ${esc(r.def.reason.replaceAll('_', ' ').toLowerCase())}${r.got.broken ? `<br>breaks ${esc(r.got.broken)}` : ''}</small></div>
+<div class="got ${r.got.verdict}">${label(r.got.verdict)} · rule ${r.got.rule}<small>If disputed as “${esc(reasonPlain(r.def.reason))}”: ${esc(planPlain(r.got))}${failsText(r.got.broken) ? `<br>${esc(failsText(r.got.broken))}` : ''}</small></div>
 <div class="res ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? 'PASS' : 'FAIL'}${r.mismatches.map((x) => `<small style="display:block;color:var(--red);font:400 10px/1.4 var(--mono)">${esc(x)}</small>`).join('')}</div></a>`;
   const n = (i) => `${i + 1}.0`;
   return layout('Black Box · case bench', `<section class="hero"><div><div class="eyebrow"><b>●</b> Case bench · offline, no keys</div>
 <h1><em style="color:var(--${all ? 'green' : 'red'})">${passed}/${results.length}</em> cases<br>exactly as expected</h1></div>
-<div><p>Each case states up front the verdict, rule and PayPal action it must get. Every verdict and rule is covered. Run it yourself: <span class="mono">npm run bench</span>.</p>${matrix}</div></section>
+<div><p>Each case states up front the verdict, rule and PayPal action it must get. Every verdict and rule is covered. Run it yourself: <span class="mono">npm run bench</span>.</p>
+<div class="vkey"><span class="MERCHANT"><i></i>Shop at fault</span><span class="AGENT"><i></i>Agent at fault</span><span class="USER"><i></i>Purchase stands</span><span class="NEEDS_A_HUMAN"><i></i>Needs a human</span></div>
+<p class="k" style="font-size:12.5px;margin:6px 0 0">R recorded runs and honest price data · E reworded lies · F AI check · P passkey approvals, incl. live PayPal disputes · A attacks on the record</p>${matrix}</div></section>
 ${SECTIONS.map(([kind, title, note], i) => section(n(i), title, note, `<div class="cases">${results.filter((r) => r.def.kind === kind).map(row).join('')}</div>`)).join('')}`, { active: 'bench' });
 }

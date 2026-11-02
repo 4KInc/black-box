@@ -53,3 +53,12 @@ test('a ProductGroup note is judged against the purchased variant\'s signed pric
   assert.equal(got.E12.j.findings.find((f) => /^AI agents:/.test(f.text)).contradictsListing, false);
   assert.equal(got.E13.j.findings.find((f) => /^AI agents:/.test(f.text)).contradictsListing, true);
 });
+
+test('the bench page says each result in plain words, with a colour key', async () => {
+  const { benchPage } = await import('../../replay/page.mjs');
+  const html = benchPage(runBench());
+  assert.match(html, /class="vkey"><span class="MERCHANT"><i><\/i>Shop at fault<\/span>/);
+  assert.match(html, /If disputed as “wrong amount”: refund \$90\.00/);
+  assert.match(html, /<br>fails: [a-z' ,]+<\/small>/);
+  assert.doesNotMatch(html, /accept-claim|breaks /);
+});
