@@ -11,6 +11,9 @@ adds the live part: tamper with a real case and the engine runs again on the ser
 
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
+**Submission state:** tag `v1.0-submission`, 2 November 2026: 57 bench cases (six live disputes,
+10 attacks), 180 tests, 15 facts, 32,768 fact combinations checked.
+
 ## The problem
 
 AI agents now buy things for people. A shop can hide a message that people never see but an
