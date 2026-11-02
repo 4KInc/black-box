@@ -62,3 +62,13 @@ test('the bench page says each result in plain words, with a colour key', async 
   assert.match(html, /<br>fails: [a-z' ,]+<\/small>/);
   assert.doesNotMatch(html, /accept-claim|breaks /);
 });
+
+test('the bench page reads as dispute scenarios, in groups that fold away', async () => {
+  const { benchPage } = await import('../../replay/page.mjs');
+  const results = runBench();
+  const html = benchPage(results);
+  assert.match(html, new RegExp(`${results.length} of ${results.length}</em><br>disputes judged right`));
+  assert.equal((html.match(/<details class="sec fold">/g) ?? []).length, 6);
+  assert.match(html, /<h2>Attacks on the record<\/h2><span class="tally">10 of 10 right<\/span>/);
+  assert.doesNotMatch(html, />PASS<|exactly as expected/);
+});

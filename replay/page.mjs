@@ -112,6 +112,16 @@ main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px
 .sec>header h2{font:600 clamp(24px,3.4vw,34px)/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
 .sec>header .n{font:400 12px/1 var(--mono);color:var(--orange);letter-spacing:.1em}
 .sec>header p{flex-basis:100%;margin:2px 0 0;color:var(--ink-2);max-width:78ch}
+.fold>summary{display:flex;align-items:baseline;gap:14px;flex-wrap:wrap;border-top:1px solid var(--rule);padding-top:14px;cursor:pointer;list-style:none}
+.fold>summary::-webkit-details-marker{display:none}
+.fold>summary h2{font:600 clamp(24px,3.4vw,34px)/1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.fold>summary .n{font:400 12px/1 var(--mono);color:var(--orange);letter-spacing:.1em}
+.fold>summary .tally{margin-left:auto;font:400 11px/1 var(--mono);letter-spacing:.08em;color:var(--green)}.fold>summary .tally.bad{color:var(--red)}
+.fold>summary .tally::after{content:'▸';display:inline-block;margin-left:10px;color:var(--ink-2);transition:transform .15s}
+.fold[open]>summary .tally::after{transform:rotate(90deg)}
+.fold>summary p{flex-basis:100%;max-width:none;margin:2px 0 0;color:var(--ink-2)}
+.fold>summary:hover h2{color:var(--orange)}.fold[open]>summary{margin-bottom:16px}
+.fold+.fold{margin-top:22px}
 .panel{background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-radius:4px;padding:clamp(14px,2vw,20px)}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media (max-width:860px){.grid2{grid-template-columns:1fr}}
@@ -373,7 +383,7 @@ export function layout(title, body, { active = '' } = {}) {
 <meta name="color-scheme" content="dark"><title>${esc(title)}</title><style>${CSS}</style></head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar"><a class="mark" href="/"><span class="unit" aria-hidden="true"></span>BLACK BOX</a><span class="sub">flight recorder for AI shopping agents</span>
-<nav aria-label="Sections">${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Case bench', 'bench')}${labHref ? nav(labHref, 'Lab', 'lab') : ''}</nav></header>
+<nav aria-label="Sections">${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${labHref ? nav(labHref, 'Lab', 'lab') : ''}</nav></header>
 <main id="main">${body}</main></body></html>`;
 }
 
@@ -453,7 +463,7 @@ export function siteIntro({ live }) {
 <div><p>Black Box records what a shopping agent saw and ties it to the PayPal payment. If the buyer disputes,
 it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or the <b>buyer</b>, and tells PayPal what to do.</p>
 <p>Every recording below is a real run. The ones marked PayPal went through a sandbox dispute.
-<a href="/bench">Case bench</a>${live ? ' · <a href="/lab">Lab</a>' : ''} · <a href="https://github.com/4KInc/black-box">Source</a></p></div></section>`;
+<a href="/bench">Dispute scenarios</a>${live ? ' · <a href="/lab">Lab</a>' : ''} · <a href="https://github.com/4KInc/black-box">Source</a></p></div></section>`;
 }
 
 // intro: optional HTML shown above the list (the public site uses it).
@@ -637,9 +647,9 @@ export function casePage(c, j) {
 
   const b = c.benchResult;
   const benchCard = b ? `<section class="benchcard ${b.pass ? 'PASS' : 'FAIL'}"><span class="id">${esc(b.def.id)}</span>
-<div><div class="eyebrow"><a href="/bench">Case bench</a> · ${esc(b.def.kind)}</div><h2>${esc(b.def.title)}</h2><p>${esc(b.def.story)}</p>
+<div><div class="eyebrow"><a href="/bench">Dispute scenarios</a> · ${esc(b.def.kind)}</div><h2>${esc(b.def.title)}</h2><p>${esc(b.def.story)}</p>
 ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}</div>
-<div class="res">${b.pass ? 'PASS' : 'FAIL'}<small>expected ${esc(expectText(b.def.expect))}</small></div></section>` : '';
+<div class="res">${b.pass ? '✓ Right' : '✗ Wrong'}<small>the right answer: ${esc(expectText(b.def.expect))}</small></div></section>` : '';
 
   const crumbs = `<div class="crumbs"><span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${esc(d.model ?? 'unknown')}</b></span>
 <span>Bought <b>${time(r.purchase.at)}</b></span>${c.paypal ? `<span>PayPal <b>${esc(c.paypal.disputeId)}</b></span>` : ''}</div>`;
@@ -824,19 +834,26 @@ const SECTIONS = [
   ['attack', 'Attacks on the record', 'A real record with one thing forged. Each must fail exactly the expected checks.'],
 ];
 
+// A bench group that opens and closes without scripts; the summary says how many it got right.
+function fold(n, title, note, rows, row) {
+  const right = rows.filter((r) => r.pass).length;
+  return `<details class="sec fold"><summary><span class="n">${n}</span><h2>${title}</h2><span class="tally${right === rows.length ? '' : ' bad'}">${right} of ${rows.length} right</span>${note ? `<p>${note}</p>` : ''}</summary><div class="cases">${rows.map(row).join('')}</div></details>`;
+}
+
 export function benchPage(results) {
   const passed = results.filter((r) => r.pass).length;
   const all = passed === results.length;
-  const matrix = `<div class="matrix">${results.map((r) => `<a class="${r.got.verdict}${r.pass ? '' : ' fail'}" href="/bench/${esc(r.def.id)}" title="${esc(r.def.title)}">${esc(r.def.id)}<i></i><small>${r.pass ? 'PASS' : 'FAIL'}</small></a>`).join('')}</div>`;
+  const matrix = `<div class="matrix">${results.map((r) => `<a class="${r.got.verdict}${r.pass ? '' : ' fail'}" href="/bench/${esc(r.def.id)}" title="${esc(r.def.title)}">${esc(r.def.id)}<i></i><small>${r.pass ? '✓ right' : '✗ wrong'}</small></a>`).join('')}</div>`;
   const row = (r) => `<a class="case" href="/bench/${esc(r.def.id)}"><span class="id">${esc(r.def.id)}</span>
 <div><h3>${esc(r.def.title)}</h3></div>
 <div class="got ${r.got.verdict}">${label(r.got.verdict)} · rule ${r.got.rule}<small>If disputed as “${esc(reasonPlain(r.def.reason))}”: ${esc(planPlain(r.got))}${failsText(r.got.broken) ? `<br>${esc(failsText(r.got.broken))}` : ''}</small></div>
-<div class="res ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? 'PASS' : 'FAIL'}${r.mismatches.map((x) => `<small style="display:block;color:var(--red);font:400 10px/1.4 var(--mono)">${esc(x)}</small>`).join('')}</div></a>`;
+<div class="res ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? '✓ Right' : '✗ Wrong'}${r.mismatches.map((x) => `<small style="display:block;color:var(--red);font:400 10px/1.4 var(--mono)">${esc(x)}</small>`).join('')}</div></a>`;
   const n = (i) => `${i + 1}.0`;
-  return layout('Black Box · case bench', `<section class="hero"><div><div class="eyebrow"><b>●</b> Case bench · offline, no keys</div>
-<h1><em style="color:var(--${all ? 'green' : 'red'})">${passed}/${results.length}</em> cases<br>exactly as expected</h1></div>
-<div><p>Each case states up front the verdict, rule and PayPal action it must get. Every verdict and rule is covered. Run it yourself: <span class="mono">npm run bench</span>.</p>
+  return layout('Black Box · dispute scenarios', `<section class="hero"><div><div class="eyebrow"><b>●</b> Dispute scenarios · run offline</div>
+<h1><em style="color:var(--${all ? 'green' : 'red'})">${passed} of ${results.length}</em><br>disputes judged right</h1></div>
+<div><p>Real and staged disputes, each with the right answer written down before Black Box sees it. Open a group below, or tap any tile to see that dispute in full.</p>
 <div class="vkey"><span class="MERCHANT"><i></i>Shop at fault</span><span class="AGENT"><i></i>Agent at fault</span><span class="USER"><i></i>Purchase stands</span><span class="NEEDS_A_HUMAN"><i></i>Needs a human</span></div>
-<p class="k" style="font-size:12.5px;margin:6px 0 0">R recorded runs and honest price data · E reworded lies · F AI check · P passkey approvals, incl. live PayPal disputes · A attacks on the record</p>${matrix}</div></section>
-${SECTIONS.map(([kind, title, note], i) => section(n(i), title, note, `<div class="cases">${results.filter((r) => r.def.kind === kind).map(row).join('')}</div>`)).join('')}`, { active: 'bench' });
+<p class="k" style="font-size:12.5px;margin:6px 0 0">R recorded runs and honest price data · E reworded lies · F AI check · P passkey approvals, incl. live PayPal disputes · A attacks on the record</p>${matrix}
+<p class="k" style="font-size:12px;margin:14px 0 0">Check it yourself: <span class="mono">npm run bench</span></p></div></section>
+${SECTIONS.map(([kind, title, note], i) => fold(n(i), title, note, results.filter((r) => r.def.kind === kind), row)).join('')}`, { active: 'bench' });
 }
