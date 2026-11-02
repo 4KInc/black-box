@@ -120,7 +120,8 @@ main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px
 .fold>summary .tally::after{content:'▸';display:inline-block;margin-left:10px;color:var(--ink-2);transition:transform .15s}
 .fold[open]>summary .tally::after{transform:rotate(90deg)}
 .fold>summary p{flex-basis:100%;max-width:none;margin:2px 0 0;color:var(--ink-2)}
-.fold>summary:hover h2{color:var(--orange)}.fold[open]>summary{margin-bottom:16px}
+.fold>summary:hover h2{color:var(--orange)}.fold>.bcards{margin-top:16px}
+.fold>summary .tally::after{font-size:11px}main:has(.filters input:checked:not([id$="-all"])) .fold>summary .tally{font-size:0}
 .fold+.fold{margin-top:22px}
 .panel{background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-radius:4px;padding:clamp(14px,2vw,20px)}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -313,16 +314,21 @@ ol.tape li.hot .ev{color:var(--orange)}
 .matrix a small{font:400 9.5px/1 var(--mono);letter-spacing:.08em;color:var(--green)}
 .matrix a.fail small{color:var(--red)}
 .matrix a:hover{border-color:var(--rule-2)}
-.cases{display:grid;gap:8px}
-.case{display:grid;grid-template-columns:58px minmax(0,1fr) 210px 70px;gap:16px;align-items:start;padding:14px 16px;border:1px solid var(--rule);border-radius:4px;background:var(--bg-1);text-decoration:none}
-.case:hover{border-color:var(--rule-2);background:var(--bg-2)}
-.case .id{font:700 22px/1 var(--display);color:var(--orange);letter-spacing:.04em}
-.case h3{font:600 19px/1.15 var(--display);letter-spacing:.02em;margin-bottom:4px}
-.case p{margin:0;color:var(--ink-2);font-size:13px}
-.case .got{font:700 14px/1.2 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--c)}
-.case .got small{display:block;font:400 11px/1.5 var(--mono);letter-spacing:0;text-transform:none;color:var(--ink-3);margin-top:4px}
-.case .res{font:700 14px/1 var(--display);letter-spacing:.12em;color:var(--c);text-align:right}
-@media (max-width:760px){.case{grid-template-columns:44px minmax(0,1fr)}.case .got,.case .res{grid-column:2;text-align:left}}
+.bcards{container-type:inline-size;display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+.bcard{display:flex;flex-direction:column;gap:10px;text-decoration:none;padding:16px;border:1px solid var(--rule);border-top:3px solid var(--c);border-radius:4px;
+  background:linear-gradient(180deg,var(--bg-1),oklch(.165 .006 250));transition:border-color .18s,transform .18s,background .18s}
+.bcard:hover{border-color:var(--rule-2);border-top-color:var(--c);transform:translateY(-2px);background:linear-gradient(180deg,var(--bg-2),var(--bg-1))}
+.bcard .top{display:flex;align-items:center;gap:10px}
+.bcard .dot{width:10px;height:10px;border-radius:50%;background:var(--c);box-shadow:0 0 12px var(--c)}
+.bcard .vv{font:700 14px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--c)}
+.bcard .rl{font:400 11px/1 var(--mono);color:var(--ink-3)}
+.bcard .ok{margin-left:auto;font:400 11px/1 var(--mono);letter-spacing:.06em;color:var(--c)}
+.bcard .bid{font:700 26px/1 var(--display);color:var(--orange);letter-spacing:.04em}
+.bcard h3{font:600 18px/1.2 var(--display);letter-spacing:.02em;flex:1}
+.bcard .miss{margin:0;color:var(--red);font:400 10.5px/1.4 var(--mono)}
+.bcard .foot{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--rule);padding-top:10px;font:400 11px/1.4 var(--mono);color:var(--ink-3)}
+.bcard .foot b{color:var(--ink);font-weight:400;font-size:12.5px}
+.bcard .foot .fails{color:var(--red)}
 .benchcard{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin-bottom:16px;padding:12px 16px;border:1px dashed var(--rule-2);border-radius:4px}
 .benchcard .id{font:700 26px/1 var(--display);color:var(--orange)}
 .benchcard h2{font:600 20px/1.15 var(--display);letter-spacing:.02em}
@@ -336,7 +342,7 @@ footer.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;co
 /* ---- motion (CSS only) ---- */
 @media (prefers-reduced-motion:no-preference){
   @supports (animation-timeline:view()){
-    .sec,.rec,.case{animation:rise linear both;animation-timeline:view();animation-range:entry 0% cover 18%}
+    .sec,.rec,.bcard{animation:rise linear both;animation-timeline:view();animation-range:entry 0% cover 18%}
     @keyframes rise{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
   }
   .lampc:not(.off){animation:warm .9s ease-out both}
@@ -837,17 +843,38 @@ const SECTIONS = [
 // A bench group that opens and closes without scripts; the summary says how many it got right.
 function fold(n, title, note, rows, row) {
   const right = rows.filter((r) => r.pass).length;
-  return `<details class="sec fold"><summary><span class="n">${n}</span><h2>${title}</h2><span class="tally${right === rows.length ? '' : ' bad'}">${right} of ${rows.length} right</span>${note ? `<p>${note}</p>` : ''}</summary><div class="cases">${rows.map(row).join('')}</div></details>`;
+  return `<details class="sec fold"><summary><span class="n">${n}</span><h2>${title}</h2><span class="tally${right === rows.length ? '' : ' bad'}">${right} of ${rows.length} right</span>${note ? `<p>${note}</p>` : ''}</summary><div class="bcards">${rows.map(row).join('')}</div></details>`;
+}
+
+// What a bench case can be filtered on: its verdict, what Black Box would do on PayPal, and the buyer's complaint.
+const benchAction = (got) => ({ none: 'person', 'accept-claim': 'refund', 'accept-claim-partial': 'refund', 'make-offer': 'offer', 'provide-evidence': 'defend' }[got.action] ?? 'person');
+const BENCH_REASON = { MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: 'nad', UNAUTHORISED: 'unauth', INCORRECT_AMOUNT: 'amount', MERCHANDISE_OR_SERVICE_NOT_RECEIVED: 'nr' };
+const benchData = (r) => `data-v="${r.got.verdict}" data-a="${benchAction(r.got)}" data-r="${BENCH_REASON[r.def.reason] ?? 'other'}"`;
+
+function benchFilters(results) {
+  const count = (f) => results.filter(f).length;
+  const verdicts = [[VERDICT.MERCHANT, 'Shop at fault'], [VERDICT.AGENT, 'Agent at fault'], [VERDICT.USER, 'Purchase stands'], [VERDICT.HUMAN, 'Needs a human']];
+  const actions = [['refund', 'Refund'], ['offer', 'Offer money back'], ['defend', 'Defend the sale'], ['person', 'A person decides']];
+  const groups = [
+    { key: 'v', legend: 'Verdict', options: verdicts.map(([v, text]) => [v, text, count((r) => r.got.verdict === v)]) },
+    { key: 'a', legend: 'Outcome', options: actions.map(([a, text]) => [a, text, count((r) => benchAction(r.got) === a)]) },
+    { key: 'r', legend: 'Complaint', options: Object.entries(BENCH_REASON).map(([reason, k]) => [k, reasonPlain(reason), count((r) => r.def.reason === reason)]) },
+  ];
+  // A filter opens every group, and hides the groups with nothing left in them.
+  const open = groups.flatMap((g) => g.options.map(([value]) => `main:has(#fb-${g.key}-${value}:checked) .fold:not(:has([data-${g.key}~="${value}"])){display:none}
+main:has(#fb-${g.key}-${value}:checked) .fold::details-content{content-visibility:visible;display:block}`)).join('\n');
+  return `${filterBar('fb', ':is(.bcard,.matrix a)', groups)}<style>${open}</style>`;
 }
 
 export function benchPage(results) {
   const passed = results.filter((r) => r.pass).length;
   const all = passed === results.length;
-  const matrix = `<div class="matrix">${results.map((r) => `<a class="${r.got.verdict}${r.pass ? '' : ' fail'}" href="/bench/${esc(r.def.id)}" title="${esc(r.def.title)}">${esc(r.def.id)}<i></i><small>${r.pass ? '✓ right' : '✗ wrong'}</small></a>`).join('')}</div>`;
-  const row = (r) => `<a class="case" href="/bench/${esc(r.def.id)}"><span class="id">${esc(r.def.id)}</span>
-<div><h3>${esc(r.def.title)}</h3></div>
-<div class="got ${r.got.verdict}">${label(r.got.verdict)} · rule ${r.got.rule}<small>If disputed as “${esc(reasonPlain(r.def.reason))}”: ${esc(planPlain(r.got))}${failsText(r.got.broken) ? `<br>${esc(failsText(r.got.broken))}` : ''}</small></div>
-<div class="res ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? '✓ Right' : '✗ Wrong'}${r.mismatches.map((x) => `<small style="display:block;color:var(--red);font:400 10px/1.4 var(--mono)">${esc(x)}</small>`).join('')}</div></a>`;
+  const matrix = `<div class="matrix">${results.map((r) => `<a class="${r.got.verdict}${r.pass ? '' : ' fail'}" href="/bench/${esc(r.def.id)}" title="${esc(r.def.title)}" ${benchData(r)}>${esc(r.def.id)}<i></i><small>${r.pass ? '✓ right' : '✗ wrong'}</small></a>`).join('')}</div>`;
+  const row = (r) => `<a class="bcard ${r.got.verdict}" href="/bench/${esc(r.def.id)}" ${benchData(r)}>
+<div class="top"><span class="dot"></span><span class="vv">${label(r.got.verdict)}</span><span class="rl">rule ${r.got.rule}</span><span class="ok ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? '✓ right' : '✗ wrong'}</span></div>
+<div class="bid">${esc(r.def.id)}</div><h3>${esc(r.def.title)}</h3>
+${r.mismatches.map((x) => `<p class="miss">${esc(x)}</p>`).join('')}
+<div class="foot"><span>If disputed as “${esc(reasonPlain(r.def.reason))}”</span><b>${esc(planPlain(r.got))}</b>${failsText(r.got.broken) ? `<span class="fails">${esc(failsText(r.got.broken))}</span>` : ''}</div></a>`;
   const n = (i) => `${i + 1}.0`;
   return layout('Black Box · dispute scenarios', `<section class="hero"><div><div class="eyebrow"><b>●</b> Dispute scenarios · run offline</div>
 <h1><em style="color:var(--${all ? 'green' : 'red'})">${passed} of ${results.length}</em><br>disputes judged right</h1></div>
@@ -855,5 +882,6 @@ export function benchPage(results) {
 <div class="vkey"><span class="MERCHANT"><i></i>Shop at fault</span><span class="AGENT"><i></i>Agent at fault</span><span class="USER"><i></i>Purchase stands</span><span class="NEEDS_A_HUMAN"><i></i>Needs a human</span></div>
 <p class="k" style="font-size:12.5px;margin:6px 0 0">R recorded runs and honest price data · E reworded lies · F AI check · P passkey approvals, incl. live PayPal disputes · A attacks on the record</p>${matrix}
 <p class="k" style="font-size:12px;margin:14px 0 0">Check it yourself: <span class="mono">npm run bench</span></p></div></section>
+<section class="sec" style="padding-bottom:0">${benchFilters(results)}</section>
 ${SECTIONS.map(([kind, title, note], i) => fold(n(i), title, note, results.filter((r) => r.def.kind === kind), row)).join('')}`, { active: 'bench' });
 }

@@ -58,8 +58,8 @@ test('the bench page says each result in plain words, with a colour key', async 
   const { benchPage } = await import('../../replay/page.mjs');
   const html = benchPage(runBench());
   assert.match(html, /class="vkey"><span class="MERCHANT"><i><\/i>Shop at fault<\/span>/);
-  assert.match(html, /If disputed as “wrong amount”: refund \$90\.00/);
-  assert.match(html, /<br>fails: [a-z' ,]+<\/small>/);
+  assert.match(html, /If disputed as “wrong amount”<\/span><b>refund \$90\.00<\/b>/);
+  assert.match(html, /<span class="fails">fails: [a-z' ,]+<\/span>/);
   assert.doesNotMatch(html, /accept-claim|breaks /);
 });
 
@@ -71,4 +71,17 @@ test('the bench page reads as dispute scenarios, in groups that fold away', asyn
   assert.equal((html.match(/<details class="sec fold">/g) ?? []).length, 6);
   assert.match(html, /<h2>Attacks on the record<\/h2><span class="tally">10 of 10 right<\/span>/);
   assert.doesNotMatch(html, />PASS<|exactly as expected/);
+});
+
+test('the bench page shows cards that filter by verdict, outcome and complaint, without scripts', async () => {
+  const { benchPage } = await import('../../replay/page.mjs');
+  const results = runBench();
+  const html = benchPage(results);
+  assert.equal((html.match(/<a class="bcard /g) ?? []).length, results.length);
+  for (const legend of ['Verdict', 'Outcome', 'Complaint']) assert.match(html, new RegExp(`<legend>${legend}</legend>`));
+  assert.match(html, /main:has\(#fb-v-AGENT:checked\) :is\(\.bcard,\.matrix a\):not\(\[data-v~="AGENT"\]\)\{display:none\}/);
+  assert.match(html, /main:has\(#fb-a-refund:checked\) \.fold:not\(:has\(\[data-a~="refund"\]\)\)\{display:none\}/);
+  const r04 = results.find((r) => r.def.id === 'R04');
+  assert.match(html, new RegExp(`href="/bench/R04" data-v="${r04.got.verdict}" data-a="refund" data-r="amount"`));
+  assert.doesNotMatch(html, /<script/);
 });
