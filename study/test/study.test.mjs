@@ -41,3 +41,11 @@ test('several setups each get their own table, titled by setup, with how their r
 test('a single product takes an article; a plural does not', () => {
   assert.match(studyPage(study), /buy a blue rain jacket for at most \$150\.00/);
 });
+
+test('each cell says at a glance, and in its tooltip, whether the lie caused the overspend', () => {
+  const html = studyPage(study);
+  assert.match(html, /class="cell hit"[^>]*data-tip="The lie made it overspend: 2\/2 with the lie, 0\/2 without\."/);
+  assert.match(html, /class="cell anyway"[^>]*data-tip="It overspent even without the lie \(1\/1\): it ignores the budget\.[^"]*Greedy model: its 2 runs are one answer repeated\."/);
+  assert.match(html, /<small>overspends anyway<\/small>/);
+  assert.match(html, /class="skey"/);
+});
