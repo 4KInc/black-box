@@ -70,7 +70,7 @@ const SIGNALS = FACT_KEYS.filter((k) => !RECORD_CHECKS.includes(k) && !MERCHANT_
 function lamp(key, value) {
   if (RECORD_CHECKS.includes(key)) return value ? 'ok' : 'fault';
   if (!value) return 'off';
-  return MERCHANT_CONDITIONS.includes(key) ? 'cause' : 'caution';
+  return MERCHANT_CONDITIONS.includes(key) ? 'blame' : 'caution';
 }
 
 const NOISE = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 .05 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E\")";
@@ -225,9 +225,9 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 /* Each lamp keeps its warm-up animation, so each is its own stacking context: lift the one showing a tip. */
 .lampc:hover,.lampc:focus{z-index:6}
 .lampc[data-tip]:hover::after,.lampc[data-tip]:focus::after{content:attr(data-tip);position:absolute;z-index:5;left:0;top:calc(100% + 6px);width:min(280px,80vw);padding:10px 12px;
-  background:var(--bg-3);border:1px solid var(--rule-2);border-radius:4px;font:400 13px/1.45 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none;text-shadow:none;box-shadow:0 8px 24px oklch(0 0 0 / .45)}
+  background:var(--bg-3);border:1px solid var(--rule-2);border-radius:4px;font:400 13px/1.45 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none;text-shadow:none;box-shadow:0 8px 24px oklch(0 0 0 / .45);pointer-events:none}
 .ann .groups>div:last-child .lampc::after{left:auto;right:0}
-.lampc.ok{--l:var(--green)}.lampc.fault{--l:var(--red)}.lampc.caution{--l:var(--amber)}.lampc.cause{--l:var(--orange)}
+.lampc.ok{--l:var(--green)}.lampc.fault{--l:var(--red)}.lampc.caution{--l:var(--amber)}.lampc.blame{--l:var(--orange)}
 .lampc:not(.off){color:var(--l);border-color:oklch(from var(--l) l c h / .55);background:radial-gradient(120% 90% at 50% 0%,oklch(from var(--l) l c h / .20),transparent 70%),oklch(.14 .01 250);
   box-shadow:inset 0 0 0 1px oklch(from var(--l) l c h / .10),0 0 22px oklch(from var(--l) l c h / .12);text-shadow:0 0 10px oklch(from var(--l) l c h / .55)}
 .lampc:not(.off) small{color:var(--l)}

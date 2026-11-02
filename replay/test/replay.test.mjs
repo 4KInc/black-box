@@ -91,6 +91,9 @@ test('every check lamp has a plain-word tooltip', async () => {
   assert.doesNotMatch(html, /class="lampc[^>]*title=/);
   // Each lamp is its own stacking context (its warm-up animation), so the one showing a tip is lifted.
   assert.match(html, /\.lampc:hover,\.lampc:focus\{z-index:6\}/);
+  // The shop lamps must not share a class with the verdict header (.cause clips with overflow:hidden).
+  assert.doesNotMatch(html, /class="lampc cause"/);
+  assert.equal((html.match(/class="lampc blame"/g) ?? []).length, 5);
 });
 
 test('fonts are served from the replay itself, and only known font files', async () => {
