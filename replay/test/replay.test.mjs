@@ -60,6 +60,8 @@ test('the case list shows the live case as MERCHANT with the refund', async () =
   assert.match(html, /<a class="rec MERCHANT" href="\/case\/[0-9a-f]+" data-v="MERCHANT" data-src="paypal" data-m="claude">/);
   assert.match(html, /main:has\(#fr-v-MERCHANT:checked\) \.rec:not\(\[data-v~="MERCHANT"\]\)\{display:none\}/);
   assert.match(html, /<label for="fr-src-paypal">PayPal dispute<small>\d+<\/small><\/label>/);
+  // A purchase nobody disputed says so, and what would happen if it were.
+  assert.match(html, /<span>Not disputed<\/span><span>If disputed as “not as described”: <b class="if">(a person decides|refund \$[\d.,]+|defend the sale)<\/b><\/span>/);
 });
 
 test('the live case page replays the verdict, the hidden text and what PayPal did, with no scripts', async () => {

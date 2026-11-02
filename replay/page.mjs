@@ -264,6 +264,7 @@ ol.tape li.hot .ev{color:var(--orange)}
 .rec .foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px dashed var(--rule);padding-top:10px;font:400 11px/1.4 var(--mono);color:var(--ink-3)}
 .rec .foot b{color:var(--green);font-weight:400}
 .rec .foot .live{color:var(--orange)}
+.rec .foot b.if{color:var(--ink-2)}
 
 /* ---- study ---- */
 .study{display:grid;gap:8px}
@@ -406,10 +407,21 @@ const buyerCredit = (p) => p?.after?.moneyMovements.find((m) => m.party === 'BUY
 const paypalStatus = (p) => {
   const credit = buyerCredit(p);
   if (credit) return `${money(credit.amount.cents, credit.amount.currency)} refunded to the buyer`;
-  return p.executed ? `${p.executed.action} sent` : `${p.after?.status ?? 'open'}, not yet acted on`;
+  if (p.executed) return /^provide-evidence/.test(p.executed.action) ? 'sale defended, evidence sent' : /^make-offer/.test(p.executed.action) ? 'refund offered to the buyer' : `${p.executed.action} sent`;
+  return 'still open: a person decides';
 };
 
 const planText = (plan) => (plan.action === 'none' ? 'No automatic action' : `${plan.action}${plan.refundCents ? ' ' + money(plan.refundCents) : ''}`);
+// The same plan in plain words, for a purchase nobody disputed.
+const REASON_PLAIN = { MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: 'not as described', UNAUTHORISED: 'unauthorised', INCORRECT_AMOUNT: 'wrong amount' };
+const reasonPlain = (reason) => REASON_PLAIN[reason] ?? String(reason ?? '').replaceAll('_', ' ').toLowerCase();
+const planPlain = (plan) => ({
+  none: 'a person decides',
+  'accept-claim': `refund ${money(plan.refundCents)}`,
+  'accept-claim-partial': `refund ${money(plan.refundCents)}`,
+  'make-offer': `offer ${money(plan.refundCents)} back`,
+  'provide-evidence': 'defend the sale',
+}[plan.action] ?? plan.action);
 const expectText = (e) => `${label(e.verdict)}, rule ${e.rule}, ${e.action}${e.refundCents ? ' ' + money(e.refundCents) : ''}${e.broken?.length ? `; breaks ${e.broken.join(', ')}` : ''}`;
 
 // Price against budget, as fractions of a common scale, for the gauges.
@@ -452,7 +464,7 @@ export function indexPage(rows, { intro = '' } = {}) {
 <div class="model">${esc(d.model ?? 'unknown model')}</div>
 <div class="item">${esc(j.product?.name ?? c.record.purchase.sku)} · ${money(paid)} <span class="k">on a ${money(cap)} budget</span></div>
 <div class="mini" aria-hidden="true"><i style="width:${g.fill}"></i>${g.over ? `<u style="left:${g.overFrom};width:${g.overW}"></u>` : ''}<s style="left:${g.cap}"></s></div>
-<div class="foot">${c.paypal ? `<span class="live">PAYPAL ${esc(c.paypal.disputeId)}</span><b>${esc(paypalStatus(c.paypal))}</b>` : `<span>PREVIEW · no dispute</span><span>${esc(planText(j.plan))}</span>`}</div></a>`;
+<div class="foot">${c.paypal ? `<span class="live">PAYPAL ${esc(c.paypal.disputeId)}</span><b>${esc(paypalStatus(c.paypal))}</b>` : `<span>Not disputed</span><span>If disputed as “${esc(reasonPlain(j.reason))}”: <b class="if">${esc(planPlain(j.plan))}</b></span>`}</div></a>`;
   }).join('');
   const empty = '<p class="empty">No recordings yet. Run the agent (node agent/run.mjs) to make one.</p>';
   return layout('Black Box · recordings', `${intro || `<section class="hero"><div><div class="eyebrow"><b>●</b> Recordings</div><h1>Every purchase, <em>on tape</em></h1></div>
@@ -466,7 +478,7 @@ function recordingFilters(rows) {
   const verdicts = [[VERDICT.MERCHANT, 'Shop at fault'], [VERDICT.AGENT, 'Agent at fault'], [VERDICT.USER, 'Purchase stands'], [VERDICT.HUMAN, 'Needs a human']];
   return filterBar('fr', '.rec', [
     { key: 'v', legend: 'Verdict', options: verdicts.map(([v, text]) => [v, text, count(({ j }) => j.verdict.verdict === v)]) },
-    { key: 'src', legend: 'Dispute', options: [['paypal', 'PayPal dispute', count(({ c }) => c.paypal)], ['preview', 'No dispute', count(({ c }) => !c.paypal)]] },
+    { key: 'src', legend: 'Dispute', options: [['paypal', 'PayPal dispute', count(({ c }) => c.paypal)], ['preview', 'Not disputed', count(({ c }) => !c.paypal)]] },
     { key: 'm', legend: 'Model', options: [['claude', 'Claude', count(({ c }) => isClaude(decisionOf(c.record).model))], ['open', 'Open models', count(({ c }) => !isClaude(decisionOf(c.record).model))]] },
   ]);
 }
@@ -476,8 +488,8 @@ function recordingFilters(rows) {
 function causePanel(c, j) {
   const p = c.paypal;
   if (!p) {
-    return `<div class="eyebrow">Preview · no dispute filed</div>
-<div class="amt">${esc(planText(j.plan))}<small>if disputed as ${esc(j.reason.replaceAll('_', ' ').toLowerCase())}</small></div>
+    return `<div class="eyebrow">Not disputed</div>
+<div class="amt">${esc(planPlain(j.plan).replace(/^./, (x) => x.toUpperCase()))}<small>if disputed as “${esc(reasonPlain(j.reason))}”</small></div>
 <p class="k" style="margin:4px 0 0;font-size:12.5px">${esc(j.plan.note)}</p>`;
   }
   const credit = buyerCredit(p);
