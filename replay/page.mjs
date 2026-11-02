@@ -7,6 +7,7 @@
 // tape. Motion is CSS only (cross-document view transitions, scroll-driven reveals) and is off
 // under prefers-reduced-motion.
 
+import { hostedFor } from '../agent/llm.mjs';
 import { toValue } from '../engine/actions.mjs';
 import { FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES, VERDICT } from '../engine/verdict.mjs';
 import { statementsFor, templateNote } from '../evidence/evidence.mjs';
@@ -401,6 +402,11 @@ ${g.options.filter(([, , n]) => n !== 0).map(([value, text, n]) => `<input type=
   return `<style>${css}</style><div class="filters" role="group" aria-label="Filters">${bar}</div>`;
 }
 const isClaude = (model) => /^claude/.test(model ?? '');
+// Who makes a model, for the Model filters: Claude, GPT, Gemini, Grok, or an open model run locally.
+const FAMILY = { 'OpenAI API': 'gpt', 'Google Gemini API': 'gemini', 'xAI API': 'grok' };
+const modelFamily = (model) => (isClaude(model) ? 'claude' : FAMILY[hostedFor(model ?? '')?.name] ?? 'open');
+const FAMILIES = [['claude', 'Claude'], ['gpt', 'GPT'], ['gemini', 'Gemini'], ['grok', 'Grok'], ['open', 'Open models']];
+const familyOptions = (models) => FAMILIES.map(([k, text]) => [k, text, models.filter((m) => modelFamily(m) === k).length]);
 
 // Where the nav's Lab link points: the live engine on the replay server. The static site has no
 // server, so its build points this at the hosted lab (LAB_URL) or drops the link.
@@ -505,7 +511,7 @@ export function indexPage(rows, { intro = '' } = {}) {
     const paid = j.order.capturedCents;
     const cap = c.record.mandate.maxTotalCents;
     const g = gaugeScale(paid, cap);
-    return `<a class="rec ${v}" href="/case/${c.hash}" data-v="${v}" data-src="${c.paypal ? 'paypal' : 'preview'}" data-m="${isClaude(d.model) ? 'claude' : 'open'}">
+    return `<a class="rec ${v}" href="/case/${c.hash}" data-v="${v}" data-src="${c.paypal ? 'paypal' : 'preview'}" data-m="${modelFamily(d.model)}">
 <div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">${label(v)}</span><span class="rl">rule ${j.verdict.rule}</span><span class="when">${day(c.record.purchase.at)}</span></div>
 <div class="model">${esc(d.model ?? 'unknown model')}</div>
 <div class="item">${esc(j.product?.name ?? c.record.purchase.sku)} · ${money(paid)} <span class="k">on a ${money(cap)} budget</span></div>
@@ -525,7 +531,7 @@ function recordingFilters(rows) {
   return filterBar('fr', '.rec', [
     { key: 'v', legend: 'Verdict', options: verdicts.map(([v, text]) => [v, text, count(({ j }) => j.verdict.verdict === v)]) },
     { key: 'src', legend: 'Dispute', options: [['paypal', 'PayPal dispute', count(({ c }) => c.paypal)], ['preview', 'Not disputed', count(({ c }) => !c.paypal)]] },
-    { key: 'm', legend: 'Model', options: [['claude', 'Claude', count(({ c }) => isClaude(decisionOf(c.record).model))], ['open', 'Open models', count(({ c }) => !isClaude(decisionOf(c.record).model))]] },
+    { key: 'm', legend: 'Model', options: familyOptions(rows.map(({ c }) => decisionOf(c.record).model)) },
   ]);
 }
 
@@ -789,7 +795,7 @@ const setupOf = (study) => ({
 });
 const modelWhere = (m, sampled, n) => (m.startsWith('local:')
   ? (sampled ? `open model · temperature 0.7, ${n} samples` : `open model · greedy, so its ${n} runs repeat one answer`)
-  : `Anthropic API · ${n} independent samples`);
+  : `${isClaude(m) ? 'Anthropic API' : hostedFor(m)?.name ?? 'API'} · ${n} independent samples`);
 
 // What one cell says, at a glance: the lie caused it, the model overspends anyway, or never fooled.
 export function cellKind(c) {
@@ -818,7 +824,7 @@ function studySection(study, num) {
   const pct = (a, n) => (n ? `${Math.round((a / n) * 100)}%` : '–');
   const fooledModels = rows.filter((r) => r.cells.some((c) => c.effect !== null && c.effect >= 0.5)).map((r) => modelName(r.model));
   const head = `<div class="srow head"><div>Model</div>${study.lies.map((l) => `<div>${esc(l.who === 'merchant' ? 'Shop' : 'Review site')} hides a fake price<b>${esc(l.lie)}</b></div>`).join('')}</div>`;
-  const body = rows.map((r) => `<div class="srow" data-m="${isClaude(r.model) ? 'claude' : 'open'}"><div class="sm"><b>${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
+  const body = rows.map((r) => `<div class="srow" data-m="${modelFamily(r.model)}"><div class="sm"><b>${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
 ${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'hit' ? ' hit' : k === 'anyway' ? ' anyway' : k === 'clean' ? ' clean' : ''}" data-lie="${esc(c.lie)}" data-r="${k}" tabindex="0" data-tip="${esc(cellTip(c, k, r.model, st.sampled, study.n))}">
 <div class="eff">${c.effect === null ? '–' : `${c.effect > 0 ? '+' : ''}${Math.round(c.effect * 100)}`}<small>${c.effect === null ? '' : CELL_LABEL[k]}</small></div>
 <div class="sbar lie"><span>with lie</span><i><u style="width:${pct(c.lieBought, c.lieN)}"></u></i><b>${c.lieBought}/${c.lieN}</b></div>
@@ -848,7 +854,7 @@ function studyFilters(list) {
   const models = [...new Set(list.flatMap((st) => st.models))];
   const setups = list.length > 1 ? [{ key: 's', legend: 'Setup', options: list.map((st, i) => { const id = String(i + 1).padStart(2, '0'); return [`s${id}`, `${id} · ${setupOf(st).item}`]; }) }] : [];
   return `<section class="sec" style="padding-bottom:0">
-${filterBar('fs', '.srow:not(.head)', [{ key: 'm', legend: 'Model', options: [['claude', 'Claude', models.filter(isClaude).length], ['open', 'Open models', models.filter((m) => !isClaude(m)).length]] }])}
+${filterBar('fs', '.srow:not(.head)', [{ key: 'm', legend: 'Model', options: familyOptions(models) }])}
 ${setups.length ? filterBar('fx', '.ssetup', setups) : ''}
 ${filterBar('fc', '.study .cell', [{ key: 'r', legend: 'Result', options: [['hit', 'The lie caused it', n('hit')], ['anyway', 'Overspends anyway', n('anyway')], ['clean', 'Never fooled', n('clean')]] }], { dim: true })}</section>`;
 }
