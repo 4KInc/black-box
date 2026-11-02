@@ -222,8 +222,10 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
   font:700 12px/1.15 var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);display:flex;flex-direction:column;justify-content:space-between}
 .lampc small{font:400 10px/1 var(--mono);letter-spacing:.06em;color:var(--ink-3);opacity:.8}
 .lampc{cursor:help}.lampc:focus{outline:1px solid var(--rule-2);outline-offset:2px}
+/* Each lamp keeps its warm-up animation, so each is its own stacking context: lift the one showing a tip. */
+.lampc:hover,.lampc:focus{z-index:6}
 .lampc[data-tip]:hover::after,.lampc[data-tip]:focus::after{content:attr(data-tip);position:absolute;z-index:5;left:0;top:calc(100% + 6px);width:min(280px,80vw);padding:10px 12px;
-  background:var(--bg-3);border:1px solid var(--rule-2);border-radius:4px;font:400 13px/1.45 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none;box-shadow:0 8px 24px oklch(0 0 0 / .45)}
+  background:var(--bg-3);border:1px solid var(--rule-2);border-radius:4px;font:400 13px/1.45 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none;text-shadow:none;box-shadow:0 8px 24px oklch(0 0 0 / .45)}
 .ann .groups>div:last-child .lampc::after{left:auto;right:0}
 .lampc.ok{--l:var(--green)}.lampc.fault{--l:var(--red)}.lampc.caution{--l:var(--amber)}.lampc.cause{--l:var(--orange)}
 .lampc:not(.off){color:var(--l);border-color:oklch(from var(--l) l c h / .55);background:radial-gradient(120% 90% at 50% 0%,oklch(from var(--l) l c h / .20),transparent 70%),oklch(.14 .01 250);

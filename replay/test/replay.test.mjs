@@ -89,6 +89,8 @@ test('every check lamp has a plain-word tooltip', async () => {
   assert.equal(new Set(tips).size, 15);
   assert.ok(tips.some((t) => t.startsWith('Nobody edited this recording.')));
   assert.doesNotMatch(html, /class="lampc[^>]*title=/);
+  // Each lamp is its own stacking context (its warm-up animation), so the one showing a tip is lifted.
+  assert.match(html, /\.lampc:hover,\.lampc:focus\{z-index:6\}/);
 });
 
 test('fonts are served from the replay itself, and only known font files', async () => {
