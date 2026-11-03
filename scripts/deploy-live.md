@@ -79,7 +79,21 @@ gcloud run services update black-box --region us-central1 --project $P --update-
 
 Until it is set, the autopilot still picks up new disputes by polling every 30 seconds.
 
-## 6. Check it
+## 6. Muse Spark on /operator (optional)
+
+The agent can also run on Meta's Muse Spark (`muse-spark-1.3`) through Meta's Model API. It is
+offered on `/operator` only when the service has `MODEL_API_KEY`. Added 2026-11-03:
+
+```sh
+val MODEL_API_KEY .env | tr -d '\n' | gcloud secrets create model-api-key --data-file=- --project $P
+gcloud secrets add-iam-policy-binding model-api-key --member serviceAccount:$SA --role roles/secretmanager.secretAccessor --project $P
+gcloud run services update black-box --region us-central1 --project $P --update-secrets MODEL_API_KEY=model-api-key:latest
+```
+
+`--update-secrets` adds the key and keeps the service's other settings; no rebuild is needed. The
+Meta team behind the key needs billing set up first, or every call fails with HTTP 402.
+
+## 7. Check it
 
 - `https://driftwood-outfitters-…/` shows the shop; `/.well-known/jwks.json` returns its key.
 - `https://black-box-…/operator` asks for the operator password (the user name can be anything).
