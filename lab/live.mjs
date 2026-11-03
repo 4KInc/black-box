@@ -86,19 +86,37 @@ export function operatorPage(root, { env = process.env, shopUrl } = {}) {
 <section class="sec">${form}</section>`);
 }
 
-function resultPage({ choice, declined, sealed, order, preview, model }) {
+function resultBody({ choice, declined, sealed, order, preview, model }) {
   if (declined) {
-    return layout('Black Box · operator', `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div><h1>It bought <em>nothing.</em></h1></div>
-<div><p><b>${esc(model)}</b>: ${esc(choice.reason)}</p><p>No order, so there is nothing to record. <a href="/operator">Send it again</a></p></div></section>`);
+    return `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div><h1>It bought <em>nothing.</em></h1></div>
+<div><p><b>${esc(model)}</b>: ${esc(choice.reason)}</p><p>No order, so there is nothing to record. <a href="/operator">Send it again</a></p></div></section>`;
   }
   const r = sealed.record;
-  return layout('Black Box · operator', `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
+  return `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
 <h1>It bought <em>${esc(r.purchase.sku)}.</em></h1></div>
 <div><p><b>${esc(model)}</b>: “${esc(choice.reason)}”</p>
 <p>${money(r.purchase.price_cents)} on a ${money(r.mandate.maxTotalCents)} budget. Record <span class="mono">${esc(sealed.hash.slice(0, 16))}…</span> is sealed into PayPal order <span class="mono">${esc(order.order_id)}</span>.</p>
 <p>If disputed as “not as described”: <b>${esc(preview.verdict.verdict === 'NEEDS_A_HUMAN' ? 'NEEDS A HUMAN' : preview.verdict.verdict)}</b> (rule ${preview.verdict.rule}).</p></div></section>
 <section class="sec"><div class="panel lab"><p><a class="go" href="${esc(order.approve_url)}">Pay with PayPal as the buyer →</a></p>
-<p><a href="/case/${esc(sealed.hash)}">Open the recording in Black Box</a> · <a href="/operator">Send it again</a></p></div></section>`);
+<p><a href="/case/${esc(sealed.hash)}">Open the recording in Black Box</a> · <a href="/operator">Send it again</a></p></div></section>`;
+}
+
+// The run as it happens, one line per step the agent reports; the newest line pulses until the next.
+const RUN_CSS = `<style>ol.tape.run li:last-child::before{background:var(--orange);border-color:var(--orange);animation:runpulse 1s ease-in-out infinite}
+ol.tape.run li.end::before{animation:none}ol.tape.run li.bad .ev{color:var(--red)}
+@keyframes runpulse{50%{box-shadow:0 0 12px var(--orange);opacity:.4}}@media (prefers-reduced-motion:reduce){ol.tape.run li:last-child::before{animation:none}}</style>`;
+const modelName = (env, model) => (agentModels(env).find(([m]) => m === model)?.[1] ?? model).replace(/ \(.*$/, '');
+export function stepLine(s, { env = process.env, shopUrl } = {}) {
+  const path = (u) => { try { const x = new URL(u); return x.origin === new URL(shopUrl).origin ? x.pathname : x.href; } catch { return u; } };
+  switch (s.step) {
+    case 'page': return ['Read', `<span class="mono">${esc(path(s.url))}</span> · ${s.ok ? 'signed by the shop, signature valid' : `signature not valid (${esc(s.reason)})`}`];
+    case 'ask': return ['Ask', `${esc(modelName(env, s.model))} is choosing, given the mandate and ${s.pages} signed page${s.pages === 1 ? '' : 's'}…`];
+    case 'decided': return s.sku ? ['Decide', `Buy <b>${esc(s.sku)}</b>: “${esc(s.reason)}”`] : ['Decide', `Buy nothing: “${esc(s.reason)}”`];
+    case 'sealed': return ['Seal', `Record <span class="mono">${esc(s.hash.slice(0, 16))}…</span> sealed: every page read, the model's input and its decision, ${money(s.price_cents)}`];
+    case 'checkout': return ['Checkout', `Checking out ${esc(s.sku)} at the shop, with the record hash…`];
+    case 'order': return ['Order', `PayPal order <span class="mono">${esc(s.orderId)}</span> created, carrying the record hash`];
+    default: return [esc(s.step), ''];
+  }
 }
 
 const SANDBOX = 'https://www.sandbox.paypal.com/myaccount/summary';
@@ -172,8 +190,27 @@ export function createLive({
         const model = agentModels(env).find(([m]) => m === form.get('model'))?.[0];
         const shelf = SHELVES.find(([v]) => v === form.get('shelf'));
         if (!approved || !model || !shelf) return send(400, 'Pick a mandate, a model and a shelf from the form.');
-        const out = await runAgent({ shopUrl, mandate: approved.mandate, mandateAuth: approved.mandate_auth, model, llm, shelf: shelf[0] ? [shelf[0]] : null });
-        if (out.declined) return send(200, resultPage({ ...out, model }));
+        // Streamed: the page grows as the agent works, then the result follows the timeline.
+        const [head, tail] = layout('Black Box · operator', '\u0000').split('\u0000');
+        res.writeHead(200, HEADERS);
+        res.write(`${head}${RUN_CSS}<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
+<h1>The agent is <em>shopping.</em></h1></div><div><p>${esc(modelName(env, model))} at <a href="${esc(shopUrl)}">${esc(new URL(shopUrl).host)}</a>, within: ${esc(readback(approved.mandate))}.</p></div></section>
+<section class="sec"><ol class="tape run">`);
+        const t0 = Date.now();
+        const line = (ev, text, cls = '') => res.write(`<li${cls ? ` class="${cls}"` : ''}><span class="t">+${((Date.now() - t0) / 1000).toFixed(1)}s</span><span class="ev">${ev}</span><span>${text}</span></li>\n`);
+        line('Start', 'Sent the agent to the shop');
+        let out;
+        try {
+          out = await runAgent({ shopUrl, mandate: approved.mandate, mandateAuth: approved.mandate_auth, model, llm, shelf: shelf[0] ? [shelf[0]] : null,
+            onStep: (s) => line(...stepLine(s, { env, shopUrl }), ['decided', 'order'].includes(s.step) ? 'hot' : '') });
+        } catch (e) {
+          console.error(e);
+          line('Failed', `The run failed: ${esc(e.message)}`, 'end bad');
+          return res.end(`</ol><p><a href="/operator">Back to the operator page</a></p></section>${tail}`);
+        }
+        line('Done', out.declined ? 'Nothing bought, so nothing to record' : 'Ready for the buyer to pay', 'end');
+        res.write('</ol></section>');
+        if (out.declined) return res.end(resultBody({ ...out, model }) + tail);
         saveRecord(join(root, 'records'), out.sealed);
         const preview = evaluateCase({
           record: out.sealed.record,
@@ -181,7 +218,7 @@ export function createLive({
           reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED',
           enrolment: enrolmentFrom(root),
         });
-        return send(200, resultPage({ ...out, preview, model }));
+        return res.end(resultBody({ ...out, preview, model }) + tail);
       }
       if (operator) return send(405, 'Method not allowed.');
       return replay.emit('request', req, res);

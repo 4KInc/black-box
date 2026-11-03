@@ -31,11 +31,13 @@ function parseChoice(text) {
 }
 
 // shelf: optional list of SKUs to consider (a scenario's subset of the catalog).
-export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true }) {
+// onStep: told each step as it happens ({ step, ... }), for a live view of the run.
+export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true, onStep = () => {} }) {
   const rec = new Recorder({ mandate, mandateAuth, fetch: f });
   const origin = new URL(shopUrl).origin;
 
   const cat = await rec.fetchSigned(`${origin}/`);
+  onStep({ step: 'page', url: cat.url ?? `${origin}/`, ok: cat.verification.ok, reason: cat.verification.reason });
   if (!cat.verification.ok) throw new Error(`category page is not validly signed: ${cat.verification.reason}`);
   const list = jsonLdBlocks(cat.html).find((j) => j['@type'] === 'ItemList');
   // A shelf (for experiments) names the product pages directly; otherwise the shop's own list.
@@ -46,6 +48,7 @@ export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = n
   const pages = [];
   for (const url of urls) {
     const p = await rec.fetchSigned(url);
+    onStep({ step: 'page', url, ok: p.verification.ok, reason: p.verification.reason });
     if (mandate.signedShopsOnly && !p.verification.ok) continue;
     const product = jsonLdBlocks(p.html).find((j) => j['@type'] === 'Product');
     if (product) pages.push({ url, index: p.index, html: p.html, product });
@@ -54,25 +57,31 @@ export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = n
 
   const user = [describeMandate(mandate), '', ...pages.map((p) => pageForModel(p.url, p.html))].join('\n');
   rec.modelInput('choose', `SYSTEM:\n${SYSTEM}\n\nUSER:\n${user}`);
+  onStep({ step: 'ask', model, pages: pages.length });
   const reply = await llm({ system: SYSTEM, user, model });
   const choice = parseChoice(reply.text);
   const decided = { reason: String(choice.reason ?? ''), model: reply.model ?? model ?? 'unknown', model_output: reply.text };
   if (choice.sku === null) {
     rec.decision('choose', { action: 'decline', ...decided });
+    onStep({ step: 'decided', sku: null, reason: decided.reason });
     return { declined: true, choice, sealed: null, order: null };
   }
   rec.decision('choose', { action: 'buy', sku: choice.sku, ...decided });
+  onStep({ step: 'decided', sku: choice.sku, reason: decided.reason });
 
   const page = pages.find((p) => p.product.sku === choice.sku);
   if (!page) throw new Error(`model chose ${choice.sku}, which is not on the shelf`);
   rec.purchase({ sku: choice.sku, page_index: page.index, price_cents: Math.round(Number(page.product.offers.price) * 100) });
   const sealed = rec.seal();
+  onStep({ step: 'sealed', hash: sealed.hash, price_cents: sealed.record.purchase.price_cents });
 
   let order = null;
   if (checkout) {
+    onStep({ step: 'checkout', sku: choice.sku });
     const r = await f(`${origin}/checkout`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sku: choice.sku, record_hash: sealed.hash }) });
     order = await r.json();
     if (r.status !== 201) throw new Error(`checkout failed: ${JSON.stringify(order)}`);
+    onStep({ step: 'order', orderId: order.order_id });
   }
   return { declined: false, sealed, choice, order };
 }

@@ -86,6 +86,14 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   assert.equal((await post('/operator/run', body.replace('claude-haiku', 'not-a-model'), headers)).status, 400);
   demo.paypalCalls.length = 0;
   const result = await (await post('/operator/run', body, headers)).text();
+  // The timeline of the run comes first, one line per step, in the order they happened.
+  const tape = result.match(/<ol class="tape run">([\s\S]*?)<\/ol>/)[1];
+  const events = [...tape.matchAll(/<span class="ev">([^<]+)<\/span>/g)].map((m) => m[1]);
+  assert.deepEqual(events, ['Start', 'Read', 'Read', 'Ask', 'Decide', 'Seal', 'Checkout', 'Order', 'Done']);
+  assert.match(tape, /\/p\/RJ-PREMIUM-BLUE-M<\/span> · signed by the shop, signature valid/);
+  assert.match(tape, /Claude Haiku 4\.5 is choosing, given the mandate and 1 signed page…/);
+  assert.match(tape, /<li class="hot">.*Buy <b>RJ-PREMIUM-BLUE-M<\/b>/);
+  assert.ok(result.indexOf('</ol>') < result.indexOf('It bought'), 'the result follows the timeline');
   assert.match(result, /It bought <em>RJ-PREMIUM-BLUE-M\.<\/em>/);
   assert.match(result, /\$240\.00 on a \$150\.00 budget/);
   assert.match(result, /href="https:\/\/sandbox\.example\/approve"/);
