@@ -406,10 +406,10 @@ ${g.options.filter(([, , n]) => n !== 0).map(([value, text, n]) => `<input type=
   return `<style>${css}</style><div class="filters" role="group" aria-label="Filters">${bar}</div>`;
 }
 const isClaude = (model) => /^claude/.test(model ?? '');
-// Who makes a model, for the Model filters: Claude, GPT, Gemini, Grok, or an open model run locally.
-const FAMILY = { 'OpenAI API': 'gpt', 'Google Gemini API': 'gemini', 'xAI API': 'grok' };
+// Who makes a model, for the Model filters: Claude, GPT, Gemini, Grok, Muse, or an open model run locally.
+const FAMILY = { 'OpenAI API': 'gpt', 'Google Gemini API': 'gemini', 'xAI API': 'grok', 'Meta Model API': 'muse' };
 const modelFamily = (model) => (isClaude(model) ? 'claude' : FAMILY[hostedFor(model ?? '')?.name] ?? 'open');
-const FAMILIES = [['claude', 'Claude'], ['gpt', 'GPT'], ['gemini', 'Gemini'], ['grok', 'Grok'], ['open', 'Open models']];
+const FAMILIES = [['claude', 'Claude'], ['gpt', 'GPT'], ['gemini', 'Gemini'], ['grok', 'Grok'], ['muse', 'Muse'], ['open', 'Open models']];
 const familyOptions = (models) => FAMILIES.map(([k, text]) => [k, text, models.filter((m) => modelFamily(m) === k).length]);
 
 // Where the nav's Lab link points: the live engine on the replay server. The static site has no
