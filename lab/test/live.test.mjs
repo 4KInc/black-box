@@ -72,7 +72,10 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   assert.equal((await (await fetch(base + '/mandate/defaults', { headers: auth() })).json()).back, '/demo');
   assert.match(page, /<a id="back" class="back" hidden>/);
 
-  const form = await (await fetch(base + '/operator', { headers: auth() })).text();
+  const operator = await fetch(base + '/operator', { headers: auth() });
+  // A browser sends the form's Origin only if the page's referrer policy allows it on same-origin POSTs.
+  assert.equal(operator.headers.get('referrer-policy'), 'same-origin');
+  const form = await operator.text();
   assert.match(form, /blue rain jacket, size M, at most \$150\.00/);
   assert.match(form, /<option value="claude-haiku-4-5-20251001" selected>/);
   assert.doesNotMatch(form, /<script/i);

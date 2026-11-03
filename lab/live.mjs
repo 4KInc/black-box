@@ -22,10 +22,12 @@ import { saveRecord } from '../recorder/recorder.mjs';
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const sha256hex = (s) => createHash('sha256').update(s).digest('hex');
 const money = (c) => `$${(c / 100).toFixed(2)}`;
+// same-origin, not no-referrer: with no-referrer the browser sends "Origin: null" on the operator
+// form's POST, and the same-origin check below would refuse it. Other sites still get no referrer.
 const HEADERS = {
   'content-type': 'text/html; charset=utf-8',
   'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; base-uri 'none'; form-action 'self'",
-  'x-content-type-options': 'nosniff', 'referrer-policy': 'no-referrer', 'cache-control': 'no-store',
+  'x-content-type-options': 'nosniff', 'referrer-policy': 'same-origin', 'cache-control': 'no-store',
 };
 
 // The Claude models from the study, plus any other provider's whose key this server holds.
