@@ -74,6 +74,9 @@ const PAGE = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta n
 .clear h1 em{font-style:normal;color:var(--orange)}
 .clear .lede{color:var(--ink-2);max-width:60ch;margin:0}
 .step{margin-top:22px}
+.bar .back{margin-left:auto;font:400 11px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);text-decoration:none}
+.bar .back:hover{color:var(--orange)}
+#out a{color:var(--orange)}
 .step .eyebrow{display:flex;gap:10px;align-items:baseline;margin-bottom:10px}
 .step .eyebrow b{font:400 12px/1 var(--mono)}
 label{display:block;font:400 10.5px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin:12px 0 6px}
@@ -92,7 +95,7 @@ button.ghost{background:transparent;color:var(--orange)}
 #out{white-space:pre-wrap;font:400 12.5px/1.6 var(--mono);color:var(--ink-3)}
 #out.ok{color:var(--green)}#out.bad{color:var(--red)}
 </style></head><body>
-<header class="bar"><span class="mark"><span class="unit" aria-hidden="true"></span>BLACK BOX</span><span class="sub">mandate clearance</span></header>
+<header class="bar"><span class="mark"><span class="unit" aria-hidden="true"></span>BLACK BOX</span><span class="sub">mandate clearance</span><a id="back" class="back" hidden>← Live demo</a></header>
 <main><div class="clear">
 <div class="eyebrow"><b>●</b> Pre-flight</div>
 <h1>Clear your agent <em>to buy</em></h1>
@@ -159,17 +162,22 @@ $('approve').onclick = async () => {
     } });
     const r = await post('approve', { pending: o.pending, credentialId: a.id, authenticatorData: b64u(a.response.authenticatorData), clientDataJSON: b64u(a.response.clientDataJSON), signature: b64u(a.response.signature) });
     say('Approved. Mandate ' + r.mandateHash + '\\n\\n' + r.next, 'ok');
+    if (r.nextHref) { const a = document.createElement('a'); a.href = r.nextHref; a.textContent = 'Next: send the agent shopping →'; $('out').append('\\n\\n', a); }
   } catch (e) { say('Approval failed: ' + e.message, 'bad'); }
 };
 for (const id of ['category','color','size','max','days']) $(id).oninput = plain;
 $('payer').onchange = refresh;
-fetch('defaults').then((r) => r.json()).then((d) => { $('payer').value = d.payerId; plain(); refresh(); });
+fetch('defaults').then((r) => r.json()).then((d) => {
+  $('payer').value = d.payerId; plain(); refresh();
+  if (d.back) { $('back').href = d.back; $('back').hidden = false; }
+});
 `;
 
 // rpId and origin: the passkey's relying party and the page's origin. Locally, localhost on the
 // port it listens on; hosted, the public site. next(mandateHash): what to tell the buyer after approval.
+// back, nextHref: hosted, the page links back to the demo and on to the next step.
 const runLocally = (hash) => `Run the agent with it:\n  node agent/run.mjs --mandate ${hash}`;
-export function createMandateServer({ root = ROOT, defaultPayerId = '', rpId = LOCAL_RP, origin: fixedOrigin = null, next = runLocally } = {}) {
+export function createMandateServer({ root = ROOT, defaultPayerId = '', rpId = LOCAL_RP, origin: fixedOrigin = null, next = runLocally, back = null, nextHref = null } = {}) {
   const pendingEnrol = new Map();   // challenge -> payerId
   const pendingApprove = new Map(); // token -> { payerId, mandate }
 
@@ -188,7 +196,7 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '', rpId = L
       if (url.pathname === '/app.js') return send(200, 'text/javascript; charset=utf-8', APP_JS);
       const font = url.pathname.match(/^\/fonts\/([A-Za-z0-9-]+\.woff2)$/);
       if (font && existsSync(join(FONTS, font[1]))) { res.writeHead(200, { 'content-type': 'font/woff2', 'x-content-type-options': 'nosniff' }); return res.end(readFileSync(join(FONTS, font[1]))); }
-      if (url.pathname === '/defaults') return json(200, { payerId: defaultPayerId });
+      if (url.pathname === '/defaults') return json(200, { payerId: defaultPayerId, back });
       if (url.pathname === '/enrolled') return json(200, { credentials: enrolledCredentials(root, url.searchParams.get('payer')).map(({ id, alg, enrolled_at }) => ({ id, alg, enrolled_at })) });
       return json(404, { error: 'not found' });
     }
@@ -239,7 +247,7 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '', rpId = L
           const dir = join(root, 'records', 'mandates');
           mkdirSync(dir, { recursive: true });
           writeFileSync(join(dir, `${mandateHash}.json`), JSON.stringify({ payer_id: p.payerId, mandate: p.mandate, mandate_auth: auth }, null, 2));
-          return json(200, { mandateHash, next: next(mandateHash) });
+          return json(200, { mandateHash, next: next(mandateHash), nextHref });
         }
         return json(404, { error: 'not found' });
       } catch (e) {

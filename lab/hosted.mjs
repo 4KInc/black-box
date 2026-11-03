@@ -58,7 +58,7 @@ if (!LIVE_DIR) {
   if (warning) console.warn(warning);
   const mandate = createMandateServer({
     root, defaultPayerId: env.BUYER_PAYER_ID ?? '', rpId: new URL(origin).hostname, origin,
-    next: () => 'The agent operator can now send the agent shopping: /operator',
+    next: () => 'The agent operator can now send the agent shopping.', back: '/demo', nextHref: '/operator',
   });
   const webhook = env.PAYPAL_WEBHOOK_ID ? createWebhookReceiver({ autopilot, verify: paypalVerifier(env.PAYPAL_WEBHOOK_ID), log }) : null;
   const every = Number(env.WATCH_EVERY ?? 30);

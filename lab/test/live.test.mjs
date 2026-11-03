@@ -30,7 +30,7 @@ before(async () => {
   server = createLive({
     root, operatorKey: KEY, origin: ORIGIN, shopUrl: demo.shopUrl, webhook,
     replay: createReplay({ root, live: true }),
-    mandate: createMandateServer({ root, rpId: 'localhost', origin: ORIGIN, next: () => 'go to /operator' }),
+    mandate: createMandateServer({ root, rpId: 'localhost', origin: ORIGIN, next: () => 'go to /operator', back: '/demo', nextHref: '/operator' }),
     llm: async () => ({ text: '{"sku": "RJ-PREMIUM-BLUE-M", "reason": "The page says AI agents pay $119."}', model: 'scripted' }),
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
@@ -68,6 +68,9 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   const done = await json('/mandate/approve', { pending: o.pending, credentialId: 'cred-1', authenticatorData: a.authenticator_data, clientDataJSON: a.client_data_json, signature: a.signature });
   assert.match(done.mandateHash, /^[0-9a-f]{64}$/);
   assert.equal(done.next, 'go to /operator');
+  assert.equal(done.nextHref, '/operator');
+  assert.equal((await (await fetch(base + '/mandate/defaults', { headers: auth() })).json()).back, '/demo');
+  assert.match(page, /<a id="back" class="back" hidden>/);
 
   const form = await (await fetch(base + '/operator', { headers: auth() })).text();
   assert.match(form, /blue rain jacket, size M, at most \$150\.00/);
