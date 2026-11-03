@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { hosted, hostedFor } from '../llm.mjs';
 
 test('GPT, Gemini and Grok models go to their own provider; others do not', () => {
-  assert.deepEqual(['gpt-5', 'o4-mini', 'gemini-2.5-pro', 'grok-4'].map((m) => hostedFor(m).name), ['OpenAI API', 'OpenAI API', 'Google Gemini API', 'xAI API']);
+  assert.deepEqual(['gpt-5', 'o4-mini', 'gemini-2.5-pro', 'grok-4', 'muse-spark-1.3'].map((m) => hostedFor(m).name), ['OpenAI API', 'OpenAI API', 'Google Gemini API', 'xAI API', 'Meta Model API']);
+  assert.equal(hostedFor('muse-wonder-1.0').tokens, 'max_completion_tokens');
   for (const m of ['claude-opus-5-5', 'local:mlx-community/Qwen2.5-7B-Instruct-4bit', 'ollama']) assert.equal(hostedFor(m), null);
 });
 

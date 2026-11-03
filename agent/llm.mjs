@@ -3,6 +3,7 @@
 //   gpt-*, o<n>*    OpenAI Chat Completions (OPENAI_API_KEY)
 //   gemini-*        Google Gemini, its OpenAI-compatible endpoint (GEMINI_API_KEY)
 //   grok-*          xAI, its OpenAI-compatible endpoint (XAI_API_KEY)
+//   muse-*          Meta's Model API (Muse Spark, Muse Wonder), OpenAI-compatible (MODEL_API_KEY)
 //   local:<model>   any OpenAI-compatible server, e.g. `mlx_lm.server` (LOCAL_LLM_URL)
 export const DEFAULT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-5-5';
 
@@ -12,6 +13,7 @@ export const HOSTED = [
   { test: /^(gpt-|o\d)/, name: 'OpenAI API', base: 'https://api.openai.com/v1', key: 'OPENAI_API_KEY', tokens: 'max_completion_tokens' },
   { test: /^gemini-/, name: 'Google Gemini API', base: 'https://generativelanguage.googleapis.com/v1beta/openai', key: 'GEMINI_API_KEY', tokens: 'max_tokens' },
   { test: /^grok-/, name: 'xAI API', base: 'https://api.x.ai/v1', key: 'XAI_API_KEY', tokens: 'max_tokens' },
+  { test: /^muse-/, name: 'Meta Model API', base: 'https://api.meta.ai/v1', key: 'MODEL_API_KEY', tokens: 'max_completion_tokens' },
 ];
 export const hostedFor = (model) => HOSTED.find((h) => h.test.test(model)) ?? null;
 
