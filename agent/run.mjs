@@ -3,7 +3,7 @@
 //                      [--item 'wireless headphones' --attrs color=black]   (default: blue rain jacket, size M)
 //   --mandate uses a passkey-approved mandate from records/mandates/ (npm run mandate)
 // Saves the sealed record to records/<hash>.json and previews the verdict a
-// "not as described" dispute would get.
+// "not as described" dispute would get. A run that buys nothing is saved too, with no verdict.
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -44,12 +44,14 @@ const { declined, sealed, choice, order } = await runAgent({
   shopUrl: values.shop, mandate: MANDATE, mandateAuth: approved?.mandate_auth ?? null, model: values.model,
   shelf: values.shelf?.split(','), checkout: !values['no-checkout'],
 });
+const path = saveRecord(join(ROOT, 'records'), sealed);
 if (declined) {
   console.log(`model      ${values.model}`);
   console.log(`declined   ${choice.reason}`);
+  console.log(`record     ${sealed.hash}`);
+  console.log(`saved      ${path}`);
   process.exit(0);
 }
-const path = saveRecord(join(ROOT, 'records'), sealed);
 
 console.log(`model      ${values.model}`);
 console.log(`chose      ${choice.sku}: ${choice.reason}`);

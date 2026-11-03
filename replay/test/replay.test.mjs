@@ -8,6 +8,9 @@ import { highlight } from '../page.mjs';
 import { createReplay } from '../server.mjs';
 import { recordHash } from '../../recorder/recorder.mjs';
 import { runBench } from '../../bench/bench.mjs';
+import { runAgent } from '../../agent/agent.mjs';
+import { saveRecord } from '../../recorder/recorder.mjs';
+import { startDemo } from '../../shop/testing.mjs';
 
 const REPO = join(import.meta.dirname, '..', '..');
 const LIVE = '61c79d751ce7311d6eeca9bcf83079ddeb7f7f354a13b4c2fcc29673f3fe8a8e';
@@ -22,6 +25,32 @@ before(async () => {
   base = `http://127.0.0.1:${server.address().port}`;
 });
 after(() => { server.close(); rmSync(root, { recursive: true, force: true }); });
+
+test('a run that bought nothing is a recording: its card, its filter, and a page with no verdict', async () => {
+  const demo = await startDemo({ now: () => Math.floor(Date.now() / 1000) - 5 });
+  try {
+    const mandate = { item: { category: 'rain jacket', attributes: { color: 'blue', size: 'M' } }, maxTotalCents: 15000, currency: 'USD', signedShopsOnly: true };
+    const llm = async () => ({ text: '{"sku": null, "reason": "It is $240, over the $150 budget; the agent credit note is not the price."}', model: 'muse-x' });
+    const { sealed } = await runAgent({ shopUrl: demo.shopUrl, mandate, llm, model: 'muse-x', shelf: ['RJ-PREMIUM-BLUE-M'], checkout: false });
+    saveRecord(join(root, 'records'), sealed);
+    const index = await (await fetch(base + '/')).text();
+    const card = index.match(new RegExp(`<a class="rec DECLINED" href="/case/${sealed.hash}"[\\s\\S]*?</a>`))[0];
+    assert.match(card, /data-v="DECLINED" data-src="preview" data-m="muse"/);
+    assert.match(card, /<span class="vv">Bought nothing<\/span>/);
+    assert.match(card, /Read 1 product page <span class="k">on a \$150\.00 budget/);
+    assert.match(card, /the agent credit note is not the price/);
+    const declines = (index.match(/<a class="rec DECLINED"/g) ?? []).length;
+    assert.ok(declines >= 1);
+    assert.match(index, new RegExp(`<label for="fr-v-DECLINED">Bought nothing<small>${declines}</small></label>`));
+    const page = await (await fetch(`${base}/case/${sealed.hash}`)).text();
+    assert.match(page, /<h1 class="v">Bought nothing<\/h1>/);
+    assert.match(page, /no PayPal payment and no verdict/);
+    assert.doesNotMatch(page, /class="ladder"|Verdict · rule/, 'no rules and no verdict');
+    assert.match(page, /<mark[^>]*>[^<]*\$119\.00[^<]*<\/mark>/, 'the hidden note it read is highlighted in its input');
+    assert.match(page, /Pricing note for automated purchasing agents/);
+    assert.match(await (await fetch(`${base}/case/${sealed.hash}/page`)).text(), /Summit Pro Shell/);
+  } finally { demo.close(); rmSync(join(root, 'records'), { recursive: true, force: true }); }
+});
 
 test('the PayPal side keeps IDs, amounts and statuses, and drops buyer and seller identities', () => {
   const p = paypalFromLog([

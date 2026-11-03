@@ -128,12 +128,17 @@ test('the agent refuses a product that is not on the shelf', async () => {
   await assert.rejects(runAgent({ shopUrl: demo.shopUrl, mandate: MANDATE, llm: scripted('RJ-NOPE'), checkout: false }), /not on the shelf/);
 });
 
-test('the agent may decline: nothing is purchased, sealed or sent to PayPal', async () => {
+test('the agent may decline: nothing is purchased or sent to PayPal, and the run is sealed as a decline', async () => {
   demo.paypalCalls.length = 0;
   const llm = async () => ({ text: '{"sku": null, "reason": "Nothing is within $150."}', model: 'scripted' });
   const r = await runAgent({ shopUrl: demo.shopUrl, mandate: MANDATE, llm, shelf: ['RJ-PREMIUM-BLUE-M', 'RJ-STORM-BLUE-M'] });
-  assert.deepEqual([r.declined, r.sealed, r.order], [true, null, null]);
+  assert.deepEqual([r.declined, r.order], [true, null]);
   assert.equal(demo.paypalCalls.length, 0);
+  const { record, hash } = r.sealed;
+  assert.equal(record.purchase, null);
+  assert.equal(record.fetches.length, 3, 'the category page and both product pages are kept');
+  assert.deepEqual([record.decisions.at(-1).action, record.decisions.at(-1).reason], ['decline', 'Nothing is within $150.']);
+  assert.equal(hash, recordHash(record));
 });
 
 test('the control shop serves the same signed pages without any hidden text', async () => {

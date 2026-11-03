@@ -3,8 +3,10 @@
 //   - every page fetched, byte for byte, with its signature headers and the shop's published keys
 //   - the keys of any third party that signed part of a page
 //   - every model input, exactly as sent to the model, and every decision the agent made
-//   - the purchase
+//   - the purchase, or the agent's decision to buy nothing
 // seal() freezes the record and returns its hash, which goes to checkout and into custom_id.
+// seal({ declined: true }) seals a run that bought nothing: no purchase, so no order and no
+// dispute, but what the agent saw and why it declined is kept like any other recording.
 // At dispute time, recordFacts() re-checks everything from the stored record alone and returns
 // the six record-integrity facts the verdict engine needs.
 
@@ -104,8 +106,11 @@ export class Recorder {
     this.#record.purchase = { sku, page_index, price_cents, at: this.#now() };
   }
 
-  seal() {
-    if (!this.#record.purchase) throw new Error('nothing was purchased');
+  seal({ declined = false } = {}) {
+    if (declined) {
+      if (this.#record.purchase) throw new Error('a purchase was made, so it was not declined');
+      if (this.#record.decisions.at(-1)?.action !== 'decline') throw new Error('the agent did not decline');
+    } else if (!this.#record.purchase) throw new Error('nothing was purchased');
     if (!this.#sealed) {
       const record = structuredClone(this.#record);
       this.#sealed = { record, hash: recordHash(record) };

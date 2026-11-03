@@ -6,7 +6,7 @@ the buyer approved with a passkey, applies an explicit responsibility policy, an
 PayPal dispute action that follows.
 
 **Try it, no keys needed:** [4kinc.github.io/black-box](https://4kinc.github.io/black-box/) shows
-every recorded purchase replayed, the study and the case bench. **[The lab](https://black-box-342881585799.us-central1.run.app/lab)**
+every recorded run replayed (purchases, and runs where the agent bought nothing), the study and the case bench. **[The lab](https://black-box-342881585799.us-central1.run.app/lab)**
 adds the live part: tamper with a real case and the engine runs again on the server. **[The live
 demo](https://black-box-342881585799.us-central1.run.app/demo)** runs the whole chain online: a
 real AI agent shops at a hosted demo shop, and Black Box settles the buyer's PayPal dispute by itself.
@@ -14,7 +14,7 @@ real AI agent shops at a hosted demo shop, and Black Box settles the buyer's Pay
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
 **Submission state:** tag `v1.0-submission`, 3 November 2026: 57 bench cases (six live disputes,
-10 attacks), 198 tests, 15 facts, 32,768 fact combinations checked.
+10 attacks), 200 tests, 15 facts, 32,768 fact combinations checked.
 
 ## The problem
 
@@ -222,7 +222,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 198 tests
+npm test                    # 200 tests
 npm run bench               # 57 cases: every verdict and rule, six live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)

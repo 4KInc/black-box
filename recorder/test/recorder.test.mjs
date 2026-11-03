@@ -70,6 +70,18 @@ test('a record cannot be sealed without a purchase', () => {
   assert.throws(() => new Recorder({ mandate: MANDATE }).seal(), /nothing was purchased/);
 });
 
+test('a decline is sealed only when the agent declined and bought nothing', async () => {
+  assert.throws(() => new Recorder({ mandate: MANDATE }).seal({ declined: true }), /did not decline/);
+  const { rec } = await shopRun();
+  assert.throws(() => rec.seal({ declined: true }), /a purchase was made/);
+  const d = new Recorder({ mandate: MANDATE });
+  await d.fetchSigned(`${demo.shopUrl}/p/RJ-PREMIUM-BLUE-M`);
+  d.decision('choose', { action: 'decline', reason: 'Over budget.' });
+  const { record, hash } = d.seal({ declined: true });
+  assert.deepEqual([record.purchase, record.fetches.length, hash], [null, 1, recordHash(record)]);
+  assert.throws(() => d.decision('late', {}), /sealed/);
+});
+
 test('saving and loading does not change the record hash', async () => {
   const { sealed } = await shopRun();
   const dir = mkdtempSync(join(tmpdir(), 'bb-rec-'));

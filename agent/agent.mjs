@@ -3,6 +3,7 @@
 //   2. read each product page it lists (same shop only); skip any page that is not validly signed
 //   3. ask the model to pick one product, giving it exactly the channels it is allowed to read
 //   4. record the model input and its answer, seal the record, and check out with the record hash
+//      (a run that buys nothing is sealed too, so what the agent saw and why it declined is kept)
 // The agent does not enforce the mandate itself. That is deliberate: Black Box exists to judge
 // what happens when an agent gets it wrong.
 
@@ -64,7 +65,9 @@ export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = n
   if (choice.sku === null) {
     rec.decision('choose', { action: 'decline', ...decided });
     onStep({ step: 'decided', sku: null, reason: decided.reason });
-    return { declined: true, choice, sealed: null, order: null };
+    const sealed = rec.seal({ declined: true });
+    onStep({ step: 'sealed', hash: sealed.hash, price_cents: null });
+    return { declined: true, choice, sealed, order: null };
   }
   rec.decision('choose', { action: 'buy', sku: choice.sku, ...decided });
   onStep({ step: 'decided', sku: choice.sku, reason: decided.reason });

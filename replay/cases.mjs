@@ -3,6 +3,7 @@
 //   - the PayPal side of a dispute, from the executor log records/executions/<dispute>.jsonl,
 //     or from a committed <name>.paypal.json next to a fixture record
 // A case with no PayPal side is shown as a preview: "if this were disputed as not as described".
+// A run where the agent bought nothing is a recording too (declined): no order, so no verdict.
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -82,13 +83,17 @@ export function paypalFromLog(entries) {
 const readJson = (p) => JSON.parse(readFileSync(p, 'utf8'));
 const jsonFiles = (dir) => (existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.json')) : []);
 
+export const isDecline = (record) => !record?.purchase && record?.decisions?.at(-1)?.action === 'decline';
+// When the run ended: the purchase, or for a decline, its decision.
+export const endedAt = (record) => record.purchase?.at ?? record.decisions?.at(-1)?.at ?? '';
+
 export function loadCases(root) {
   const byHash = new Map();
   const add = (record, source, paypal = null) => {
-    if (!record?.purchase || !Array.isArray(record.fetches)) return;
+    if (!(record?.purchase || isDecline(record)) || !Array.isArray(record.fetches)) return;
     const hash = recordHash(record);
     const prev = byHash.get(hash);
-    byHash.set(hash, { hash, record, source: prev?.source ?? source, paypal: paypal ?? prev?.paypal ?? null });
+    byHash.set(hash, { hash, record, source: prev?.source ?? source, paypal: paypal ?? prev?.paypal ?? null, ...(isDecline(record) ? { declined: true } : {}) });
   };
 
   const fixtures = join(root, 'fixtures', 'recorded');
@@ -107,7 +112,7 @@ export function loadCases(root) {
       if (c) c.paypal = paypal;
     }
   }
-  return [...byHash.values()].sort((a, b) => (b.record.purchase.at ?? '').localeCompare(a.record.purchase.at ?? ''));
+  return [...byHash.values()].sort((a, b) => endedAt(b.record).localeCompare(endedAt(a.record)));
 }
 
 const DEFAULT_REASON = 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED';
@@ -120,7 +125,9 @@ const signedMerchantId = (record) => {
 // to be the honest one (custom_id = record hash, payee = the signed merchant, captured = the price,
 // payer = whoever enrolled the passkey that approved the mandate).
 // trustBenchKey: only for case-bench cases (bench/cases.mjs), whose rewritten pages carry the TEST-ONLY key.
+// A decline has nothing to judge: null.
 export function judge({ hash, record, paypal }, { root, enrolment, trustBenchKey = false } = {}) {
+  if (isDecline(record)) return null;
   const preview = !paypal;
   const order = preview
     ? { customId: hash, payeeMerchantId: signedMerchantId(record), createdAt: record.purchase.at, capturedCents: record.purchase.price_cents,

@@ -1,5 +1,6 @@
 // The replay UI: every recorded purchase, and for each one the verdict, what a person saw next
-// to what the agent read, the facts, the rule that fired and what PayPal did.
+// to what the agent read, the facts, the rule that fired and what PayPal did. A run where the
+// agent bought nothing is shown too, with what it read and why it declined, and no verdict.
 //   npm run replay   -> http://localhost:4030
 // Cases are re-read on every request, so new agent runs and executed disputes appear on reload.
 import { existsSync, readFileSync } from 'node:fs';

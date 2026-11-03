@@ -9,6 +9,7 @@
 
 import { hostedFor } from '../agent/llm.mjs';
 import { toValue } from '../engine/actions.mjs';
+import { findHidden } from '../engine/extract.mjs';
 import { FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES, VERDICT } from '../engine/verdict.mjs';
 import { statementsFor, templateNote } from '../evidence/evidence.mjs';
 
@@ -93,7 +94,7 @@ export const CSS = `
   --orange:oklch(.71 .19 45);--amber:oklch(.83 .15 82);--green:oklch(.80 .17 150);--red:oklch(.66 .21 27);--cyan:oklch(.80 .11 222);
   --display:"Barlow Condensed","Arial Narrow",sans-serif;--sans:B612,ui-sans-serif,system-ui,sans-serif;--mono:"B612 Mono",ui-monospace,Menlo,monospace;
   --pad:clamp(14px,3.2vw,32px)}
-.MERCHANT{--c:var(--red)}.AGENT{--c:var(--amber)}.USER{--c:var(--cyan)}.NEEDS_A_HUMAN{--c:var(--ink)}.PASS{--c:var(--green)}.FAIL{--c:var(--red)}
+.DECLINED{--c:var(--green)}.MERCHANT{--c:var(--red)}.AGENT{--c:var(--amber)}.USER{--c:var(--cyan)}.NEEDS_A_HUMAN{--c:var(--ink)}.PASS{--c:var(--green)}.FAIL{--c:var(--red)}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 html{background:var(--bg);-webkit-text-size-adjust:100%;scroll-padding-top:72px}
@@ -454,7 +455,9 @@ export function highlight(text, needles) {
   return { html: out + esc(text.slice(at)), count: merged.length };
 }
 
-export const pageHtml = (record) => Buffer.from(record.fetches[record.purchase.page_index].body_b64, 'base64').toString('utf8');
+// The page shown for a recording: the one bought from, or for a decline, the last page read.
+const shownPage = (record) => record.fetches[record.purchase?.page_index ?? record.fetches.length - 1];
+export const pageHtml = (record) => Buffer.from(shownPage(record).body_b64, 'base64').toString('utf8');
 const decisionOf = (record) => record.decisions.at(-1) ?? {};
 const chip = (state, text) => `<span class="chip ${state}">${esc(text)}</span>`;
 const buyerCredit = (p) => p?.after?.moneyMovements.find((m) => m.party === 'BUYER' && m.type === 'CREDIT');
@@ -513,6 +516,7 @@ it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or th
 export function indexPage(rows, { intro = '' } = {}) {
   const live = rows.filter(({ c }) => c.paypal).length;
   const cards = rows.map(({ c, j }) => {
+    if (!j) return declineCard(c);
     const d = decisionOf(c.record);
     const v = j.verdict.verdict;
     const paid = j.order.capturedCents;
@@ -526,17 +530,28 @@ export function indexPage(rows, { intro = '' } = {}) {
 <div class="foot">${c.paypal ? `<span class="live">PAYPAL ${esc(c.paypal.disputeId)}</span><b>${esc(paypalStatus(c.paypal))}</b>` : `<span>Not disputed</span><span>If disputed as “${esc(reasonPlain(j.reason))}”: <b class="if">${esc(planPlain(j.plan))}</b></span>`}</div></a>`;
   }).join('');
   const empty = '<p class="empty">No recordings yet. Run the agent (node agent/run.mjs) to make one.</p>';
-  return layout('Black Box · recordings', `${intro || `<section class="hero"><div><div class="eyebrow"><b>●</b> Recordings</div><h1>Every purchase, <em>on tape</em></h1></div>
-<div><p>Each recording is what an AI shopping agent saw and decided, sealed into its PayPal order. Open one to replay it and see who pays.</p></div></section>`}
+  return layout('Black Box · recordings', `${intro || `<section class="hero"><div><div class="eyebrow"><b>●</b> Recordings</div><h1>Every run, <em>on tape</em></h1></div>
+<div><p>Each recording is what an AI shopping agent saw and decided, sealed into its PayPal order, or kept as a decline if it bought nothing. Open one to replay it and see who pays.</p></div></section>`}
 <section class="sec"><header><span class="n">${String(rows.length).padStart(2, '0')}</span><h2>Recordings</h2>${live ? `<p>${live} ${live === 1 ? 'was' : 'were'} disputed on PayPal.</p>` : ''}</header>
 ${rows.length ? recordingFilters(rows) : ''}<div class="recs">${cards || empty}</div></section>`, { active: 'recordings' });
+}
+
+// A run that bought nothing: what it was asked for, what it read and why it declined.
+function declineCard(c) {
+  const d = decisionOf(c.record);
+  const products = c.record.fetches.length - 1;
+  return `<a class="rec DECLINED" href="/case/${c.hash}" data-v="DECLINED" data-src="preview" data-m="${modelFamily(d.model)}">
+<div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">Bought nothing</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(d.at)}</span></div>
+<div class="model">${esc(d.model ?? 'unknown model')}</div>
+<div class="item">Read ${products} product page${products === 1 ? '' : 's'} <span class="k">on a ${money(c.record.mandate.maxTotalCents)} budget</span></div>
+<div class="foot"><span>No order, nothing to dispute</span><span>“${esc(String(d.reason ?? '').slice(0, 160))}${String(d.reason ?? '').length > 160 ? '…' : ''}”</span></div></a>`;
 }
 
 function recordingFilters(rows) {
   const count = (f) => rows.filter(f).length;
   const verdicts = [[VERDICT.MERCHANT, 'Shop at fault'], [VERDICT.AGENT, 'Agent at fault'], [VERDICT.USER, 'Purchase stands'], [VERDICT.HUMAN, 'Needs a human']];
   return filterBar('fr', '.rec', [
-    { key: 'v', legend: 'Verdict', options: verdicts.map(([v, text]) => [v, text, count(({ j }) => j.verdict.verdict === v)]) },
+    { key: 'v', legend: 'Verdict', options: [...verdicts.map(([v, text]) => [v, text, count(({ j }) => j?.verdict.verdict === v)]), ['DECLINED', 'Bought nothing', count(({ j }) => !j)]] },
     { key: 'src', legend: 'Dispute', options: [['paypal', 'PayPal dispute', count(({ c }) => c.paypal)], ['preview', 'Not disputed', count(({ c }) => !c.paypal)]] },
     { key: 'm', legend: 'Model', options: familyOptions(rows.map(({ c }) => decisionOf(c.record).model)) },
   ]);
@@ -677,6 +692,7 @@ function plainWords(c, j) {
 }
 
 export function casePage(c, j) {
+  if (!j) return declinePage(c);
   const P = plainWords(c, j);
   const sec = (n, title, note, html) => section(n, title, note, html, P[n]);
   const r = c.record;
@@ -773,6 +789,45 @@ ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((
 <div class="k" style="margin-top:10px;font-size:12.5px">Attached: the full record, as <span class="mono">blackbox-evidence.txt</span>.</div></div>`) : '';
 
   return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.nav ?? (c.bench ? 'bench' : 'recordings') });
+}
+
+// A recording where the agent bought nothing. No order, so no dispute and no verdict: it shows
+// what the buyer allowed, what the agent read, the hidden text code finds on those pages (a plain
+// extraction, not a check), and why the agent declined.
+function declinePage(c) {
+  const r = c.record;
+  const d = decisionOf(r);
+  const m = r.mandate;
+  const pages = r.fetches.slice(1).map((f) => ({ f, hidden: findHidden(Buffer.from(f.body_b64, 'base64').toString('utf8')) }));
+  const input = r.model_inputs.map((x) => x.text).join('\n\n');
+  const read = (text) => highlight(input, [text]).count > 0;
+  const needles = pages.flatMap((p) => p.hidden.map((h) => h.text)).filter(read);
+  const shown = highlight(input, needles);
+  const pageSrc = `/case/${c.hash}/page`;
+  const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${esc(d.model ?? 'unknown')}</b></span>
+<span>Declined <b>${time(d.at)}</b></span></div>`;
+  const head = `<section class="cause DECLINED" style="view-transition-name:${vtName(c.hash)}"><div class="main">
+<div class="eyebrow">No purchase · no order · nothing to dispute</div>
+<h1 class="v">Bought nothing</h1><p class="who">The agent declined, so there is no PayPal payment and no verdict.</p>
+<p class="story">“${esc(d.reason ?? '')}”</p></div></section>`;
+  const mandate = section('1.0', 'What the buyer allowed', '', `<div class="panel"><div class="eyebrow">Allowed</div><p class="mandate-line">${esc(mandateSentence(m))}</p>
+${r.mandate_auth ? '<span class="seal ok">◆ Passkey approval recorded</span>' : '<span class="seal legacy">No passkey approval</span>'}
+<div class="k mono" style="margin-top:12px">mandate sha256 ${short(r.mandate_hash, 20)}</div></div>`);
+  const channels = section('2.0', 'What the AI saw', '', `<div class="grid2">
+<div><div class="ch"><i>CH 1</i>The signed page, as a person sees it</div>
+<iframe sandbox="" referrerpolicy="no-referrer" loading="lazy" title="Recorded product page" src="${pageSrc}"></iframe></div>
+<div><div class="ch two"><i>CH 2</i>Exactly what the AI was given${shown.count ? `<a href="#hidden">${shown.count} hidden passage${shown.count > 1 ? 's' : ''} highlighted ↓</a>` : ''}</div>
+<pre class="input" tabindex="0">${shown.html}</pre></div></div>
+${d.reason ? `<div class="cvr"><span class="who">${esc(d.model)}</span><p>“${esc(d.reason)}”</p></div>` : ''}`);
+  const found = pages.flatMap((p) => p.hidden.map((h) => ({ ...h, path: p.f.path })));
+  const hidden = section('3.0', 'Hidden text it read', 'What code finds hidden on the pages the agent read. With no purchase this is not a check: nothing is judged.', found.length
+    ? found.map((h) => `<div class="panel finding"><div class="eyebrow">Hidden by <b>${esc(h.method)}</b> · <span class="mono">${esc(h.path)}</span></div><q>${esc(h.text)}</q>
+<div class="chips">${chip(read(h.text) ? 'on' : '', read(h.text) ? 'Reached the model' : 'Not in the model input')}</div></div>`).join('')
+    : '<div class="panel"><p class="empty">Code found no hidden text on the pages read. Text hidden by CSS, such as opacity:0, is left to the AI check, which runs only on a dispute.</p></div>');
+  const proof = section('4.0', 'The recording', '', `<div class="panel"><div class="k mono">record ${esc(c.hash)}</div>
+<div class="k mono" style="margin-top:8px">${r.fetches.length} pages kept byte for byte, ${r.model_inputs.length} model input${r.model_inputs.length === 1 ? '' : 's'}, ${r.decisions.length} decision${r.decisions.length === 1 ? '' : 's'}</div>
+<div class="k mono" style="margin-top:8px">source ${esc(c.source)}</div></div>`);
+  return layout(`Bought nothing · ${d.model ?? 'replay'} · Black Box`, `${crumbs}${head}${mandate}${channels}${hidden}${proof}`, { active: c.nav ?? 'recordings' });
 }
 
 // ---------------------------------------------------------------- study

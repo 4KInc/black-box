@@ -89,7 +89,7 @@ export function operatorPage(root, { env = process.env, shopUrl } = {}) {
 function resultBody({ choice, declined, sealed, order, preview, model }) {
   if (declined) {
     return `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div><h1>It bought <em>nothing.</em></h1></div>
-<div><p><b>${esc(model)}</b>: ${esc(choice.reason)}</p><p>No order, so there is nothing to record. <a href="/operator">Send it again</a></p></div></section>`;
+<div><p><b>${esc(model)}</b>: “${esc(choice.reason)}”</p><p>No order, so there is nothing to dispute. The run is recorded: <a href="/case/${esc(sealed.hash)}">open it in Black Box</a> · <a href="/operator">Send it again</a></p></div></section>`;
   }
   const r = sealed.record;
   return `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
@@ -112,7 +112,7 @@ export function stepLine(s, { env = process.env, shopUrl } = {}) {
     case 'page': return ['Read', `<span class="mono">${esc(path(s.url))}</span> · ${s.ok ? 'signed by the shop, signature valid' : `signature not valid (${esc(s.reason)})`}`];
     case 'ask': return ['Ask', `${esc(modelName(env, s.model))} is choosing, given the mandate and ${s.pages} signed page${s.pages === 1 ? '' : 's'}…`];
     case 'decided': return s.sku ? ['Decide', `Buy <b>${esc(s.sku)}</b>: “${esc(s.reason)}”`] : ['Decide', `Buy nothing: “${esc(s.reason)}”`];
-    case 'sealed': return ['Seal', `Record <span class="mono">${esc(s.hash.slice(0, 16))}…</span> sealed: every page read, the model's input and its decision, ${money(s.price_cents)}`];
+    case 'sealed': return ['Seal', `Record <span class="mono">${esc(s.hash.slice(0, 16))}…</span> sealed: every page read, the model's input and its decision${s.price_cents === null ? ' to buy nothing' : `, ${money(s.price_cents)}`}`];
     case 'checkout': return ['Checkout', `Checking out ${esc(s.sku)} at the shop, with the record hash…`];
     case 'order': return ['Order', `PayPal order <span class="mono">${esc(s.orderId)}</span> created, carrying the record hash`];
     default: return [esc(s.step), ''];
@@ -208,10 +208,10 @@ export function createLive({
           line('Failed', `The run failed: ${esc(e.message)}`, 'end bad');
           return res.end(`</ol><p><a href="/operator">Back to the operator page</a></p></section>${tail}`);
         }
-        line('Done', out.declined ? 'Nothing bought, so nothing to record' : 'Ready for the buyer to pay', 'end');
+        line('Done', out.declined ? 'Nothing bought, so no order; the run is recorded' : 'Ready for the buyer to pay', 'end');
         res.write('</ol></section>');
-        if (out.declined) return res.end(resultBody({ ...out, model }) + tail);
         saveRecord(join(root, 'records'), out.sealed);
+        if (out.declined) return res.end(resultBody({ ...out, model }) + tail);
         const preview = evaluateCase({
           record: out.sealed.record,
           order: { customId: out.sealed.hash, payeeMerchantId, createdAt: new Date().toISOString(), capturedCents: out.sealed.record.purchase.price_cents, payerId: approved.payer_id },
