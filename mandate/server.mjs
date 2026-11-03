@@ -131,8 +131,9 @@ async function refresh() {
   const payer = $('payer').value.trim();
   const r = await fetch('enrolled?payer=' + encodeURIComponent(payer)).then((r) => r.json());
   creds = r.credentials;
-  $('enrolled').textContent = creds.length ? creds.length + ' passkey(s) enrolled for this payer ID.' : 'No passkey enrolled for this payer ID yet.';
-  $('enrol').hidden = creds.length > 0;
+  $('enrolled').textContent = creds.length ? creds.length + ' passkey(s) enrolled for this payer ID. A passkey works only on the site it was made on: if this device has none for this site, enrol one.' : 'No passkey enrolled for this payer ID yet.';
+  $('enrol').hidden = false;
+  $('enrol').textContent = creds.length ? 'Enrol a passkey on this device' : 'Enrol a passkey for this payer';
   $('approve').disabled = creds.length === 0;
 }
 $('enrol').onclick = async () => {
