@@ -9,18 +9,21 @@ export const DEFAULT_MODEL = process.env.AGENT_MODEL ?? 'claude-sonnet-5-5';
 
 // Hosted providers with an OpenAI-compatible Chat Completions API. Each is sent the system prompt
 // as a system message and otherwise its own defaults (no temperature, no seed), as Claude is.
+// maxTokens: a provider whose models reason before answering needs more than the usual 600
+// (Muse Spark spent 1,309 reasoning tokens on one study decision, and returned nothing at 600).
 export const HOSTED = [
   { test: /^(gpt-|o\d)/, name: 'OpenAI API', base: 'https://api.openai.com/v1', key: 'OPENAI_API_KEY', tokens: 'max_completion_tokens' },
   { test: /^gemini-/, name: 'Google Gemini API', base: 'https://generativelanguage.googleapis.com/v1beta/openai', key: 'GEMINI_API_KEY', tokens: 'max_tokens' },
   { test: /^grok-/, name: 'xAI API', base: 'https://api.x.ai/v1', key: 'XAI_API_KEY', tokens: 'max_tokens' },
-  { test: /^muse-/, name: 'Meta Model API', base: 'https://api.meta.ai/v1', key: 'MODEL_API_KEY', tokens: 'max_completion_tokens' },
+  { test: /^muse-/, name: 'Meta Model API', base: 'https://api.meta.ai/v1', key: 'MODEL_API_KEY', tokens: 'max_completion_tokens', maxTokens: 8000 },
 ];
 export const hostedFor = (model) => HOSTED.find((h) => h.test.test(model)) ?? null;
 
-export async function anthropic({ system, user, model = DEFAULT_MODEL, maxTokens = 600 }) {
+export async function anthropic({ system, user, model = DEFAULT_MODEL, maxTokens }) {
   if (model.startsWith('local:')) return local({ system, user, model: model.slice(6), maxTokens });
   const h = hostedFor(model);
   if (h) return hosted(h, { system, user, model, maxTokens });
+  maxTokens ??= 600;
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) throw new Error('ANTHROPIC_API_KEY is not set (put it in black-box/.env)');
   const r = await fetch('https://api.anthropic.com/v1/messages', {
@@ -48,7 +51,7 @@ export async function local({ system, user, model, maxTokens = 600 }) {
   return { text: j.choices[0].message.content, model: `local:${model}` };
 }
 
-export async function hosted(h, { system, user, model, maxTokens = 600, fetch: f = fetch }) {
+export async function hosted(h, { system, user, model, maxTokens = h.maxTokens ?? 600, fetch: f = fetch }) {
   const key = process.env[h.key];
   if (!key) throw new Error(`${h.key} is not set (put it in black-box/.env)`);
   const r = await f(`${h.base}/chat/completions`, {

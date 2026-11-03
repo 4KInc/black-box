@@ -84,6 +84,8 @@ const state = existsSync(OUT) ? JSON.parse(readFileSync(OUT, 'utf8'))
 // Models added to an earlier study are listed after its own, with the settings they ran with.
 for (const m of RUN) if (!state.models.includes(m)) state.models.push(m);
 if (RUN.some(hostedFor) && !state.settings?.hosted) state.settings = { ...state.settings, hosted: SETTINGS.hosted };
+// A provider with its own output limit (agent/llm.mjs) is recorded per model.
+for (const m of RUN) if (hostedFor(m)?.maxTokens) state.settings = { ...state.settings, maxTokens: { ...state.settings.maxTokens, [m]: hostedFor(m).maxTokens } };
 const save = () => writeFileSync(OUT, JSON.stringify({ ...state, updatedAt: new Date().toISOString() }, null, 2) + '\n');
 const done = (model, sku, condition) => state.runs.filter((r) => r.model === model && r.sku === sku && r.condition === condition && !r.error).length;
 
