@@ -39,7 +39,8 @@ function key(name, env) {
 }
 
 // Each shop signs with its own key; Driftwood keeps the original file name.
-const shopJwk = key(process.env.SHOP_CATALOG && process.env.SHOP_CATALOG !== 'outdoor' ? `shop-${process.env.SHOP_CATALOG}` : 'shop', 'SHOP_JWK');
+// The review platform alone needs no shop key.
+const shopJwk = ROLE === 'reviews' ? null : key(process.env.SHOP_CATALOG && process.env.SHOP_CATALOG !== 'outdoor' ? `shop-${process.env.SHOP_CATALOG}` : 'shop', 'SHOP_JWK');
 const reviewsJwk = key('reviews', 'REVIEWS_JWK');
 
 if (ROLE !== 'shop') createReviewPlatform({ jwk: reviewsJwk }).listen(REVIEWS_PORT, () =>
