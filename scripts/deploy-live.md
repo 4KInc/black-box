@@ -18,6 +18,8 @@ read each value from the local `.env`, `killtest/.env` or a freshly generated ke
 
 ## 1. Secrets
 
+Turn on the API once: `gcloud services enable secretmanager.googleapis.com --project black-box-4kinc`.
+
 ```sh
 P=black-box-4kinc
 val() { grep "^$1=" "$2" | cut -d= -f2-; }
@@ -57,19 +59,21 @@ IMG=$(gcloud run services describe black-box --region us-central1 --project $P -
 ## 4. The review platform and the shop (same image)
 
 ```sh
-gcloud run deploy trailhead-reviews --image $IMG --region us-central1 --project $P --quiet --allow-unauthenticated \
+gcloud run deploy trailhead-reviews --image $IMG --region us-central1 --project $P --quiet \
   --command node --args shop/main.mjs --set-env-vars SHOP_ROLE=reviews --set-secrets REVIEWS_JWK=reviews-jwk:latest
-gcloud run deploy driftwood-outfitters --image $IMG --region us-central1 --project $P --quiet --allow-unauthenticated --min-instances 1 \
+gcloud run deploy driftwood-outfitters --image $IMG --region us-central1 --project $P --quiet --min-instances 1 \
   --command node --args shop/main.mjs \
   --set-env-vars SHOP_ROLE=shop,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
   --set-secrets SHOP_JWK=shop-jwk:latest,REVIEWS_JWK=reviews-jwk:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest
+# Public like black-box: the project does not allow allUsers IAM bindings, so the invoker check is off.
+for s in trailhead-reviews driftwood-outfitters; do gcloud run services update $s --region us-central1 --project $P --no-invoker-iam-check --quiet; done
 ```
 
 ## 5. PayPal's webhook
 
 ```sh
 node executor/webhook.mjs --register https://black-box-342881585799.us-central1.run.app/paypal/webhook
-# prints PAYPAL_WEBHOOK_ID=...; set it on the service (it is an ID, not a secret):
+# prints PAYPAL_WEBHOOK_ID=...; set it on the service (it is an ID, not a secret). Registered 2026-11-03: 4E918476RU7982112
 gcloud run services update black-box --region us-central1 --project $P --update-env-vars PAYPAL_WEBHOOK_ID=<id>
 ```
 
