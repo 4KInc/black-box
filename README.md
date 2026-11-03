@@ -7,12 +7,14 @@ PayPal dispute action that follows.
 
 **Try it, no keys needed:** [4kinc.github.io/black-box](https://4kinc.github.io/black-box/) shows
 every recorded purchase replayed, the study and the case bench. **[The lab](https://black-box-342881585799.us-central1.run.app/lab)**
-adds the live part: tamper with a real case and the engine runs again on the server.
+adds the live part: tamper with a real case and the engine runs again on the server. **[The live
+demo](https://black-box-342881585799.us-central1.run.app/demo)** runs the whole chain online: a
+real AI agent shops at a hosted demo shop, and Black Box settles the buyer's PayPal dispute by itself.
 
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
-**Submission state:** tag `v1.0-submission`, 2 November 2026: 57 bench cases (six live disputes,
-10 attacks), 192 tests, 15 facts, 32,768 fact combinations checked.
+**Submission state:** tag `v1.0-submission`, 3 November 2026: 57 bench cases (six live disputes,
+10 attacks), 198 tests, 15 facts, 32,768 fact combinations checked.
 
 ## The problem
 
@@ -215,7 +217,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 192 tests
+npm test                    # 198 tests
 npm run bench               # 57 cases: every verdict and rule, six live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
@@ -238,12 +240,28 @@ token is missing or broken: without the flagger, a MERCHANT case is held, not re
 
 **Hosting.** The replay, bench, study and lab run as one Cloud Run service
 ([live](https://black-box-342881585799.us-central1.run.app/lab)), built from the `Dockerfile`
-(`node lab/hosted.mjs`). It serves only the committed fixtures, holds no keys and never calls
-PayPal; `.dockerignore` keeps `.env`, `records/`, `killtest/` and the shop keys out of the image.
-Deploy with `gcloud run deploy black-box --source . --region us-central1 --min-instances 1`. One
-instance stays warm, so judges never wait for a cold start; keep it through judging (15 December
-2026), then drop the flag to scale back to zero. The repository
-variable `LAB_URL` holds its address, and the Pages build links the lab from the site.
+(`node lab/hosted.mjs`). Without `LIVE_DIR` it serves only the committed fixtures, holds no keys
+and never calls PayPal. `.dockerignore` keeps `.env`, `records/`, `killtest/` and the shop keys
+out of the image either way. One instance stays warm, so judges never wait for a cold start; keep
+it through judging (15 December 2026), then let it scale back to zero. The repository variable
+`LAB_URL` holds its address, and the Pages build links the lab and the live demo from the site.
+
+**The hosted live demo.** With `LIVE_DIR` set, the same service is also the live demo
+([lab/live.mjs](lab/live.mjs)), against the PayPal sandbox, with two more services from the same
+image: the demo shop (`SHOP_ROLE=shop`) and the review platform (`SHOP_ROLE=reviews`).
+
+| Page | What it does |
+|---|---|
+| `/demo` | the five steps, with a link to each (public) |
+| `/mandate/` | the buyer enrols a passkey on this site and approves a mandate with it |
+| `/operator` | sends the agent shopping at the hosted shop; the page streams a timeline of each step (pages read and their signatures, the model's choice, the sealed record, the PayPal order), then a link for the buyer to pay |
+| `/paypal/webhook` | PayPal's dispute events, verified with PayPal, into the autopilot, which also polls every 30 seconds |
+
+Runs made there appear on Recordings tagged **Live run**, with what PayPal did once the autopilot
+has acted. `/mandate/` and `/operator` need the operator password, since they spend model credit
+and create PayPal orders. Runs, mandates, passkeys and PayPal execution logs are kept in a Cloud
+Storage bucket mounted at `LIVE_DIR`; the keys come from Secret Manager. The deploy runbook, as
+run, is [scripts/deploy-live.md](scripts/deploy-live.md).
 
 ## Layout
 
@@ -259,20 +277,21 @@ variable `LAB_URL` holds its address, and the Pages build links the lab from the
 | `evidence/` | the evidence note for PayPal: statements from code, wording checked against them |
 | `executor/` | dispute → record → verdict → PayPal action; webhook receiver, watcher, autopilot |
 | `replay/` | the replay UI (no scripts; recorded pages sandboxed) |
-| `lab/` | the live lab (tamper with a case, or set facts by hand) and the hosted entry point |
+| `lab/` | the live lab (tamper with a case, or set facts by hand), the hosted entry point and the hosted live demo |
 | `bench/` | 57 cases, each with its expected verdict, rule, PayPal action and failing checks |
 | `study/` | the susceptibility study: runner, methods, limitations |
 | `site/` | static export for GitHub Pages |
 | `fixtures/` | recorded runs, live PayPal outcomes, the study |
 | `killtest/` | the first feasibility checks against the PayPal Disputes API |
-| `scripts/` | the live smoke test and its checks (preflight, capture status) |
+| `scripts/` | the live smoke test and its checks (preflight, capture status), and the live demo's deploy runbook |
 
 ## Design
 
 The UI is styled as a flight recorder and its incident report. It uses B612, the typeface Airbus
 drew for cockpit displays, and Barlow Condensed, both under the SIL Open Font License and
-self-hosted in `replay/fonts/`. No page runs a script, and the lab uses plain HTML forms. Motion is
-CSS only and is turned off under reduced motion.
+self-hosted in `replay/fonts/`. Of Black Box's own pages, only the passkey page runs a script, for WebAuthn; every other one,
+the lab and the operator's run included, is plain HTML and forms. Motion is CSS only and is turned
+off under reduced motion.
 
 ## License
 
