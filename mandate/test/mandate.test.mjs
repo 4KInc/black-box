@@ -32,7 +32,7 @@ async function enrolKey(key) {
 test('the page is served with a CSP that allows only its own script', async () => {
   const r = await fetch(base + '/');
   assert.match(r.headers.get('content-security-policy'), /script-src 'self'/);
-  assert.match(await r.text(), /<script src="\/app.js"><\/script>/);
+  assert.match(await r.text(), /<script src="app.js"><\/script>/);
 });
 
 test('enrol, approve, and the saved mandate verifies against the enrolled key', async () => {

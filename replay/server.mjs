@@ -33,7 +33,10 @@ const HEADERS = {
   'referrer-policy': 'no-referrer',
 };
 
-export function createReplay({ root = ROOT, intro = '' } = {}) {
+// live: the hosted app with live runs. Recordings it made itself (records/, not the committed
+// fixtures) are tagged as live runs.
+export function createReplay({ root = ROOT, intro = '', live = false } = {}) {
+  const cases = () => loadCases(root).map((c) => (live && c.source.startsWith('records/') ? { ...c, live: true } : c));
   return createServer((req, res) => {
     const send = (status, html) => { res.writeHead(status, HEADERS); res.end(html); };
     try {
@@ -44,7 +47,7 @@ export function createReplay({ root = ROOT, intro = '' } = {}) {
         res.writeHead(200, { 'content-type': 'font/woff2', 'cache-control': 'public, max-age=86400', 'x-content-type-options': 'nosniff' });
         return res.end(readFileSync(join(FONTS, font[1])));
       }
-      if (pathname === '/') return send(200, indexPage(loadCases(root).map((c) => ({ c, j: judge(c, { root }) })), { intro }));
+      if (pathname === '/') return send(200, indexPage(cases().map((c) => ({ c, j: judge(c, { root }) })), { intro }));
       if (pathname === '/lab') return send(200, labPage());
       if (pathname === '/lab/run') return send(200, labResult(root, searchParams));
       if (pathname === '/lab/page') { res.writeHead(200, RECORDED); return res.end(pageHtml(runLab(root, searchParams).c.record)); }
@@ -56,7 +59,7 @@ export function createReplay({ root = ROOT, intro = '' } = {}) {
       if (br && b[2]) { res.writeHead(200, RECORDED); return res.end(pageHtml(br.c.record)); }
       if (br) return send(200, casePage({ ...br.c, benchResult: br }, br.j));
       const m = pathname.match(/^\/case\/([0-9a-f]{64})(\/page)?$/);
-      const c = m && loadCases(root).find((x) => x.hash === m[1]);
+      const c = m && cases().find((x) => x.hash === m[1]);
       if (c && m[2]) { res.writeHead(200, RECORDED); return res.end(pageHtml(c.record)); }
       if (c) return send(200, casePage(c, judge(c, { root })));
       send(404, 'No such case');

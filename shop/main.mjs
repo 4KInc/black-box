@@ -3,7 +3,9 @@
 //   SHOP_INJECTIONS=off       -> same pages without the hidden texts (control condition)
 //   SHOP_EXTRA_DATA=<key>     -> add one accurate, differently priced statement (catalog LEGIT_PRICE_DATA)
 //   SHOP_CATALOG=audio        -> be Northline Audio (headphones, study setup 2) instead of Driftwood
-// Keys are created on first run in shop/.keys/ (gitignored) and reused after that.
+//   SHOP_ROLE=shop|reviews    -> run only one of the two, on PORT (hosted: one Cloud Run service each)
+// Keys are created on first run in shop/.keys/ (gitignored) and reused after that. Hosted, they
+// come from SHOP_JWK and REVIEWS_JWK (Secret Manager) instead, so they survive restarts.
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,14 +18,17 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(HERE, '..');
 loadEnv(join(ROOT, '.env'), join(ROOT, 'killtest', '.env'));
 
-const SHOP_PORT = Number(process.env.SHOP_PORT ?? 4010);
-const REVIEWS_PORT = Number(process.env.REVIEWS_PORT ?? 4011);
+const ROLE = process.env.SHOP_ROLE ?? 'both';
+if (!['both', 'shop', 'reviews'].includes(ROLE)) throw new Error(`unknown SHOP_ROLE ${ROLE}`);
+const SHOP_PORT = Number(process.env.SHOP_PORT ?? (ROLE === 'shop' ? process.env.PORT : null) ?? 4010);
+const REVIEWS_PORT = Number(process.env.REVIEWS_PORT ?? (ROLE === 'reviews' ? process.env.PORT : null) ?? 4011);
 const origin = process.env.SHOP_ORIGIN ?? `http://localhost:${SHOP_PORT}`;
 const reviewsIssuer = process.env.REVIEWS_ORIGIN ?? `http://localhost:${REVIEWS_PORT}`;
 // The sandbox business account that owns the PayPal app (confirmed by the kill test).
 const merchantId = process.env.SHOP_PAYPAL_MERCHANT_ID ?? 'MCYKQUXGB936U';
 
-function key(name) {
+function key(name, env) {
+  if (process.env[env]) return JSON.parse(process.env[env]);
   const dir = join(HERE, '.keys');
   const p = join(dir, `${name}.jwk.json`);
   if (existsSync(p)) return JSON.parse(readFileSync(p, 'utf8'));
@@ -34,10 +39,10 @@ function key(name) {
 }
 
 // Each shop signs with its own key; Driftwood keeps the original file name.
-const shopJwk = key(process.env.SHOP_CATALOG && process.env.SHOP_CATALOG !== 'outdoor' ? `shop-${process.env.SHOP_CATALOG}` : 'shop');
-const reviewsJwk = key('reviews');
+const shopJwk = key(process.env.SHOP_CATALOG && process.env.SHOP_CATALOG !== 'outdoor' ? `shop-${process.env.SHOP_CATALOG}` : 'shop', 'SHOP_JWK');
+const reviewsJwk = key('reviews', 'REVIEWS_JWK');
 
-createReviewPlatform({ jwk: reviewsJwk }).listen(REVIEWS_PORT, () =>
+if (ROLE !== 'shop') createReviewPlatform({ jwk: reviewsJwk }).listen(REVIEWS_PORT, () =>
   console.log(`review platform  ${reviewsIssuer}   key ${thumbprint(reviewsJwk)}`));
-createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off', extraData: process.env.SHOP_EXTRA_DATA || null, catalog: process.env.SHOP_CATALOG || 'outdoor' }).listen(SHOP_PORT, () =>
+if (ROLE !== 'reviews') createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off', extraData: process.env.SHOP_EXTRA_DATA || null, catalog: process.env.SHOP_CATALOG || 'outdoor' }).listen(SHOP_PORT, () =>
   console.log(`shop             ${origin}   ${process.env.SHOP_CATALOG || 'outdoor'}   key ${thumbprint(shopJwk)}   PayPal merchant ${merchantId}${process.env.SHOP_INJECTIONS === 'off' ? '   (hidden texts OFF: control)' : ''}`));

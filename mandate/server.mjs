@@ -4,6 +4,8 @@
 // Then: approve a mandate; it is saved to records/mandates/<mandate hash>.json, ready for
 //   node agent/run.mjs --mandate <mandate hash>
 // The passkey signs sha256(canonical mandate), so the approval covers exactly what was shown.
+// Hosted (lab/live.mjs), it is served under /mandate/ with rpId and origin set to the public site,
+// so its paths are relative.
 
 import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs';
@@ -16,7 +18,7 @@ import { CSS } from '../replay/page.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const PORT = Number(process.env.MANDATE_PORT ?? 4050);
-const RP_ID = 'localhost';
+const LOCAL_RP = 'localhost';
 const PAYER_ID = /^[A-Z0-9]{8,20}$/;
 const FONTS = join(ROOT, 'replay', 'fonts');
 const sha256hex = (s) => createHash('sha256').update(s).digest('hex');
@@ -110,7 +112,7 @@ button.ghost{background:transparent;color:var(--orange)}
 
 <section class="panel step"><div class="eyebrow"><b>03</b> Clearance</div><div id="out">Nothing approved yet.</div></section>
 </div>
-</main><script src="/app.js"></script></body></html>`;
+</main><script src="app.js"></script></body></html>`;
 
 const APP_JS = `
 const $ = (id) => document.getElementById(id);
@@ -127,7 +129,7 @@ function plain() {
 }
 async function refresh() {
   const payer = $('payer').value.trim();
-  const r = await fetch('/enrolled?payer=' + encodeURIComponent(payer)).then((r) => r.json());
+  const r = await fetch('enrolled?payer=' + encodeURIComponent(payer)).then((r) => r.json());
   creds = r.credentials;
   $('enrolled').textContent = creds.length ? creds.length + ' passkey(s) enrolled for this payer ID.' : 'No passkey enrolled for this payer ID yet.';
   $('enrol').hidden = creds.length > 0;
@@ -136,34 +138,37 @@ async function refresh() {
 $('enrol').onclick = async () => {
   try {
     const payer = $('payer').value.trim();
-    const o = await post('/enrol/options', { payerId: payer });
+    const o = await post('enrol/options', { payerId: payer });
     const cred = await navigator.credentials.create({ publicKey: {
       challenge: unb64u(o.challenge), rp: { id: o.rpId, name: 'Black Box' },
       user: { id: unb64u(o.userId), name: payer, displayName: 'PayPal payer ' + payer },
       pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -8 }, { type: 'public-key', alg: -257 }],
       authenticatorSelection: { residentKey: 'preferred', userVerification: 'required' }, attestation: 'none',
     } });
-    await post('/enrol', { payerId: payer, id: cred.id, alg: cred.response.getPublicKeyAlgorithm(), publicKeySpki: b64u(cred.response.getPublicKey()), clientDataJSON: b64u(cred.response.clientDataJSON) });
+    await post('enrol', { payerId: payer, id: cred.id, alg: cred.response.getPublicKeyAlgorithm(), publicKeySpki: b64u(cred.response.getPublicKey()), clientDataJSON: b64u(cred.response.clientDataJSON) });
     say('Passkey enrolled.', 'ok'); refresh();
   } catch (e) { say('Enrolment failed: ' + e.message, 'bad'); }
 };
 $('approve').onclick = async () => {
   try {
-    const o = await post('/approve/options', { payerId: $('payer').value.trim(), ...fields() });
+    const o = await post('approve/options', { payerId: $('payer').value.trim(), ...fields() });
     const a = await navigator.credentials.get({ publicKey: {
       challenge: unb64u(o.challenge), rpId: o.rpId, userVerification: 'required',
       allowCredentials: creds.map((c) => ({ type: 'public-key', id: unb64u(c.id) })),
     } });
-    const r = await post('/approve', { pending: o.pending, credentialId: a.id, authenticatorData: b64u(a.response.authenticatorData), clientDataJSON: b64u(a.response.clientDataJSON), signature: b64u(a.response.signature) });
-    say('Approved. Mandate ' + r.mandateHash + '\\n\\nRun the agent with it:\\n  node agent/run.mjs --mandate ' + r.mandateHash, 'ok');
+    const r = await post('approve', { pending: o.pending, credentialId: a.id, authenticatorData: b64u(a.response.authenticatorData), clientDataJSON: b64u(a.response.clientDataJSON), signature: b64u(a.response.signature) });
+    say('Approved. Mandate ' + r.mandateHash + '\\n\\n' + r.next, 'ok');
   } catch (e) { say('Approval failed: ' + e.message, 'bad'); }
 };
 for (const id of ['category','color','size','max','days']) $(id).oninput = plain;
 $('payer').onchange = refresh;
-fetch('/defaults').then((r) => r.json()).then((d) => { $('payer').value = d.payerId; plain(); refresh(); });
+fetch('defaults').then((r) => r.json()).then((d) => { $('payer').value = d.payerId; plain(); refresh(); });
 `;
 
-export function createMandateServer({ root = ROOT, defaultPayerId = '' } = {}) {
+// rpId and origin: the passkey's relying party and the page's origin. Locally, localhost on the
+// port it listens on; hosted, the public site. next(mandateHash): what to tell the buyer after approval.
+const runLocally = (hash) => `Run the agent with it:\n  node agent/run.mjs --mandate ${hash}`;
+export function createMandateServer({ root = ROOT, defaultPayerId = '', rpId = LOCAL_RP, origin: fixedOrigin = null, next = runLocally } = {}) {
   const pendingEnrol = new Map();   // challenge -> payerId
   const pendingApprove = new Map(); // token -> { payerId, mandate }
 
@@ -175,7 +180,7 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '' } = {}) {
     const send = (status, type, body) => { res.writeHead(status, { ...HEADERS, 'content-type': type }); res.end(body); };
     const json = (status, obj) => send(status, 'application/json', JSON.stringify(obj));
     const url = new URL(req.url, 'http://localhost');
-    const origin = `http://${RP_ID}:${req.socket.localPort}`;
+    const origin = fixedOrigin ?? `http://${rpId}:${req.socket.localPort}`;
 
     if (req.method === 'GET') {
       if (url.pathname === '/') return send(200, 'text/html; charset=utf-8', PAGE);
@@ -198,7 +203,7 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '' } = {}) {
           if (!PAYER_ID.test(body.payerId ?? '')) throw new Error('enter your PayPal payer ID (letters and digits)');
           const challenge = b64u.enc(randomBytes(32));
           pendingEnrol.set(challenge, body.payerId);
-          return json(200, { challenge, rpId: RP_ID, userId: b64u.enc(Buffer.from(body.payerId)) });
+          return json(200, { challenge, rpId, userId: b64u.enc(Buffer.from(body.payerId)) });
         }
         if (url.pathname === '/enrol') {
           const cd = JSON.parse(b64u.dec(body.clientDataJSON).toString('utf8'));
@@ -215,7 +220,7 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '' } = {}) {
           const pending = b64u.enc(randomBytes(16));
           pendingApprove.set(pending, { payerId: body.payerId, mandate });
           const challenge = b64u.enc(createHash('sha256').update(canonicalize(mandate)).digest());
-          return json(200, { pending, challenge, rpId: RP_ID, mandate });
+          return json(200, { pending, challenge, rpId, mandate });
         }
         if (url.pathname === '/approve') {
           const p = pendingApprove.get(body.pending);
@@ -224,7 +229,7 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '' } = {}) {
           const cred = enrolledCredentials(root, p.payerId).find((c) => c.id === body.credentialId);
           if (!cred) throw new Error('that passkey is not enrolled for this payer ID');
           const auth = {
-            rp_id: RP_ID, credential_id: cred.id, public_key_spki: cred.public_key_spki, alg: cred.alg,
+            rp_id: rpId, credential_id: cred.id, public_key_spki: cred.public_key_spki, alg: cred.alg,
             authenticator_data: body.authenticatorData, client_data_json: body.clientDataJSON, signature: body.signature,
           };
           const v = verifyMandateAssertion(p.mandate, auth);
@@ -233,7 +238,7 @@ export function createMandateServer({ root = ROOT, defaultPayerId = '' } = {}) {
           const dir = join(root, 'records', 'mandates');
           mkdirSync(dir, { recursive: true });
           writeFileSync(join(dir, `${mandateHash}.json`), JSON.stringify({ payer_id: p.payerId, mandate: p.mandate, mandate_auth: auth }, null, 2));
-          return json(200, { mandateHash });
+          return json(200, { mandateHash, next: next(mandateHash) });
         }
         return json(404, { error: 'not found' });
       } catch (e) {

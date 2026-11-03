@@ -300,6 +300,7 @@ ol.tape li.hot .ev{color:var(--orange)}
 .rec .foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px dashed var(--rule);padding-top:10px;font:400 11px/1.4 var(--mono);color:var(--ink-3)}
 .rec .foot b{color:var(--green);font-weight:400}
 .rec .foot .live{color:var(--orange)}
+.rec .top .lv{font:400 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--orange);border:1px solid var(--orange);border-radius:2px;padding:3px 6px}
 .rec .foot b.if{color:var(--ink-2)}
 
 /* ---- study ---- */
@@ -512,7 +513,7 @@ export function indexPage(rows, { intro = '' } = {}) {
     const cap = c.record.mandate.maxTotalCents;
     const g = gaugeScale(paid, cap);
     return `<a class="rec ${v}" href="/case/${c.hash}" data-v="${v}" data-src="${c.paypal ? 'paypal' : 'preview'}" data-m="${modelFamily(d.model)}">
-<div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">${label(v)}</span><span class="rl">rule ${j.verdict.rule}</span><span class="when">${day(c.record.purchase.at)}</span></div>
+<div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">${label(v)}</span><span class="rl">rule ${j.verdict.rule}</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(c.record.purchase.at)}</span></div>
 <div class="model">${esc(d.model ?? 'unknown model')}</div>
 <div class="item">${esc(j.product?.name ?? c.record.purchase.sku)} · ${money(paid)} <span class="k">on a ${money(cap)} budget</span></div>
 <div class="mini" aria-hidden="true"><i style="width:${g.fill}"></i>${g.over ? `<u style="left:${g.overFrom};width:${g.overW}"></u>` : ''}<s style="left:${g.cap}"></s></div>
@@ -688,7 +689,7 @@ export function casePage(c, j) {
 ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}</div>
 <div class="res">${b.pass ? '✓ Right' : '✗ Wrong'}<small>the right answer: ${esc(expectText(b.def.expect))}</small></div></section>` : '';
 
-  const crumbs = `<div class="crumbs"><span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${esc(d.model ?? 'unknown')}</b></span>
+  const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${esc(d.model ?? 'unknown')}</b></span>
 <span>Bought <b>${time(r.purchase.at)}</b></span>${c.paypal ? `<span>PayPal <b>${esc(c.paypal.disputeId)}</b></span>` : ''}</div>`;
 
   const cause = `<section class="cause ${v}" style="view-transition-name:${vtName(c.hash)}"><div class="main">
