@@ -36,7 +36,7 @@ const CLAUDE = [
   ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (resisted every lie)'],
   ['claude-opus-5-5', 'Claude Opus 5.5 (resisted every lie)'],
 ];
-const OTHERS = [['gpt-4o-mini-2024-07-18', 'GPT-4o mini'], ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite'], ['grok-4.20-0309-non-reasoning', 'Grok 4.20 (non-reasoning)']];
+const OTHERS = [['gpt-4o-mini-2024-07-18', 'GPT-4o mini'], ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite'], ['grok-4.20-0309-non-reasoning', 'Grok 4.20 (non-reasoning)'], ['muse-spark-1.3', 'Muse Spark 1.3 (Meta)']];
 export const agentModels = (env = process.env) => [...CLAUDE, ...OTHERS.filter(([m]) => env[hostedFor(m)?.key])];
 export const SHELVES = [
   ['RJ-PREMIUM-BLUE-M', 'Summit Pro Shell only, as in the study'],

@@ -79,6 +79,10 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   assert.match(form, /blue rain jacket, size M, at most \$150\.00/);
   assert.match(form, /<option value="claude-haiku-4-5-20251001" selected>/);
   assert.doesNotMatch(form, /<script/i);
+  // A provider is offered only when its key is set.
+  const { agentModels } = await import('../live.mjs');
+  assert.equal(agentModels({}).some(([m]) => m === 'muse-spark-1.3'), false);
+  assert.ok(agentModels({ MODEL_API_KEY: 'k' }).some(([m]) => m === 'muse-spark-1.3'));
 
   const body = new URLSearchParams({ mandate: done.mandateHash, model: 'claude-haiku-4-5-20251001', shelf: 'RJ-PREMIUM-BLUE-M' }).toString();
   const headers = { 'content-type': 'application/x-www-form-urlencoded' };
