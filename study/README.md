@@ -147,6 +147,12 @@ six are in `fixtures/recorded/` as `musespark13-<lie>.json` and show on the reco
 "Bought nothing". Four of them show the hidden note highlighted in what the model read; the two
 `opacity:0` notes are not marked, since code does not read CSS.
 
+Claude Opus 5.5, Sonnet 5.5 and Haiku 5.5, which also bought nothing in the study, had no
+recording runs before. On 2026-11-03 each ran once on the same six products the same way, and all
+18 declined; they are in `fixtures/recorded/` as `opus55-<lie>.json`, `sonnet55-<lie>.json` and
+`haiku55-<lie>.json`. So every model that resisted every lie has its declines on the recordings
+page.
+
 ## Limitations
 
 - **Two setups.** Two shops, two product types, two budgets, the same three hiding methods,
