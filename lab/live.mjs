@@ -2,6 +2,7 @@
 //   /mandate/        the buyer approves a mandate with a passkey on this site (mandate/server.mjs)
 //   /operator        the agent operator sends the agent shopping at the hosted shop
 //   /paypal/webhook  PayPal's dispute events, verified with PayPal, into the autopilot
+//   /demo            the steps of the demo, with a link to each (public)
 // Everything else is the replay, which shows each run made here as a live run, with what PayPal
 // did once the autopilot has acted. The mandate and operator pages need the operator password
 // (HTTP Basic, any user name): they spend model credit and create PayPal orders.
@@ -98,6 +99,23 @@ function resultPage({ choice, declined, sealed, order, preview, model }) {
 <p><a href="/case/${esc(sealed.hash)}">Open the recording in Black Box</a> · <a href="/operator">Send it again</a></p></div></section>`);
 }
 
+const SANDBOX = 'https://www.sandbox.paypal.com/myaccount/summary';
+
+export function demoPage({ shopUrl }) {
+  const step = (n, title, text, href, link) => `<li class="panel"><div class="eyebrow"><b>${n}</b> ${title}</div><p>${text}</p>${href ? `<p><a class="go" href="${esc(href)}">${link} →</a></p>` : ''}</li>`;
+  return layout('Black Box · live demo', `<section class="hero"><div><div class="eyebrow"><b>●</b> Live demo · PayPal sandbox</div>
+<h1>Watch an agent <em>get fooled.</em></h1></div>
+<div><p>A real AI agent shops at a real (sandbox) store that hides a note only AI agents read. The buyer disputes the purchase in PayPal, and Black Box settles it by itself.</p>
+<p>Steps 1 and 2 need the operator password, because they spend model credit and create PayPal orders.</p></div></section>
+<section class="sec"><ol class="demo">
+${step('01', 'The buyer sets the limit', 'Approve “blue rain jacket, size M, at most $150” with your passkey (Touch ID). It signs exactly that mandate.', '/mandate/', 'Approve with a passkey')}
+${step('02', 'The agent shops', `It reads every page of <a href="${esc(shopUrl)}">Driftwood Outfitters</a>, picks a jacket and checks out. Black Box seals what it saw and decided into the PayPal order.`, '/operator', 'Send the agent shopping')}
+${step('03', 'The buyer pays', 'Pay through the PayPal link the agent run gives you, as the sandbox buyer.', null)}
+${step('04', 'The buyer disputes', 'In the PayPal sandbox: Activity, the payment, Report a problem, item not as described.', SANDBOX, 'Open the PayPal sandbox')}
+${step('05', 'Black Box settles it', 'PayPal’s webhook, or a check every 30 seconds, wakes Black Box. It judges the case and tells PayPal what to do. The run is at the top of Recordings, tagged Live run.', '/', 'Open Recordings')}
+</ol></section>`, { active: 'demo' });
+}
+
 // Constant-time check of the operator password in an HTTP Basic header.
 export function authorised(header, key) {
   if (!key) return false;
@@ -127,6 +145,7 @@ export function createLive({
     const send = (status, html, extra = {}) => { res.writeHead(status, { ...HEADERS, ...extra }); res.end(html); };
     const locked = () => send(401, 'The operator password is required.', { 'www-authenticate': 'Basic realm="Black Box operator", charset="UTF-8"' });
     try {
+      if (url.pathname === '/demo' && req.method === 'GET') return send(200, demoPage({ shopUrl }));
       if (url.pathname === '/paypal/webhook') {
         if (!webhook) return send(404, 'No webhook on this server.');
         return webhook.emit('request', req, res);

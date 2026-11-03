@@ -9,11 +9,13 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { runBench } from '../bench/bench.mjs';
 import { judge, latestStudies, loadCases } from '../replay/cases.mjs';
-import { benchPage, casePage, indexPage, pageHtml, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
+import { benchPage, casePage, indexPage, pageHtml, setDemoHref, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 // The lab needs a server; the static site links to the hosted one, or leaves the link out.
 setLabHref(process.env.LAB_URL || null);
+// The hosted app that serves the lab also serves the live demo.
+setDemoHref(process.env.LAB_URL ? new URL('/demo', process.env.LAB_URL).href : null);
 const OUT = process.argv[2] ?? join(ROOT, '_site');
 
 const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'";

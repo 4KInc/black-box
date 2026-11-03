@@ -245,6 +245,9 @@ form.lab label.chk input{accent-color:var(--orange);margin-top:3px}
 form.lab label.chk b{color:var(--ink);margin-right:4px}
 form.lab button{justify-self:start;font:700 16px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:#140600;background:var(--orange);border:0;border-radius:3px;padding:12px 18px;cursor:pointer}
 .labbar .panel{border-color:var(--orange)}
+ol.demo{list-style:none;margin:0;padding:0;display:grid;gap:12px}
+ol.demo p{margin:6px 0 0;color:var(--ink-2)}
+a.go{font:700 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--orange);text-decoration:none}
 .labbar details{margin-top:10px}.labbar summary{cursor:pointer;color:var(--ink-2)}
 ol.ladder{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 ol.ladder li{display:grid;grid-template-columns:44px 150px minmax(0,1fr);align-items:center;gap:14px;padding:11px 14px;border:1px solid var(--rule);border-radius:3px;color:var(--ink-3);background:var(--bg-1)}
@@ -413,6 +416,9 @@ const familyOptions = (models) => FAMILIES.map(([k, text]) => [k, text, models.f
 // server, so its build points this at the hosted lab (LAB_URL) or drops the link.
 let labHref = '/lab';
 export const setLabHref = (href) => { labHref = href; };
+// The live demo's page, on the hosted app with LIVE_DIR set (and the static site, pointing there).
+let demoHref = null;
+export const setDemoHref = (href) => { demoHref = href; };
 
 export function layout(title, body, { active = '' } = {}) {
   const nav = (href, text, key) => `<a href="${href}"${active === key ? ' aria-current="page"' : ''}>${text}</a>`;
@@ -420,7 +426,7 @@ export function layout(title, body, { active = '' } = {}) {
 <meta name="color-scheme" content="dark"><title>${esc(title)}</title><style>${CSS}</style></head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar"><a class="mark" href="/"><span class="unit" aria-hidden="true"></span>BLACK BOX</a><span class="sub">flight recorder for AI shopping agents</span>
-<nav aria-label="Sections">${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${labHref ? nav(labHref, 'Lab', 'lab') : ''}</nav></header>
+<nav aria-label="Sections">${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${labHref ? nav(labHref, 'Lab', 'lab') : ''}${demoHref ? nav(demoHref, 'Live demo', 'demo') : ''}</nav></header>
 <main id="main">${body}</main></body></html>`;
 }
 
@@ -500,7 +506,7 @@ export function siteIntro({ live }) {
 <div><p>Black Box records what a shopping agent saw and ties it to the PayPal payment. If the buyer disputes,
 it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or the <b>buyer</b>, and tells PayPal what to do.</p>
 <p>Every recording below is a real run. The ones marked PayPal went through a sandbox dispute.
-<a href="/bench">Dispute scenarios</a>${live ? ' · <a href="/lab">Lab</a>' : ''} · <a href="https://github.com/4KInc/black-box">Source</a></p></div></section>`;
+<a href="/bench">Dispute scenarios</a>${live ? ' · <a href="/lab">Lab</a>' : ''}${demoHref ? ` · <a href="${esc(demoHref)}">Live demo</a>` : ''} · <a href="https://github.com/4KInc/black-box">Source</a></p></div></section>`;
 }
 
 // intro: optional HTML shown above the list (the public site uses it).

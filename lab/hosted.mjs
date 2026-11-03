@@ -16,7 +16,7 @@ import { appendFileSync, cpSync, mkdirSync, mkdtempSync, readFileSync, symlinkSy
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createReplay } from '../replay/server.mjs';
-import { siteIntro } from '../replay/page.mjs';
+import { setDemoHref, siteIntro } from '../replay/page.mjs';
 import { mergeEnrolment } from './live.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -31,6 +31,7 @@ cpSync(join(ROOT, 'fixtures'), join(root, 'fixtures'), { recursive: true });
 if (LIVE_DIR) { mkdirSync(LIVE_DIR, { recursive: true }); symlinkSync(LIVE_DIR, join(root, 'records'), 'dir'); }
 mergeEnrolment(root, JSON.parse(readFileSync(join(root, 'fixtures', 'recorded', 'passkey-enrolment.json'), 'utf8')));
 
+if (LIVE_DIR) setDemoHref('/demo');
 const replay = createReplay({ root, intro: siteIntro({ live: true }), live: Boolean(LIVE_DIR) });
 if (!LIVE_DIR) {
   replay.listen(PORT, HOST, () => console.log(`black box  http://${HOST}:${PORT}  (fixtures only)`));

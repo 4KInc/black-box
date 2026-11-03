@@ -123,3 +123,11 @@ test('checkout rejects a missing or malformed record hash and unknown products',
   assert.equal((await post({ sku: 'NOPE', record_hash: HASH })).status, 404);
   assert.equal(paypalCalls.length, 0, 'nothing reaches PayPal');
 });
+
+test('the review platform has a home page saying what it is, and serves its key set', async () => {
+  const home = await fetch(`${reviewsIss}/`);
+  assert.equal(home.status, 200);
+  assert.match(await home.text(), /<h1>Trailhead Reviews<\/h1>[\s\S]*\/\.well-known\/jwks\.json/);
+  assert.equal((await (await fetch(`${reviewsIss}/.well-known/jwks.json`)).json()).keys.length, 1);
+  assert.equal((await fetch(`${reviewsIss}/other`)).status, 404);
+});

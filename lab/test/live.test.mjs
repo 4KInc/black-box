@@ -95,6 +95,19 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   assert.match(await (await fetch(`${base}/case/${hash}`)).text(), /<span><b>Live run<\/b><\/span>/);
 });
 
+test('the public demo page walks through the five steps, linking each, and is in the menu', async () => {
+  const { setDemoHref } = await import('../../replay/page.mjs');
+  setDemoHref('/demo');
+  try {
+    const html = await (await fetch(base + '/demo')).text();
+    for (const href of ['/mandate/', '/operator', 'https://www.sandbox.paypal.com/myaccount/summary', '/']) assert.match(html, new RegExp(`<a class="go" href="${href.replace(/[./]/g, '\\$&')}">`));
+    assert.match(html, /<a href="\/demo" aria-current="page">Live demo<\/a>/);
+    assert.match(await (await fetch(base + '/')).text(), /<a href="\/demo">Live demo<\/a>/);
+    assert.doesNotMatch(html, /<script/i);
+  } finally { setDemoHref(null); }
+  assert.doesNotMatch(await (await fetch(base + '/bench')).text(), /Live demo/, 'no live demo, no menu item');
+});
+
 test('PayPal webhooks reach the receiver, which refuses an unverified event', async () => {
   const r = await fetch(base + '/paypal/webhook', { method: 'POST', body: JSON.stringify({ id: 'WH-1', event_type: 'CUSTOMER.DISPUTE.CREATED', resource: { dispute_id: 'PP-D-1' } }) });
   assert.equal(r.status, 401);

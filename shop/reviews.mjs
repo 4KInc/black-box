@@ -28,7 +28,15 @@ export function signedReview({ jwk, iss, sku, review }) {
 export function createReviewPlatform({ jwk }) {
   if (isBenchKey(jwk)) throw new Error('refusing the TEST-ONLY bench key: its private half is public');
   const body = JSON.stringify(jwks(jwk));
+  const home = `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${PLATFORM_NAME}</title>
+<style>body{font:16px/1.5 system-ui,sans-serif;max-width:40rem;margin:3rem auto;padding:0 1rem;color:#1d1d1b;background:#fafaf7}code{background:#eee;padding:0 .3em}</style></head><body>
+<h1>${PLATFORM_NAME}</h1><p>A demo third-party review platform for Black Box. It signs each review it publishes, and shops embed the signed reviews in their own pages unchanged.</p>
+<p>Its public signing key: <a href="/.well-known/jwks.json"><code>/.well-known/jwks.json</code></a>. Anyone can check a review on a shop's page against it.</p></body></html>`;
   return createServer((req, res) => {
+    if (req.method === 'GET' && req.url === '/') {
+      res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'content-security-policy': "default-src 'none'; style-src 'unsafe-inline'" });
+      return res.end(home);
+    }
     if (req.method === 'GET' && req.url === '/.well-known/jwks.json') {
       res.writeHead(200, { 'content-type': 'application/json' });
       return res.end(body);
