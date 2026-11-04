@@ -56,7 +56,7 @@ test('the study can be filtered by model type and by result, with CSS alone', ()
   assert.match(studyPage({ ...study, models: ['claude-x'], runs: [] }), /<div class="srow" data-m="claude" data-mm="m0">/);
   assert.match(html, /main:has\(#fc-r-hit:checked\) \.study \.cell:not\(\[data-r~="hit"\]\)\{opacity:\.15\}/);
   assert.match(html, /<label for="fs-m-open">Open models<small>2<\/small><\/label>/);
-  assert.match(html, /<select id="fs-mm"><option value="all" selected>All models<\/option>/);
+  assert.match(html, /<select id="fs-mm-all" aria-label="Model"><option value="all" selected>All models<\/option>/);
   assert.doesNotMatch(html, /<script/i);
 });
 

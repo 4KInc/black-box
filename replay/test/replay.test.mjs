@@ -92,9 +92,21 @@ test('the case list shows the live case as MERCHANT with the refund', async () =
   const key = html.match(/<option value="(m\d+)">claude-haiku-4-5-20251001 \((\d+)\)<\/option>/);
   assert.ok(key, 'the dropdown lists each model with its count');
   assert.equal((html.match(new RegExp(`class="rec [A-Z_]+"[^>]*data-mm="${key[1]}"`, 'g')) ?? []).length, Number(key[2]));
-  assert.match(html, new RegExp(`main:has\\(#fr-mm option\\[value="${key[1]}"\\]:checked\\) \\.rec:not\\(\\[data-mm="${key[1]}"\\]\\)\\{display:none\\}`));
-  assert.match(html, /<optgroup label="Claude" data-m="claude">/);
-  assert.match(html, /main:has\(#fr-m-claude:checked\) #fr-mm optgroup:not\(\[data-m="claude"\]\)\{display:none\}/);
+  // One dropdown for All, with every model, and one per provider, shown by its chip, with only its models.
+  const list = (f) => html.match(new RegExp(`<select id="fr-mm-${f}" aria-label="Model">([\\s\\S]*?)</select>`))[1];
+  assert.match(list('all'), /<optgroup label="Claude">[\s\S]*<optgroup label="Muse">/);
+  assert.match(list('claude'), /^<option value="all" selected>All Claude models<\/option>/);
+  assert.match(list('claude'), new RegExp(`value="${key[1]}"`));
+  assert.doesNotMatch(list('claude'), /gpt|muse|gemini|grok|optgroup/);
+  assert.match(list('muse'), /muse-spark-1\.3/);
+  assert.doesNotMatch(list('muse'), /claude/);
+  assert.match(html, /main:has\(#fr-m-claude:checked\) #fr-mm-claude\{display:inline-block\}/);
+  assert.match(html, /main:has\(#fr-m-claude:checked\) #fr-mm-all\{display:none\}/);
+  // A model counts only while its dropdown is shown.
+  for (const f of ['all', 'claude']) {
+    assert.match(html, new RegExp(`main:has\\(#fr-m-${f}:checked\\):has\\(#fr-mm-${f} option\\[value="${key[1]}"\\]:checked\\) \\.rec:not\\(\\[data-mm="${key[1]}"\\]\\)\\{display:none\\}`));
+  }
+  assert.doesNotMatch(html, new RegExp(`#fr-mm-gpt option\\[value="${key[1]}"\\]`));
   assert.match(html, /main:has\(#fr-v-MERCHANT:checked\) \.rec:not\(\[data-v~="MERCHANT"\]\)\{display:none\}/);
   assert.match(html, /<label for="fr-src-paypal">PayPal dispute<small>\d+<\/small><\/label>/);
   // A purchase nobody disputed says so, and what would happen if it were.

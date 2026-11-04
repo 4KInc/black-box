@@ -397,7 +397,7 @@ footer.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;co
 .filters select{padding:5px 28px 5px 11px;border:1px solid var(--rule);border-radius:999px;font:400 11px/1.2 var(--mono);letter-spacing:.06em;color:var(--ink-2);background:var(--bg-1);cursor:pointer;max-width:100%}
 .filters select:hover{border-color:var(--rule-2);color:var(--ink)}
 .filters select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
-.filters:has(select option[value="all"]:not(:checked)) select{background:var(--ink);border-color:var(--ink);color:var(--bg)}
+.filters select:has(option[value="all"]:not(:checked)){background:var(--ink);border-color:var(--ink);color:var(--bg)}
 `;
 
 // A row of filter chips that shows or hides items with CSS alone (the pages run no scripts).
@@ -420,17 +420,24 @@ const FAMILIES = [['claude', 'Claude'], ['gpt', 'GPT'], ['gemini', 'Gemini'], ['
 const familyOptions = (models) => FAMILIES.map(([k, text]) => [k, text, models.filter((m) => modelFamily(m) === k).length]);
 // A model's key for the model dropdown: its place in the sorted list, since IDs carry / : and dots.
 const modelKeys = (models) => new Map([...new Set(models.map((m) => m ?? 'unknown model'))].sort().map((m, i) => [m, `m${i}`]));
-// A dropdown of exact models, grouped by provider, that filters with CSS alone (option:checked).
-// Items carry data-mm with their model's key. Choosing a provider chip (id-m-<family>) leaves
-// only that provider's models in the list.
+// Dropdowns of exact models that filter with CSS alone (option:checked). Items carry data-mm with
+// their model's key. Each Provider chip (id-m-<family>) has its own dropdown of only that provider's
+// models, since a native dropdown ignores CSS that hides options; a choice counts only while its
+// dropdown is the one shown.
 function modelSelect(id, target, models, { name = (m) => m, counts = true } = {}) {
   const keys = modelKeys(models);
   const n = (m) => models.filter((x) => (x ?? 'unknown model') === m).length;
-  const css = [...keys.values()].map((k) => `main:has(#${id}-mm option[value="${k}"]:checked) ${target}:not([data-mm="${k}"]){display:none}`)
-    .concat(FAMILIES.map(([f]) => `main:has(#${id}-m-${f}:checked) #${id}-mm optgroup:not([data-m="${f}"]){display:none}`)).join('\n');
   const groups = FAMILIES.map(([f, text]) => [f, text, [...keys].filter(([m]) => modelFamily(m) === f)]).filter(([, , ms]) => ms.length);
-  return `<style>${css}</style><label class="pick"><span>Model</span><select id="${id}-mm"><option value="all" selected>All models</option>
-${groups.map(([f, text, ms]) => `<optgroup label="${esc(text)}" data-m="${f}">${ms.map(([m, k]) => `<option value="${k}">${esc(name(m))}${counts ? ` (${n(m)})` : ''}</option>`).join('')}</optgroup>`).join('\n')}</select></label>`;
+  const opts = (ms) => ms.map(([m, k]) => `<option value="${k}">${esc(name(m))}${counts ? ` (${n(m)})` : ''}</option>`).join('');
+  const lists = [['all', groups.map(([f, text, ms]) => `<optgroup label="${esc(text)}">${opts(ms)}</optgroup>`).join('')],
+    ...groups.map(([f, , ms]) => [f, opts(ms)])];
+  const css = lists.flatMap(([f]) => [
+    ...(f === 'all' ? [] : [`main:has(#${id}-m-${f}:checked) #${id}-mm-${f}{display:inline-block}`, `main:has(#${id}-m-${f}:checked) #${id}-mm-all{display:none}`]),
+    ...[...keys].filter(([m]) => f === 'all' || modelFamily(m) === f).map(([, k]) =>
+      `main:has(#${id}-m-${f}:checked):has(#${id}-mm-${f} option[value="${k}"]:checked) ${target}:not([data-mm="${k}"]){display:none}`),
+  ]).join('\n');
+  return `<style>.filters select[id^="${id}-mm-"]:not(#${id}-mm-all){display:none}\n${css}</style><span class="pick"><span>Model</span>${lists.map(([f, o]) =>
+    `<select id="${id}-mm-${f}" aria-label="Model"><option value="all" selected>All ${f === 'all' ? 'models' : `${esc(FAMILIES.find(([x]) => x === f)[1])} models`}</option>${o}</select>`).join('')}</span>`;
 }
 
 // Where the nav's Lab link points: the live engine on the replay server. The static site has no
