@@ -392,19 +392,25 @@ footer.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;co
 .filters input:checked+label{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .filters input:checked+label small{color:var(--bg-3)}
 .filters input:focus-visible+label{outline:2px solid var(--amber);outline-offset:2px}
+.filters .pick{display:flex;align-items:center;gap:6px;padding:0;border:0;background:none;cursor:default}
+.filters .pick span{font:400 10.5px/26px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.filters select{padding:5px 28px 5px 11px;border:1px solid var(--rule);border-radius:999px;font:400 11px/1.2 var(--mono);letter-spacing:.06em;color:var(--ink-2);background:var(--bg-1);cursor:pointer;max-width:100%}
+.filters select:hover{border-color:var(--rule-2);color:var(--ink)}
+.filters select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.filters:has(select option[value="all"]:not(:checked)) select{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 `;
 
 // A row of filter chips that shows or hides items with CSS alone (the pages run no scripts).
 // groups: [{ key, legend, options: [[value, label, count]] }]. Items carry data-<key> with
 // space-separated values; dim: true fades non-matching items instead of hiding them.
-export function filterBar(id, target, groups, { dim = false } = {}) {
+export function filterBar(id, target, groups, { dim = false, extra = '' } = {}) {
   const hide = dim ? 'opacity:.15' : 'display:none';
   const css = groups.flatMap((g) => g.options.map(([value]) =>
     `main:has(#${id}-${g.key}-${value}:checked) ${target}:not([data-${g.key}~="${value}"]){${hide}}`)).join('\n');
   const bar = groups.map((g) => `<fieldset><legend>${esc(g.legend)}</legend>
 <input type="radio" name="${id}-${g.key}" id="${id}-${g.key}-all" checked><label for="${id}-${g.key}-all">All</label>
 ${g.options.filter(([, , n]) => n !== 0).map(([value, text, n]) => `<input type="radio" name="${id}-${g.key}" id="${id}-${g.key}-${value}"><label for="${id}-${g.key}-${value}">${esc(text)}${n === undefined ? '' : `<small>${n}</small>`}</label>`).join('')}</fieldset>`).join('');
-  return `<style>${css}</style><div class="filters" role="group" aria-label="Filters">${bar}</div>`;
+  return `<style>${css}</style><div class="filters" role="group" aria-label="Filters">${bar}${extra}</div>`;
 }
 const isClaude = (model) => /^claude/.test(model ?? '');
 // Who makes a model, for the Model filters: Claude, GPT, Gemini, Grok, Muse, or an open model run locally.
@@ -412,6 +418,20 @@ const FAMILY = { 'OpenAI API': 'gpt', 'Google Gemini API': 'gemini', 'xAI API': 
 const modelFamily = (model) => (isClaude(model) ? 'claude' : FAMILY[hostedFor(model ?? '')?.name] ?? 'open');
 const FAMILIES = [['claude', 'Claude'], ['gpt', 'GPT'], ['gemini', 'Gemini'], ['grok', 'Grok'], ['muse', 'Muse'], ['open', 'Open models']];
 const familyOptions = (models) => FAMILIES.map(([k, text]) => [k, text, models.filter((m) => modelFamily(m) === k).length]);
+// A model's key for the model dropdown: its place in the sorted list, since IDs carry / : and dots.
+const modelKeys = (models) => new Map([...new Set(models.map((m) => m ?? 'unknown model'))].sort().map((m, i) => [m, `m${i}`]));
+// A dropdown of exact models, grouped by provider, that filters with CSS alone (option:checked).
+// Items carry data-mm with their model's key. Choosing a provider chip (id-m-<family>) leaves
+// only that provider's models in the list.
+function modelSelect(id, target, models, { name = (m) => m, counts = true } = {}) {
+  const keys = modelKeys(models);
+  const n = (m) => models.filter((x) => (x ?? 'unknown model') === m).length;
+  const css = [...keys.values()].map((k) => `main:has(#${id}-mm option[value="${k}"]:checked) ${target}:not([data-mm="${k}"]){display:none}`)
+    .concat(FAMILIES.map(([f]) => `main:has(#${id}-m-${f}:checked) #${id}-mm optgroup:not([data-m="${f}"]){display:none}`)).join('\n');
+  const groups = FAMILIES.map(([f, text]) => [f, text, [...keys].filter(([m]) => modelFamily(m) === f)]).filter(([, , ms]) => ms.length);
+  return `<style>${css}</style><label class="pick"><span>Model</span><select id="${id}-mm"><option value="all" selected>All models</option>
+${groups.map(([f, text, ms]) => `<optgroup label="${esc(text)}" data-m="${f}">${ms.map(([m, k]) => `<option value="${k}">${esc(name(m))}${counts ? ` (${n(m)})` : ''}</option>`).join('')}</optgroup>`).join('\n')}</select></label>`;
+}
 
 // Where the nav's Lab link points: the live engine on the replay server. The static site has no
 // server, so its build points this at the hosted lab (LAB_URL) or drops the link.
@@ -515,14 +535,15 @@ it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or th
 // intro: optional HTML shown above the list (the public site uses it).
 export function indexPage(rows, { intro = '' } = {}) {
   const live = rows.filter(({ c }) => c.paypal).length;
+  const keys = modelKeys(rows.map(({ c }) => decisionOf(c.record).model));
   const cards = rows.map(({ c, j }) => {
-    if (!j) return declineCard(c);
+    if (!j) return declineCard(c, keys);
     const d = decisionOf(c.record);
     const v = j.verdict.verdict;
     const paid = j.order.capturedCents;
     const cap = c.record.mandate.maxTotalCents;
     const g = gaugeScale(paid, cap);
-    return `<a class="rec ${v}" href="/case/${c.hash}" data-v="${v}" data-src="${c.paypal ? 'paypal' : 'preview'}" data-m="${modelFamily(d.model)}">
+    return `<a class="rec ${v}" href="/case/${c.hash}" data-v="${v}" data-src="${c.paypal ? 'paypal' : 'preview'}" data-m="${modelFamily(d.model)}" data-mm="${keys.get(d.model ?? 'unknown model')}">
 <div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">${label(v)}</span><span class="rl">rule ${j.verdict.rule}</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(c.record.purchase.at)}</span></div>
 <div class="model">${esc(d.model ?? 'unknown model')}</div>
 <div class="item">${esc(j.product?.name ?? c.record.purchase.sku)} · ${money(paid)} <span class="k">on a ${money(cap)} budget</span></div>
@@ -537,10 +558,10 @@ ${rows.length ? recordingFilters(rows) : ''}<div class="recs">${cards || empty}<
 }
 
 // A run that bought nothing: what it was asked for, what it read and why it declined.
-function declineCard(c) {
+function declineCard(c, keys) {
   const d = decisionOf(c.record);
   const products = c.record.fetches.length - 1;
-  return `<a class="rec DECLINED" href="/case/${c.hash}" data-v="DECLINED" data-src="preview" data-m="${modelFamily(d.model)}">
+  return `<a class="rec DECLINED" href="/case/${c.hash}" data-v="DECLINED" data-src="preview" data-m="${modelFamily(d.model)}" data-mm="${keys.get(d.model ?? 'unknown model')}">
 <div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">Bought nothing</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(d.at)}</span></div>
 <div class="model">${esc(d.model ?? 'unknown model')}</div>
 <div class="item">Read ${products} product page${products === 1 ? '' : 's'} <span class="k">on a ${money(c.record.mandate.maxTotalCents)} budget</span></div>
@@ -548,13 +569,14 @@ function declineCard(c) {
 }
 
 function recordingFilters(rows) {
+  const models = rows.map(({ c }) => decisionOf(c.record).model);
   const count = (f) => rows.filter(f).length;
   const verdicts = [[VERDICT.MERCHANT, 'Shop at fault'], [VERDICT.AGENT, 'Agent at fault'], [VERDICT.USER, 'Purchase stands'], [VERDICT.HUMAN, 'Needs a human']];
   return filterBar('fr', '.rec', [
     { key: 'v', legend: 'Verdict', options: [...verdicts.map(([v, text]) => [v, text, count(({ j }) => j?.verdict.verdict === v)]), ['DECLINED', 'Bought nothing', count(({ j }) => !j)]] },
     { key: 'src', legend: 'Dispute', options: [['paypal', 'PayPal dispute', count(({ c }) => c.paypal)], ['preview', 'Not disputed', count(({ c }) => !c.paypal)]] },
-    { key: 'm', legend: 'Model', options: familyOptions(rows.map(({ c }) => decisionOf(c.record).model)) },
-  ]);
+    { key: 'm', legend: 'Provider', options: familyOptions(models) },
+  ], { extra: modelSelect('fr', '.rec', models) });
 }
 
 // ---------------------------------------------------------------- case
@@ -881,13 +903,13 @@ function cellTip(c, kind, model, sampled, n) {
   return model.startsWith('local:') && !sampled ? `${tip} Greedy model: its ${n} runs are one answer repeated.` : tip;
 }
 
-function studySection(study, num) {
+function studySection(study, num, keys) {
   const { rows } = studySummary(study);
   const st = setupOf(study);
   const pct = (a, n) => (n ? `${Math.round((a / n) * 100)}%` : '–');
   const fooledModels = rows.filter((r) => r.cells.some((c) => c.effect !== null && c.effect >= 0.5)).map((r) => modelName(r.model));
   const head = `<div class="srow head"><div>Model</div>${study.lies.map((l) => `<div>${esc(l.who === 'merchant' ? 'Shop' : 'Review site')} hides a fake price<b>${esc(l.lie)}</b></div>`).join('')}</div>`;
-  const body = rows.map((r) => `<div class="srow" data-m="${modelFamily(r.model)}"><div class="sm"><b>${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
+  const body = rows.map((r) => `<div class="srow" data-m="${modelFamily(r.model)}" data-mm="${keys.get(r.model)}"><div class="sm"><b>${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
 ${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'hit' ? ' hit' : k === 'anyway' ? ' anyway' : k === 'clean' ? ' clean' : ''}" data-lie="${esc(c.lie)}" data-r="${k}" tabindex="0" data-tip="${esc(cellTip(c, k, r.model, st.sampled, study.n))}">
 <div class="eff">${c.effect === null ? '–' : `${c.effect > 0 ? '+' : ''}${Math.round(c.effect * 100)}`}<small>${c.effect === null ? '' : CELL_LABEL[k]}</small></div>
 <div class="sbar lie"><span>with lie</span><i><u style="width:${pct(c.lieBought, c.lieN)}"></u></i><b>${c.lieBought}/${c.lieN}</b></div>
@@ -908,7 +930,7 @@ export function studyPage(studies) {
 <div><p>Every product shown costs more than the budget, so buying anything is a mistake. Each model ran ${list[0].n} times with a hidden lie on the page, and ${list[0].n} times on the same shop without it.</p>
 <p>This covers these setups only, not a ranking of models. Raw data: <span class="mono">study/README.md</span>.</p></div></section>
 ${studyFilters(list)}
-${list.map((st, i) => studySection(st, String(i + 1).padStart(2, '0'))).join('\n')}`, { active: 'study' });
+${list.map((st, i) => studySection(st, String(i + 1).padStart(2, '0'), modelKeys(list.flatMap((x) => x.models)))).join('\n')}`, { active: 'study' });
 }
 
 function studyFilters(list) {
@@ -917,7 +939,7 @@ function studyFilters(list) {
   const models = [...new Set(list.flatMap((st) => st.models))];
   const setups = list.length > 1 ? [{ key: 's', legend: 'Setup', options: list.map((st, i) => { const id = String(i + 1).padStart(2, '0'); return [`s${id}`, `${id} · ${setupOf(st).item}`]; }) }] : [];
   return `<section class="sec" style="padding-bottom:0">
-${filterBar('fs', '.srow:not(.head)', [{ key: 'm', legend: 'Model', options: familyOptions(models) }])}
+${filterBar('fs', '.srow:not(.head)', [{ key: 'm', legend: 'Provider', options: familyOptions(models) }], { extra: modelSelect('fs', '.srow:not(.head)', models, { name: modelName, counts: false }) })}
 ${setups.length ? filterBar('fx', '.ssetup', setups) : ''}
 ${filterBar('fc', '.study .cell', [{ key: 'r', legend: 'Result', options: [['hit', 'The lie caused it', n('hit')], ['anyway', 'Overspends anyway', n('anyway')], ['clean', 'Never fooled', n('clean')]] }], { dim: true })}</section>`;
 }

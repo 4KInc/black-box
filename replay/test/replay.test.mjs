@@ -35,7 +35,7 @@ test('a run that bought nothing is a recording: its card, its filter, and a page
     saveRecord(join(root, 'records'), sealed);
     const index = await (await fetch(base + '/')).text();
     const card = index.match(new RegExp(`<a class="rec DECLINED" href="/case/${sealed.hash}"[\\s\\S]*?</a>`))[0];
-    assert.match(card, /data-v="DECLINED" data-src="preview" data-m="muse"/);
+    assert.match(card, /data-v="DECLINED" data-src="preview" data-m="muse" data-mm="m\d+"/);
     assert.match(card, /<span class="vv">Bought nothing<\/span>/);
     assert.match(card, /Read 1 product page <span class="k">on a \$150\.00 budget/);
     assert.match(card, /the agent credit note is not the price/);
@@ -86,7 +86,15 @@ test('the case list shows the live case as MERCHANT with the refund', async () =
   assert.match(html, new RegExp(`/case/${LIVE}`));
   assert.match(html, /\$240\.00 refunded to the buyer/);
   // Filter chips, CSS only: each card carries what the chips filter on.
-  assert.match(html, /<a class="rec MERCHANT" href="\/case\/[0-9a-f]+" data-v="MERCHANT" data-src="paypal" data-m="claude">/);
+  assert.match(html, /<a class="rec MERCHANT" href="\/case\/[0-9a-f]+" data-v="MERCHANT" data-src="paypal" data-m="claude" data-mm="m\d+">/);
+  // Provider chips, and a dropdown of the exact models, grouped by provider, also CSS only.
+  assert.match(html, /<legend>Provider<\/legend>/);
+  const key = html.match(/<option value="(m\d+)">claude-haiku-4-5-20251001 \((\d+)\)<\/option>/);
+  assert.ok(key, 'the dropdown lists each model with its count');
+  assert.equal((html.match(new RegExp(`class="rec [A-Z_]+"[^>]*data-mm="${key[1]}"`, 'g')) ?? []).length, Number(key[2]));
+  assert.match(html, new RegExp(`main:has\\(#fr-mm option\\[value="${key[1]}"\\]:checked\\) \\.rec:not\\(\\[data-mm="${key[1]}"\\]\\)\\{display:none\\}`));
+  assert.match(html, /<optgroup label="Claude" data-m="claude">/);
+  assert.match(html, /main:has\(#fr-m-claude:checked\) #fr-mm optgroup:not\(\[data-m="claude"\]\)\{display:none\}/);
   assert.match(html, /main:has\(#fr-v-MERCHANT:checked\) \.rec:not\(\[data-v~="MERCHANT"\]\)\{display:none\}/);
   assert.match(html, /<label for="fr-src-paypal">PayPal dispute<small>\d+<\/small><\/label>/);
   // A purchase nobody disputed says so, and what would happen if it were.

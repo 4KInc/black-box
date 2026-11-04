@@ -52,17 +52,18 @@ test('each cell says at a glance, and in its tooltip, whether the lie caused the
 
 test('the study can be filtered by model type and by result, with CSS alone', () => {
   const html = studyPage(study);
-  assert.match(html, /<div class="srow" data-m="open">/);
-  assert.match(studyPage({ ...study, models: ['claude-x'], runs: [] }), /<div class="srow" data-m="claude">/);
+  assert.match(html, /<div class="srow" data-m="open" data-mm="m\d">/);
+  assert.match(studyPage({ ...study, models: ['claude-x'], runs: [] }), /<div class="srow" data-m="claude" data-mm="m0">/);
   assert.match(html, /main:has\(#fc-r-hit:checked\) \.study \.cell:not\(\[data-r~="hit"\]\)\{opacity:\.15\}/);
   assert.match(html, /<label for="fs-m-open">Open models<small>2<\/small><\/label>/);
+  assert.match(html, /<select id="fs-mm"><option value="all" selected>All models<\/option>/);
   assert.doesNotMatch(html, /<script/i);
 });
 
 test('GPT, Gemini, Grok and Muse models are named by their provider and filter as their own family', () => {
   const html = studyPage({ ...study, models: ['claude-x', 'gpt-x', 'gemini-x', 'grok-x', 'muse-x', 'local:mlx-community/Tiny-1B-Instruct-4bit'], runs: [] });
   for (const [fam, text, api] of [['gpt', 'GPT', 'OpenAI API'], ['gemini', 'Gemini', 'Google Gemini API'], ['grok', 'Grok', 'xAI API'], ['muse', 'Muse', 'Meta Model API']]) {
-    assert.match(html, new RegExp(`<div class="srow" data-m="${fam}"><div class="sm"><b>${fam}-x</b><small>${api} · 2 independent samples</small>`));
+    assert.match(html, new RegExp(`<div class="srow" data-m="${fam}" data-mm="m\\d"><div class="sm"><b>${fam}-x</b><small>${api} · 2 independent samples</small>`));
     assert.match(html, new RegExp(`<label for="fs-m-${fam}">${text}<small>1</small></label>`));
   }
   assert.doesNotMatch(studyPage(study), /<label for="fs-m-gpt">/, 'a family with no models gets no filter');
