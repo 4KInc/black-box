@@ -228,6 +228,9 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 .tech dt{color:var(--ink-3);font:400 12.5px/1.5 var(--sans)}
 .tech dd{margin:0;font:400 12px/1.5 var(--mono);color:var(--ink-2);overflow-wrap:anywhere}
 .where{margin:10px 0 0;color:var(--ink-2);font:400 14px/1.5 var(--sans)}
+.dl{display:inline-block;margin-top:14px;padding:9px 16px;border:1px solid var(--rule-2);border-radius:999px;background:var(--bg-2);color:var(--ink);font:600 13px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;text-decoration:none}
+.dl:hover{border-color:var(--ink-2);background:var(--bg-3)}
+.dl:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 
 /* ---- annunciator panel ---- */
 .ann{container-type:inline-size}
@@ -671,6 +674,14 @@ const METHOD_PLAIN = {
   'aria-hidden': 'marked as hidden',
 };
 const methodPlain = (m) => METHOD_PLAIN[m] ?? m;
+// The recording as a JSON file to download: /case/<hash>/record.json, or the bench case's. A page
+// with no file of its own (the lab's tampered copies) sets recordHref to null and gets no button.
+const recordHref = (c) => ('recordHref' in c ? c.recordHref : `${c.bench ? `/bench/${c.bench.id}` : `/case/${c.hash}`}/record.json`);
+export const recordJson = (record) => `${JSON.stringify(record, null, 2)}\n`;
+const downloadButton = (c) => {
+  const href = recordHref(c);
+  return href ? `<a class="dl" href="${esc(href)}" download="black-box-${c.hash.slice(0, 12)}.json">↓ Download the recording (JSON)</a>` : '';
+};
 const VIEW_CUSTOMER = "<i>Customer's view</i>The shop's page, as a person sees it";
 const VIEW_AI = "<i>AI's view</i>Exactly what the AI was given";
 
@@ -884,7 +895,8 @@ ${RULES.map((rule) => `<li class="${rule.verdict}${rule.n === j.verdict.rule ? '
   const proof = sec('7.0', 'Has this recording been edited?', '', `<div class="panel">
 <div class="chips">${chip(same ? 'ok' : 'bad', same ? 'Matches the PayPal payment' : 'Does not match the PayPal payment')}${chip(integrity ? 'ok' : 'bad', integrity ? 'All record checks pass' : 'Record broken')}</div>
 ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-${techDetails([['Recording fingerprint', esc(c.hash)], ['Fingerprint in the PayPal payment (custom_id)', `${esc(j.order.customId ?? '')} <span class="${same ? 'eq' : 'ne'}">${same ? '=' : '≠'}</span>`], ['Source file', esc(c.source)]])}</div>`);
+${techDetails([['Recording fingerprint', esc(c.hash)], ['Fingerprint in the PayPal payment (custom_id)', `${esc(j.order.customId ?? '')} <span class="${same ? 'eq' : 'ne'}">${same ? '=' : '≠'}</span>`]])}
+${downloadButton(c)}</div>`);
 
   // 8. the note PayPal receives with the evidence (USER verdicts only)
   const statements = statementsFor({ record: r, j, hash: c.hash, reason: j.reason });
@@ -938,7 +950,8 @@ ${techDetails([['Mandate fingerprint (SHA-256)', esc(r.mandate_hash)]])}</div>`)
     : `<div class="panel"><p class="empty">The automatic check found nothing hidden. It catches the common tricks: text kept in the page’s data but never shown, hidden with styling, moved off the screen, shrunk to nothing, coloured like the background, or marked as hidden.</p>
 <p class="empty">Some tricks it cannot spot, such as making text fully transparent (opacity:0), and that text still reaches the AI. To check for yourself, compare the two views above: any sentence in the AI’s view that you cannot see in the customer’s view was hidden from the customer. If this became a dispute, an AI check would look for such text, and could only pass the case to a person.</p></div>`);
   const proof = section('4.0', 'About this recording', '', `<div class="panel"><p class="empty">Black Box kept every page the agent read, exactly as the shop sent it, with what the AI was given and what it decided.</p>
-${techDetails([['Recording fingerprint', esc(c.hash)], ['Kept', `${r.fetches.length} pages byte for byte, ${r.model_inputs.length} model input${r.model_inputs.length === 1 ? '' : 's'}, ${r.decisions.length} decision${r.decisions.length === 1 ? '' : 's'}`], ['Source file', esc(c.source)]])}</div>`);
+${techDetails([['Recording fingerprint', esc(c.hash)], ['Kept', `${r.fetches.length} pages byte for byte, ${r.model_inputs.length} model input${r.model_inputs.length === 1 ? '' : 's'}, ${r.decisions.length} decision${r.decisions.length === 1 ? '' : 's'}`]])}
+${downloadButton(c)}</div>`);
   return layout(`Bought nothing · ${d.model ?? 'replay'} · Black Box`, `${crumbs}${head}${support}${mandate}${channels}${hidden}${proof}`, { active: c.nav ?? 'recordings' });
 }
 

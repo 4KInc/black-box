@@ -75,6 +75,30 @@ test('a decline where code found no hidden text says how to see text hidden anot
   assert.match(jsonld, /<p class="where">Where: in the page&#39;s product data, which is never shown on screen\.<\/p>/);
 });
 
+test('each recording downloads as JSON, the very record its fingerprint is of', async () => {
+  const { recordHash } = await import('../../recorder/recorder.mjs');
+  const index = await (await fetch(base + '/')).text();
+  const hashes = [...new Set([...index.matchAll(/href="\/case\/([0-9a-f]{64})"/g)].map((m) => m[1]))];
+  for (const h of [hashes[0], LIVE]) {
+    const page = await (await fetch(`${base}/case/${h}`)).text();
+    assert.match(page, new RegExp(`<a class="dl" href="/case/${h}/record\\.json" download="black-box-${h.slice(0, 12)}\\.json">↓ Download the recording \\(JSON\\)</a>`));
+    assert.doesNotMatch(page, /Source file|fixtures\/recorded/);
+    const r = await fetch(`${base}/case/${h}/record.json`);
+    assert.equal(r.status, 200);
+    assert.match(r.headers.get('content-type'), /^application\/json/);
+    assert.equal(r.headers.get('content-disposition'), `attachment; filename="black-box-${h.slice(0, 12)}.json"`);
+    assert.equal(recordHash(await r.json()), h);
+  }
+  assert.equal((await fetch(`${base}/case/${'0'.repeat(64)}/record.json`)).status, 404);
+  const bench = await fetch(`${base}/bench/R01/record.json`);
+  assert.equal(bench.status, 200);
+  assert.match(await (await fetch(`${base}/bench/R01`)).text(), /<a class="dl" href="\/bench\/R01\/record\.json"/);
+  // The lab's tampered copy is not a recording on file: no button.
+  const lab = await (await fetch(`${base}/lab/run`)).text();
+  assert.match(lab, /Has this recording been edited\?/, 'the lab shows a case page');
+  assert.doesNotMatch(lab, /class="dl"/);
+});
+
 test('the PayPal side keeps IDs, amounts and statuses, and drops buyer and seller identities', () => {
   const p = paypalFromLog([
     { step: 'get dispute', status: 200, response: { dispute_id: 'PP-D-1', reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED', create_time: '2026-10-13T06:40:03Z',

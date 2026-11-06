@@ -9,7 +9,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { runBench } from '../bench/bench.mjs';
 import { judge, latestStudies, loadCases } from '../replay/cases.mjs';
-import { benchPage, casePage, indexPage, pageHtml, setDemoHref, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
+import { benchPage, casePage, indexPage, pageHtml, recordJson, setDemoHref, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 // The lab needs a server; the static site links to the hosted one, or leaves the link out.
@@ -22,13 +22,13 @@ const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; 
 const RECORDED_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; base-uri 'none'; form-action 'none'";
 
 // Absolute links ("/case/…") become relative to the page, so the site works under any path
-// (GitHub Pages serves it at /black-box/). Directory links get a trailing slash.
+// (GitHub Pages serves it at /black-box/). Directory links get a trailing slash; files (.json) do not.
 export function relativise(html, depth) {
   const up = depth ? '../'.repeat(depth) : './';
   return html
     .replace(/(href|src)="\/([^"]*)"/g, (_, attr, path) => {
       const [p, frag = ''] = path.split('#');
-      const dir = p === '' || p.endsWith('/') ? p : `${p}/`;
+      const dir = p === '' || p.endsWith('/') || /\.json$/.test(p) ? p : `${p}/`;
       return `${attr}="${up}${dir}${frag ? '#' + frag : ''}"`;
     })
     .replace(/url\(\/fonts\//g, `url(${up}fonts/`);
@@ -67,6 +67,7 @@ try {
   for (const { c, j } of cases) {
     write(`case/${c.hash}`, casePage(c, j), 2);
     write(`case/${c.hash}/page`, pageHtml(c.record), 3, RECORDED_CSP);
+    writeFileSync(join(OUT, 'case', c.hash, 'record.json'), recordJson(c.record));
   }
 
   const studies = latestStudies(root);
@@ -77,6 +78,7 @@ try {
   for (const r of bench) {
     write(`bench/${r.def.id}`, casePage({ ...r.c, benchResult: r }, r.j), 2);
     write(`bench/${r.def.id}/page`, pageHtml(r.c.record), 3, RECORDED_CSP);
+    writeFileSync(join(OUT, 'bench', r.def.id, 'record.json'), recordJson(r.c.record));
   }
   const failed = bench.filter((r) => !r.pass).length;
   console.log(`site     ${OUT}\ncases    ${cases.length} replays, ${bench.length} bench cases (${bench.length - failed} pass)`);

@@ -110,7 +110,7 @@ export function labResult(root, query) {
 ${chosen.length ? `Changed: ${chosen.map((t) => esc(t.what.charAt(0).toLowerCase() + t.what.slice(1))).join('; ')}${before ? ' (before payment)' : ''}.` : 'Nothing changed.'}${noEffect.length ? ` No effect here: this record has nothing to ${noEffect.map((t) => esc(t.what.split(' ')[0].toLowerCase())).join(', ')} (it was placed before the buyer enrolled a passkey).` : ''}</p>
 <p>Unchanged: <b>${esc(verdictOf(was))}</b><br>Now: <b>${esc(verdictOf(j))}</b>${broken.length ? ` · failed checks: <span class="mono">${esc(broken.join(', '))}</span>` : ''}</p>
 <details><summary>Change something else</summary>${labForm(query)}</details></div></section>`;
-  return casePage({ ...c, source: `lab: ${c.source}`, nav: 'lab', pageSrc: `/lab/page?${esc(query.toString())}` }, j).replace('<main id="main">', `<main id="main">${banner}`);
+  return casePage({ ...c, source: `lab: ${c.source}`, recordHref: null, nav: 'lab', pageSrc: `/lab/page?${esc(query.toString())}` }, j).replace('<main id="main">', `<main id="main">${banner}`);
 }
 
 const FACT_GROUPS = [
