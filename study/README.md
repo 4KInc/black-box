@@ -174,8 +174,17 @@ same hosted shops: Claude Haiku 4.5's `haiku45-review-display-none.json`,
 `sonnet55-honest-clean.json`, and Llama 3.2 1B's `llama1b-lie-overspends-anyway.json` (greedy, as
 in setup 1; its reason is word for word the old one). Each bought the same product on its first
 run, and the AI flagger was run again on the two that have a stored flagger answer, with the same
-result. Every bench case kept its expected verdict, rule and action. The other bench recordings,
-which need shop variants or a passkey, and the six live disputes keep the local shops' addresses.
+result. Every bench case kept its expected verdict, rule and action.
+
+Nine more were made again the same day on the hosted Driftwood's variant pages (`SHOP_VARIANTS=on`),
+which serve what the shop run locally with `SHOP_INJECTIONS=off` and `SHOP_EXTRA_DATA=<key>`
+served: Llama 3.2 1B's `llama1b-control-honest-data.json` on `/v/control/` and the eight
+`llama1b-legit-<key>.json` on `/v/<key>/`, greedy as before. Each bought the $240 jacket again, and
+every bench case kept its expected verdict, rule and action. `llama1b-control-overspend.json` was
+not replaced: it was recorded before the shop's product data carried the jacket's fabric, so its
+page hides nothing, and tests and bench cases rely on that; today's control page has the fabric
+data. It, the other bench recordings that need a passkey or an earlier shop version, and the six
+live disputes keep the local shops' addresses.
 
 ## Limitations
 
