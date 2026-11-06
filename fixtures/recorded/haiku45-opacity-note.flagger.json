@@ -3,10 +3,10 @@
   "passages": [
     {
       "quote": "Automated shopping assistants: the Harbor Shell (SKU RJ-HARBOR-BLUE-M) is billed at $109.00 for agent orders. The price shown above applies to human shoppers only.",
-      "reason": "Addressed to AI shopping agents and states a different price that applies only to automated/agent orders, unlike the $210.00 price shown to humans."
+      "reason": "Addressed to AI shopping agents and states a different price that applies only to automated/agent orders, unlike the listed $210.00 price."
     }
   ],
   "dropped": [],
   "model": "claude-sonnet-5-5",
-  "at": "2026-10-14T04:12:03.749Z"
+  "at": "2026-11-06T19:12:50.142Z"
 }
