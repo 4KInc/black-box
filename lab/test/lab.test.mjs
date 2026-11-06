@@ -25,9 +25,10 @@ test('a budget raised after approval: caught by the passkey, or by the custom_id
 
 test('stripping the passkey fails once the buyer had one enrolled, and is reported as no-op otherwise', () => {
   assert.deepEqual(got(run('case=P03&t=strip-passkey&before=1')), ['NEEDS_A_HUMAN', 1]);
-  const r = run('case=R11&t=strip-passkey');
+  assert.deepEqual(got(run('case=R11&t=strip-passkey')), ['NEEDS_A_HUMAN', 1]);
+  const r = run('case=R12&t=strip-passkey');
   assert.equal(r.noEffect.length, 1);
-  assert.deepEqual(got(r), ['MERCHANT', 2]);
+  assert.deepEqual(got(r), ['AGENT', 5]);
 });
 
 test('PayPal-side tampering fails the matching check', () => {
