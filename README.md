@@ -14,7 +14,7 @@ real AI agent shops at a hosted demo shop, and Black Box settles the buyer's Pay
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
 **Submission state:** tag `v1.0-submission`, 3 November 2026: 57 bench cases (six live disputes,
-10 attacks), 201 tests, 15 facts, 32,768 fact combinations checked.
+10 attacks), 202 tests, 15 facts, 32,768 fact combinations checked.
 
 ## The problem
 
@@ -222,7 +222,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 201 tests
+npm test                    # 202 tests
 npm run bench               # 57 cases: every verdict and rule, six live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)

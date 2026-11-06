@@ -852,7 +852,8 @@ ${d.reason ? `<div class="cvr"><span class="who">${esc(d.model)}</span><p>“${e
   const hidden = section('3.0', 'Hidden text it read', 'What code finds hidden on the pages the agent read. With no purchase this is not a check: nothing is judged.', found.length
     ? found.map((h) => `<div class="panel finding"><div class="eyebrow">Hidden by <b>${esc(h.method)}</b> · <span class="mono">${esc(h.path)}</span></div><q>${esc(h.text)}</q>
 <div class="chips">${chip(read(h.text) ? 'on' : '', read(h.text) ? 'Reached the model' : 'Not in the model input')}</div></div>`).join('')
-    : '<div class="panel"><p class="empty">Code found no hidden text on the pages read. Text hidden by CSS, such as opacity:0, is left to the AI check, which runs only on a dispute.</p></div>');
+    : `<div class="panel"><p class="empty">Code found no hidden text by the methods it checks: data never rendered (JSON-LD, meta), display:none, visibility:hidden, off-screen, zero size, text coloured like its background, aria-hidden.</p>
+<p class="empty">That does not mean nothing was hidden. Text hidden another way, such as opacity:0, still reaches the AI. Compare the two channels in 2.0: anything in CH 2, exactly what the AI was given, that you cannot see in CH 1, the page as a person sees it, was hidden from people. On a dispute, the AI check looks for such text, and can only send the case to a person.</p></div>`);
   const proof = section('4.0', 'The recording', '', `<div class="panel"><div class="k mono">record ${esc(c.hash)}</div>
 <div class="k mono" style="margin-top:8px">${r.fetches.length} pages kept byte for byte, ${r.model_inputs.length} model input${r.model_inputs.length === 1 ? '' : 's'}, ${r.decisions.length} decision${r.decisions.length === 1 ? '' : 's'}</div>
 <div class="k mono" style="margin-top:8px">source ${esc(c.source)}</div></div>`);

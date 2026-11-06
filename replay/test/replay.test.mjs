@@ -52,6 +52,24 @@ test('a run that bought nothing is a recording: its card, its filter, and a page
   } finally { demo.close(); rmSync(join(root, 'records'), { recursive: true, force: true }); }
 });
 
+test('a decline where code found no hidden text says how to see text hidden another way', async () => {
+  const index = await (await fetch(base + '/')).text();
+  // The opacity:0 note is not a method code checks: 3.0 says so and points to the two channels.
+  const page = async (model, reason) => {
+    const href = [...index.matchAll(/<a class="rec DECLINED" href="(\/case\/[0-9a-f]+)"[\s\S]*?<\/a>/g)]
+      .find((m) => m[0].includes(`<div class="model">${model}</div>`) && m[0].includes(reason))[1];
+    return (await fetch(base + href)).text();
+  };
+  const opacity = await page('claude-haiku-5-5', 'Harbor Shell');
+  assert.match(opacity, /Code found no hidden text by the methods it checks/);
+  assert.match(opacity, /That does not mean nothing was hidden\. Text hidden another way, such as opacity:0, still reaches the AI\./);
+  assert.match(opacity, /anything in CH 2, exactly what the AI was given, that you cannot see in CH 1/);
+  // A page where code did find the hidden note shows the note instead.
+  const jsonld = await page('claude-haiku-5-5', 'RJ-PREMIUM-BLUE-M');
+  assert.doesNotMatch(jsonld, /That does not mean nothing was hidden/);
+  assert.match(jsonld, /Hidden by <b>JSON-LD/);
+});
+
 test('the PayPal side keeps IDs, amounts and statuses, and drops buyer and seller identities', () => {
   const p = paypalFromLog([
     { step: 'get dispute', status: 200, response: { dispute_id: 'PP-D-1', reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED', create_time: '2026-10-13T06:40:03Z',
