@@ -7,6 +7,7 @@ this repo builds, all against the PayPal **sandbox**:
 |---|---|---|
 | `black-box` | `lab/hosted.mjs` with `LIVE_DIR`: the replay, bench, study and lab, plus `/mandate/`, `/operator`, `/paypal/webhook` and the dispute autopilot | https://black-box-342881585799.us-central1.run.app |
 | `driftwood-outfitters` | `shop/main.mjs`, `SHOP_ROLE=shop`: the demo shop, with its hidden note for AI agents | https://driftwood-outfitters-342881585799.us-central1.run.app |
+| `northline-audio` | `shop/main.mjs`, `SHOP_ROLE=shop`, `SHOP_CATALOG=audio`: the headphones shop of study setup 2, signed with its own key; the recordings of runs that bought nothing were made on it and on Driftwood | https://northline-audio-342881585799.us-central1.run.app |
 | `trailhead-reviews` | `shop/main.mjs`, `SHOP_ROLE=reviews`: the third-party review platform's key set, and a home page listing the reviews it signed, linked to the shop | https://trailhead-reviews-342881585799.us-central1.run.app |
 
 Live runs, their PayPal execution logs, and the mandates and passkeys made on the site are kept in
@@ -61,14 +62,19 @@ IMG=$(gcloud run services describe black-box --region us-central1 --project $P -
 ```sh
 gcloud run deploy trailhead-reviews --image $IMG --region us-central1 --project $P --quiet \
   --command node --args shop/main.mjs \
-  --set-env-vars SHOP_ROLE=reviews,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
+  --set-env-vars SHOP_ROLE=reviews,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,AUDIO_SHOP_ORIGIN=https://northline-audio-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
   --set-secrets REVIEWS_JWK=reviews-jwk:latest
 gcloud run deploy driftwood-outfitters --image $IMG --region us-central1 --project $P --quiet --min-instances 1 \
   --command node --args shop/main.mjs \
   --set-env-vars SHOP_ROLE=shop,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
   --set-secrets SHOP_JWK=shop-jwk:latest,REVIEWS_JWK=reviews-jwk:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest
+# Northline Audio, added 2026-11-06, with its own key (shop-audio-jwk, made like shop-jwk in step 1).
+gcloud run deploy northline-audio --image $IMG --region us-central1 --project $P --quiet \
+  --command node --args shop/main.mjs \
+  --set-env-vars SHOP_ROLE=shop,SHOP_CATALOG=audio,SHOP_ORIGIN=https://northline-audio-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
+  --set-secrets SHOP_JWK=shop-audio-jwk:latest,REVIEWS_JWK=reviews-jwk:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest
 # Public like black-box: the project does not allow allUsers IAM bindings, so the invoker check is off.
-for s in trailhead-reviews driftwood-outfitters; do gcloud run services update $s --region us-central1 --project $P --no-invoker-iam-check --quiet; done
+for s in trailhead-reviews driftwood-outfitters northline-audio; do gcloud run services update $s --region us-central1 --project $P --no-invoker-iam-check --quiet; done
 ```
 
 ## 5. PayPal's webhook
@@ -97,7 +103,7 @@ Meta team behind the key needs billing set up first, or every call fails with HT
 
 ## 7. Check it
 
-- `https://driftwood-outfitters-…/` shows the shop; `/.well-known/jwks.json` returns its key.
+- `https://driftwood-outfitters-…/` and `https://northline-audio-…/` show the shops; `/.well-known/jwks.json` returns each one's key.
 - `https://black-box-…/operator` asks for the operator password (the user name can be anything).
 - `https://black-box-…/mandate/`: enrol Touch ID once for the buyer's payer ID on this domain, then
   approve a mandate. Run the agent from `/operator`, pay through the link it gives, and dispute in

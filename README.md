@@ -252,8 +252,10 @@ it through judging (15 December 2026), then let it scale back to zero. The repos
 `LAB_URL` holds its address, and the Pages build links the lab and the live demo from the site.
 
 **The hosted live demo.** With `LIVE_DIR` set, the same service is also the live demo
-([lab/live.mjs](lab/live.mjs)), against the PayPal sandbox, with two more services from the same
-image: the demo shop (`SHOP_ROLE=shop`) and the review platform (`SHOP_ROLE=reviews`).
+([lab/live.mjs](lab/live.mjs)), against the PayPal sandbox, with more services from the same
+image: the demo shop (`SHOP_ROLE=shop`), the review platform (`SHOP_ROLE=reviews`) and the
+headphones shop of study setup 2 (`SHOP_CATALOG=audio`), where with the demo shop the recordings
+of runs that bought nothing were made.
 
 | Page | What it does |
 |---|---|

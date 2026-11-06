@@ -53,14 +53,10 @@ test('a run that bought nothing is a recording: its card, its filter, and a page
 });
 
 test('a decline where code found no hidden text says how to see text hidden another way', async () => {
-  const index = await (await fetch(base + '/')).text();
   // The opacity:0 note is not a method code checks: 3.0 says so and points to the two channels.
-  const page = async (model, reason) => {
-    const href = [...index.matchAll(/<a class="rec DECLINED" href="(\/case\/[0-9a-f]+)"[\s\S]*?<\/a>/g)]
-      .find((m) => m[0].includes(`</svg>${model}</div>`) && m[0].includes(reason))[1];
-    return (await fetch(base + href)).text();
-  };
-  const opacity = await page('claude-haiku-5-5', 'Harbor Shell');
+  const { recordHash } = await import('../../recorder/recorder.mjs');
+  const page = async (fixture) => (await fetch(`${base}/case/${recordHash(JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', `${fixture}.json`), 'utf8')))}`)).text();
+  const opacity = await page('haiku55-opacity-note');
   assert.match(opacity, /The automatic check found nothing hidden\./);
   assert.match(opacity, /Some tricks it cannot spot, such as making text fully transparent \(opacity:0\), and that text still reaches the AI\./);
   assert.match(opacity, /any sentence in the AI’s view that you cannot see in the customer’s view was hidden from the customer/);
@@ -70,7 +66,7 @@ test('a decline where code found no hidden text says how to see text hidden anot
   assert.match(opacity, /<details class="tech"><summary>Technical details<\/summary><dl><dt>Recording fingerprint<\/dt><dd>[0-9a-f]{64}<\/dd>/);
   assert.doesNotMatch(opacity, /CH 1|CH 2/);
   // A page where code did find the hidden note shows the note instead, and says where it was hidden.
-  const jsonld = await page('claude-haiku-5-5', 'RJ-PREMIUM-BLUE-M');
+  const jsonld = await page('haiku55-merchant-jsonld');
   assert.doesNotMatch(jsonld, /found nothing hidden/);
   assert.match(jsonld, /<p class="where">Where: in the page&#39;s product data, which is never shown on screen\.<\/p>/);
 });

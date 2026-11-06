@@ -45,11 +45,15 @@ function key(name, env) {
 const shopJwk = ROLE === 'reviews' ? null : key(process.env.SHOP_CATALOG && process.env.SHOP_CATALOG !== 'outdoor' ? `shop-${process.env.SHOP_CATALOG}` : 'shop', 'SHOP_JWK');
 const reviewsJwk = key('reviews', 'REVIEWS_JWK');
 
-// The review platform's home page lists the reviews it signed for this shop, linked to the shop's
-// pages when SHOP_ORIGIN is known (always when both run here).
+// The review platform's home page lists the reviews it signed, linked to each shop's pages. Run
+// here with the shop, that one shop. Hosted alone (SHOP_ROLE=reviews), Driftwood at SHOP_ORIGIN and,
+// when AUDIO_SHOP_ORIGIN is set, Northline Audio too.
 const catalog = CATALOGS[process.env.SHOP_CATALOG || 'outdoor'];
-const reviewedShop = { name: catalog.name, origin: ROLE === 'both' || process.env.SHOP_ORIGIN ? origin : null, products: catalog.products };
-if (ROLE !== 'shop') createReviewPlatform({ jwk: reviewsJwk, iss: reviewsIssuer, shops: [reviewedShop] }).listen(REVIEWS_PORT, () =>
+const shopAt = (key, at) => ({ name: CATALOGS[key].name, origin: at ?? null, products: CATALOGS[key].products });
+const reviewedShops = ROLE === 'reviews'
+  ? [shopAt('outdoor', process.env.SHOP_ORIGIN), ...(process.env.AUDIO_SHOP_ORIGIN ? [shopAt('audio', process.env.AUDIO_SHOP_ORIGIN)] : [])]
+  : [{ name: catalog.name, origin, products: catalog.products }];
+if (ROLE !== 'shop') createReviewPlatform({ jwk: reviewsJwk, iss: reviewsIssuer, shops: reviewedShops }).listen(REVIEWS_PORT, () =>
   console.log(`review platform  ${reviewsIssuer}   key ${thumbprint(reviewsJwk)}`));
 if (ROLE !== 'reviews') createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off', extraData: process.env.SHOP_EXTRA_DATA || null, catalog: process.env.SHOP_CATALOG || 'outdoor' }).listen(SHOP_PORT, () =>
   console.log(`shop             ${origin}   ${process.env.SHOP_CATALOG || 'outdoor'}   key ${thumbprint(shopJwk)}   PayPal merchant ${merchantId}${process.env.SHOP_INJECTIONS === 'off' ? '   (hidden texts OFF: control)' : ''}`));
