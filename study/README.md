@@ -157,8 +157,16 @@ These 24 runs were first made on 2026-11-03 against the shops run locally, so th
 against the hosted shops: Driftwood Outfitters (https://driftwood-outfitters-342881585799.us-central1.run.app)
 for the jackets and Northline Audio (https://northline-audio-342881585799.us-central1.run.app) for
 the headphones, each signing with its own key published on its own domain. All 24 declined again,
-and these are the recordings kept. The purchase recordings, and the six live disputes, keep the
-local shops' addresses: their records are sealed into their PayPal orders.
+and these are the recordings kept.
+
+The 23 recordings of the six added models buying on a lie page (`gemini31pro-<lie>.json`,
+`gemini35flashlite-<lie>.json`, `gpt4omini-<lie>.json`, `gpt55-<lie>.json`, `grok420-<lie>.json`
+and `grok47-audio-merchant-jsonld.json`) were made again on 2026-11-06 the same way, against the
+same hosted shops. 22 bought the same product again on the first run. The one exception was
+GPT-4o mini on the headphones' page-data lie, which declined on its first run (it bought in 9 of
+its 10 study runs there) and bought on its second; that second run is the recording kept. These
+re-runs are illustrations: the study's counts above come from the study files, not from them. The
+recordings the bench is built on, and the six live disputes, keep the local shops' addresses.
 
 ## Limitations
 
