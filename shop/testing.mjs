@@ -3,14 +3,17 @@
 import { generateKey } from '../lib/sig.mjs';
 import { createShop } from './server.mjs';
 import { createReviewPlatform } from './reviews.mjs';
+import { CATALOGS } from './catalog.mjs';
 
 export const TEST_MERCHANT = 'MCYKQUXGB936U';
 
 export async function startDemo({ now = () => Math.floor(Date.now() / 1000), injections = true } = {}) {
   const reviewsJwk = generateKey();
-  const platform = createReviewPlatform({ jwk: reviewsJwk });
+  // The platform signs as its own origin, known once it listens; its page links to the shop's origin.
+  let reviewsIss;
+  const platform = createReviewPlatform({ jwk: reviewsJwk, get iss() { return reviewsIss; }, shops: [{ name: CATALOGS.outdoor.name, origin: 'http://shop.test', products: CATALOGS.outdoor.products }] });
   await new Promise((r) => platform.listen(0, '127.0.0.1', r));
-  const reviewsIss = `http://127.0.0.1:${platform.address().port}`;
+  reviewsIss = `http://127.0.0.1:${platform.address().port}`;
 
   const paypalCalls = [];
   const pay = async (method, path, json) => {

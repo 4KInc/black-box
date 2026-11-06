@@ -7,7 +7,7 @@ this repo builds, all against the PayPal **sandbox**:
 |---|---|---|
 | `black-box` | `lab/hosted.mjs` with `LIVE_DIR`: the replay, bench, study and lab, plus `/mandate/`, `/operator`, `/paypal/webhook` and the dispute autopilot | https://black-box-342881585799.us-central1.run.app |
 | `driftwood-outfitters` | `shop/main.mjs`, `SHOP_ROLE=shop`: the demo shop, with its hidden note for AI agents | https://driftwood-outfitters-342881585799.us-central1.run.app |
-| `trailhead-reviews` | `shop/main.mjs`, `SHOP_ROLE=reviews`: the third-party review platform's key set | https://trailhead-reviews-342881585799.us-central1.run.app |
+| `trailhead-reviews` | `shop/main.mjs`, `SHOP_ROLE=reviews`: the third-party review platform's key set, and a home page listing the reviews it signed, linked to the shop | https://trailhead-reviews-342881585799.us-central1.run.app |
 
 Live runs, their PayPal execution logs, and the mandates and passkeys made on the site are kept in
 the bucket `gs://black-box-4kinc-live`, mounted at `/data` in `black-box`. That service runs as one
@@ -60,7 +60,9 @@ IMG=$(gcloud run services describe black-box --region us-central1 --project $P -
 
 ```sh
 gcloud run deploy trailhead-reviews --image $IMG --region us-central1 --project $P --quiet \
-  --command node --args shop/main.mjs --set-env-vars SHOP_ROLE=reviews --set-secrets REVIEWS_JWK=reviews-jwk:latest
+  --command node --args shop/main.mjs \
+  --set-env-vars SHOP_ROLE=reviews,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
+  --set-secrets REVIEWS_JWK=reviews-jwk:latest
 gcloud run deploy driftwood-outfitters --image $IMG --region us-central1 --project $P --quiet --min-instances 1 \
   --command node --args shop/main.mjs \
   --set-env-vars SHOP_ROLE=shop,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \

@@ -131,3 +131,22 @@ test('the review platform has a home page saying what it is, and serves its key 
   assert.equal((await (await fetch(`${reviewsIss}/.well-known/jwks.json`)).json()).keys.length, 1);
   assert.equal((await fetch(`${reviewsIss}/other`)).status, 404);
 });
+
+test('the review platform lists every review it signed, as signed, linked to its product page', async () => {
+  const home = await (await fetch(`${reviewsIss}/`)).text();
+  const items = [...home.matchAll(/<li>([\s\S]*?)<\/li>/g)].map((m) => m[1]);
+  const all = PRODUCTS.flatMap((p) => p.reviews.map((r) => [p, r]));
+  assert.equal(items.length, all.length);
+  assert.match(home, new RegExp(`<h2>Reviews it has signed \\(${all.length}\\)</h2>`));
+  for (const [p, r] of all) {
+    const li = items.find((x) => x.includes(`<!--tp-end ${r.id}-->`));
+    assert.ok(li, r.id);
+    assert.match(li, new RegExp(`<a href="http://shop\\.test/p/${p.sku}">${p.name}</a>`));
+    // The same signed bytes the shop embeds in the product page.
+    const span = li.match(/<!--tp-begin [\s\S]*?-->[\s\S]*?<!--tp-end [^>]*-->/)[0];
+    assert.ok((await (await fetch(`${shopUrl}/p/${p.sku}`)).text()).includes(span), `${r.id} as on the shop's page`);
+    // Only a review with hidden text says so, quoting it.
+    assert.equal(li.includes('Hidden in this review'), Boolean(r.hidden), r.id);
+  }
+  assert.doesNotMatch(home, /<script/i);
+});
