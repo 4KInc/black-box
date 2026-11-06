@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { claimAcceptance, executionLog, HELD_WHY, resolveDispute } from '../core.mjs';
@@ -18,6 +18,18 @@ test('a claim for only the overage is accepted in full, for the planned amount',
 
 
 const fixture = (name) => JSON.parse(readFileSync(join(import.meta.dirname, '..', '..', 'fixtures', 'recorded', name), 'utf8'));
+const ENROLMENT = fixture('passkey-enrolment.json');
+
+// Stores the record, and the buyer's passkey as the site would have it.
+function store(root, record) {
+  saveRecord(join(root, 'records'), { record, hash: recordHash(record) });
+  mkdirSync(join(root, 'records', 'passkeys'), { recursive: true });
+  writeFileSync(join(root, 'records', 'passkeys', `${ENROLMENT.payer_id}.json`), JSON.stringify(ENROLMENT));
+}
+// A passkey-approved record is paid by the enrolled buyer a minute after the agent bought; an
+// older, unsigned one by a payer with no passkey.
+const orderTime = (record) => record.mandate_auth ? new Date(Date.parse(record.purchase.at) + 60_000).toISOString() : '2026-10-15T00:00:00Z';
+const payerOf = (record) => (record.mandate_auth ? ENROLMENT.payer_id : 'PAYER1');
 
 // A scripted PayPal for one dispute over a stored record; every call is kept.
 function fakePayPal(record, { reason, orderCreatedAt }) {
@@ -26,7 +38,7 @@ function fakePayPal(record, { reason, orderCreatedAt }) {
   const dispute = {
     dispute_id: 'PP-D-FLAG', reason, status: 'WAITING_FOR_SELLER_RESPONSE',
     dispute_amount: { currency_code: 'USD', value: '240.00' },
-    disputed_transactions: [{ custom, seller_transaction_id: 'CAP1', seller: { merchant_id: 'MCYKQUXGB936U' }, buyer: { payer_id: 'PAYER1' }, gross_amount: { currency_code: 'USD', value: '240.00' } }],
+    disputed_transactions: [{ custom, seller_transaction_id: 'CAP1', seller: { merchant_id: 'MCYKQUXGB936U' }, buyer: { payer_id: payerOf(record) }, gross_amount: { currency_code: 'USD', value: '240.00' } }],
     links: [{ rel: 'accept_claim' }, { rel: 'make_offer' }],
   };
   const paypal = async (method, path, json) => {
@@ -43,8 +55,8 @@ async function resolveWith(fixtureName, { reason, flag, execute = true }) {
   const root = mkdtempSync(join(tmpdir(), 'bb-flag-'));
   try {
     const record = fixture(fixtureName);
-    saveRecord(join(root, 'records'), { record, hash: recordHash(record) });
-    const { client, calls } = fakePayPal(record, { reason, orderCreatedAt: '2026-10-15T00:00:00Z' });
+    store(root, record);
+    const { client, calls } = fakePayPal(record, { reason, orderCreatedAt: orderTime(record) });
     const out = await resolveDispute('PP-D-FLAG', { root, execute, flag, client });
     return { out, posts: calls.filter((c) => c.method === 'POST'), log: executionLog(root, 'PP-D-FLAG').read() };
   } finally { rmSync(root, { recursive: true, force: true }); }
@@ -89,8 +101,8 @@ test('a failed flagger run is not cached: the next run asks again and, with an a
   const root = mkdtempSync(join(tmpdir(), 'bb-flag-'));
   try {
     const record = fixture(MERCHANT_LIE);
-    saveRecord(join(root, 'records'), { record, hash: recordHash(record) });
-    const { client, calls } = fakePayPal(record, { reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED', orderCreatedAt: '2026-10-15T00:00:00Z' });
+    store(root, record);
+    const { client, calls } = fakePayPal(record, { reason: 'MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED', orderCreatedAt: orderTime(record) });
     let asked = 0;
     const first = await resolveDispute('PP-D-FLAG', { root, execute: true, client, flag: async () => { asked++; throw new Error('flagger down'); } });
     assert.equal(first.status, 'held');

@@ -1,6 +1,6 @@
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { paypalFromLog } from '../cases.mjs';
@@ -13,13 +13,17 @@ import { saveRecord } from '../../recorder/recorder.mjs';
 import { startDemo } from '../../shop/testing.mjs';
 
 const REPO = join(import.meta.dirname, '..', '..');
-const LIVE = '61c79d751ce7311d6eeca9bcf83079ddeb7f7f354a13b4c2fcc29673f3fe8a8e';
+const LIVE = '028c1c5b89bf2800ca6a06ac7ecef846f21fbbdd6f00b280b88f8d18ed8342b6';
 let root, server, base;
 
 before(async () => {
   // Only the committed fixtures, so the test does not depend on local runs in records/.
   root = mkdtempSync(join(tmpdir(), 'replay-'));
   cpSync(join(REPO, 'fixtures'), join(root, 'fixtures'), { recursive: true });
+  // and, as the site build does, the buyer's enrolled passkey in the registry the replay reads.
+  const enrolment = JSON.parse(readFileSync(join(root, 'fixtures', 'recorded', 'passkey-enrolment.json'), 'utf8'));
+  mkdirSync(join(root, 'records', 'passkeys'), { recursive: true });
+  writeFileSync(join(root, 'records', 'passkeys', `${enrolment.payer_id}.json`), JSON.stringify(enrolment));
   server = createReplay({ root });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -28,10 +32,11 @@ after(() => { server.close(); rmSync(root, { recursive: true, force: true }); })
 
 test('a run that bought nothing is a recording: its card, its filter, and a page with no verdict', async () => {
   const demo = await startDemo({ now: () => Math.floor(Date.now() / 1000) - 5 });
+  let sealed;
   try {
     const mandate = { item: { category: 'rain jacket', attributes: { color: 'blue', size: 'M' } }, maxTotalCents: 15000, currency: 'USD', signedShopsOnly: true };
     const llm = async () => ({ text: '{"sku": null, "reason": "It is $240, over the $150 budget; the agent credit note is not the price."}', model: 'muse-x' });
-    const { sealed } = await runAgent({ shopUrl: demo.shopUrl, mandate, llm, model: 'muse-x', shelf: ['RJ-PREMIUM-BLUE-M'], checkout: false });
+    ({ sealed } = await runAgent({ shopUrl: demo.shopUrl, mandate, llm, model: 'muse-x', shelf: ['RJ-PREMIUM-BLUE-M'], checkout: false }));
     saveRecord(join(root, 'records'), sealed);
     const index = await (await fetch(base + '/')).text();
     const card = index.match(new RegExp(`<a class="rec DECLINED" href="/case/${sealed.hash}"[\\s\\S]*?</a>`))[0];
@@ -49,7 +54,7 @@ test('a run that bought nothing is a recording: its card, its filter, and a page
     assert.match(page, /<mark[^>]*>[^<]*\$119\.00[^<]*<\/mark>/, 'the hidden note it read is highlighted in its input');
     assert.match(page, /Pricing note for automated purchasing agents/);
     assert.match(await (await fetch(`${base}/case/${sealed.hash}/page`)).text(), /Summit Pro Shell/);
-  } finally { demo.close(); rmSync(join(root, 'records'), { recursive: true, force: true }); }
+  } finally { demo.close(); if (sealed) rmSync(join(root, 'records', `${sealed.hash}.json`), { force: true }); }
 });
 
 test('a decline where code found no hidden text says how to see text hidden another way', async () => {
@@ -173,8 +178,8 @@ test('the live case page replays the verdict, the hidden text and what PayPal di
   const html = await (await fetch(`${base}/case/${LIVE}`)).text();
   assert.match(html, /class="v">MERCHANT</);
   assert.match(html, /rule 2 of 6/);
-  assert.match(html, /<mark id="hidden">[^<]*agent-channel credit/);
-  assert.match(html, /7XA326891K201841N/);
+  assert.match(html, /<mark[^>]*>[^<]*agent-channel credit/);
+  assert.match(html, /6M1830864L184533C/);
   assert.match(html, /Over budget: paid \$240\.00, cap \$150\.00, \$90\.00 over/);
   // For support: who is responsible, said to the customer, and what PayPal did.
   assert.match(html, /<h3>What to tell the customer<\/h3><p>The shop&#39;s page hid a misleading price that only AI assistants could read, and your assistant paid \$240\.00, over your \$150\.00 limit\. The shop is responsible\. PayPal has refunded \$240\.00 to you\.<\/p>/);
