@@ -57,7 +57,7 @@ test('a decline where code found no hidden text says how to see text hidden anot
   // The opacity:0 note is not a method code checks: 3.0 says so and points to the two channels.
   const page = async (model, reason) => {
     const href = [...index.matchAll(/<a class="rec DECLINED" href="(\/case\/[0-9a-f]+)"[\s\S]*?<\/a>/g)]
-      .find((m) => m[0].includes(`<div class="model">${model}</div>`) && m[0].includes(reason))[1];
+      .find((m) => m[0].includes(`</svg>${model}</div>`) && m[0].includes(reason))[1];
     return (await fetch(base + href)).text();
   };
   const opacity = await page('claude-haiku-5-5', 'Harbor Shell');
@@ -97,6 +97,19 @@ test('each recording downloads as JSON, the very record its fingerprint is of', 
   const lab = await (await fetch(`${base}/lab/run`)).text();
   assert.match(lab, /Has this recording been edited\?/, 'the lab shows a case page');
   assert.doesNotMatch(lab, /class="dl"/);
+});
+
+test('each model has its own small face, coloured by its provider, on cards, case pages and the study', async () => {
+  const { iconLook, modelIcon } = await import('../icons.mjs');
+  const models = [...new Set(JSON.parse(readFileSync(join(REPO, 'fixtures', 'study', 'study-2026-10-19-headphones.json'), 'utf8')).models)];
+  const looks = models.map((m) => JSON.stringify(iconLook(m)));
+  assert.equal(new Set(looks).size, models.length, 'no two study models look the same');
+  assert.notEqual(modelIcon('claude-sonnet-5-5', 'claude'), modelIcon('claude-haiku-5-5', 'claude'));
+  assert.match(modelIcon('muse-spark-1.3', 'muse'), /^<svg class="mi" viewBox="0 0 32 32"[^>]*aria-hidden="true"/);
+  const index = await (await fetch(base + '/')).text();
+  assert.match(index, /<div class="model"><svg class="mi"[\s\S]*?<\/svg>claude-opus-5-5<\/div>/);
+  assert.match(await (await fetch(`${base}/case/${LIVE}`)).text(), /<span>Agent <b><svg class="mi"/);
+  assert.match(await (await fetch(`${base}/study`)).text(), /<div class="sm"><b><svg class="mi"/);
 });
 
 test('the PayPal side keeps IDs, amounts and statuses, and drops buyer and seller identities', () => {

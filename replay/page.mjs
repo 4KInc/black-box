@@ -7,6 +7,7 @@
 // tape. Motion is CSS only (cross-document view transitions, scroll-driven reveals) and is off
 // under prefers-reduced-motion.
 
+import { modelIcon } from './icons.mjs';
 import { hostedFor } from '../agent/llm.mjs';
 import { toValue } from '../engine/actions.mjs';
 import { findHidden } from '../engine/extract.mjs';
@@ -227,6 +228,9 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 .tech dl{margin:0;padding:4px 14px 14px;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px}
 .tech dt{color:var(--ink-3);font:400 12.5px/1.5 var(--sans)}
 .tech dd{margin:0;font:400 12px/1.5 var(--mono);color:var(--ink-2);overflow-wrap:anywhere}
+.mi{flex:none;width:30px;height:30px;vertical-align:-8px;margin-right:9px}
+.sm .mi{width:28px;height:28px;vertical-align:-8px}
+.crumbs .mi{width:18px;height:18px;vertical-align:-4px;margin-right:5px}
 .where{margin:10px 0 0;color:var(--ink-2);font:400 14px/1.5 var(--sans)}
 .dl{display:inline-block;margin-top:14px;padding:9px 16px;border:1px solid var(--rule-2);border-radius:999px;background:var(--bg-2);color:var(--ink);font:600 13px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;text-decoration:none}
 .dl:hover{border-color:var(--ink-2);background:var(--bg-3)}
@@ -314,7 +318,7 @@ ol.tape li.hot .ev{color:var(--orange)}
 .rec .vv{font:700 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--c)}
 .rec .rl{font:400 11px/1 var(--mono);color:var(--ink-3)}
 .rec .when{margin-left:auto;font:400 11px/1 var(--mono);color:var(--ink-3)}
-.rec .model{font:600 22px/1.05 var(--display);letter-spacing:.02em;overflow-wrap:anywhere}
+.rec .model{display:flex;align-items:center;font:600 22px/1.05 var(--display);letter-spacing:.02em;overflow-wrap:anywhere}
 .rec .item{color:var(--ink-2);font-size:13px}
 .rec .mini{position:relative;height:6px;background:var(--bg);border:1px solid var(--rule);border-radius:1px}
 .rec .mini i{position:absolute;top:0;bottom:0;left:0;background:var(--ink-3)}
@@ -435,6 +439,7 @@ const isClaude = (model) => /^claude/.test(model ?? '');
 // Who makes a model, for the Model filters: Claude, GPT, Gemini, Grok, Muse, or an open model run locally.
 const FAMILY = { 'OpenAI API': 'gpt', 'Google Gemini API': 'gemini', 'xAI API': 'grok', 'Meta Model API': 'muse' };
 const modelFamily = (model) => (isClaude(model) ? 'claude' : FAMILY[hostedFor(model ?? '')?.name] ?? 'open');
+const icon = (model) => modelIcon(model, modelFamily(model));
 const FAMILIES = [['claude', 'Claude'], ['gpt', 'GPT'], ['gemini', 'Gemini'], ['grok', 'Grok'], ['muse', 'Muse'], ['open', 'Open models']];
 const familyOptions = (models) => FAMILIES.map(([k, text]) => [k, text, models.filter((m) => modelFamily(m) === k).length]);
 // A model's key for the model dropdown: its place in the sorted list, since IDs carry / : and dots.
@@ -571,7 +576,7 @@ export function indexPage(rows, { intro = '' } = {}) {
     const g = gaugeScale(paid, cap);
     return `<a class="rec ${v}" href="/case/${c.hash}" data-v="${v}" data-src="${c.paypal ? 'paypal' : 'preview'}" data-m="${modelFamily(d.model)}" data-mm="${keys.get(d.model ?? 'unknown model')}">
 <div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">${label(v)}</span><span class="rl">rule ${j.verdict.rule}</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(c.record.purchase.at)}</span></div>
-<div class="model">${esc(d.model ?? 'unknown model')}</div>
+<div class="model">${icon(d.model)}${esc(d.model ?? 'unknown model')}</div>
 <div class="item">${esc(j.product?.name ?? c.record.purchase.sku)} · ${money(paid)} <span class="k">on a ${money(cap)} budget</span></div>
 <div class="mini" aria-hidden="true"><i style="width:${g.fill}"></i>${g.over ? `<u style="left:${g.overFrom};width:${g.overW}"></u>` : ''}<s style="left:${g.cap}"></s></div>
 <div class="foot">${c.paypal ? `<span class="live">PAYPAL ${esc(c.paypal.disputeId)}</span><b>${esc(paypalStatus(c.paypal))}</b>` : `<span>Not disputed</span><span>If disputed as “${esc(reasonPlain(j.reason))}”: <b class="if">${esc(planPlain(j.plan))}</b></span>`}</div></a>`;
@@ -589,7 +594,7 @@ function declineCard(c, keys) {
   const products = c.record.fetches.length - 1;
   return `<a class="rec DECLINED" href="/case/${c.hash}" data-v="DECLINED" data-src="preview" data-m="${modelFamily(d.model)}" data-mm="${keys.get(d.model ?? 'unknown model')}">
 <div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">Bought nothing</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(d.at)}</span></div>
-<div class="model">${esc(d.model ?? 'unknown model')}</div>
+<div class="model">${icon(d.model)}${esc(d.model ?? 'unknown model')}</div>
 <div class="item">Read ${products} product page${products === 1 ? '' : 's'} <span class="k">on a ${money(c.record.mandate.maxTotalCents)} budget</span></div>
 <div class="foot"><span>No order, nothing to dispute</span><span>“${esc(String(d.reason ?? '').slice(0, 160))}${String(d.reason ?? '').length > 160 ? '…' : ''}”</span></div></a>`;
 }
@@ -826,7 +831,7 @@ export function casePage(c, j) {
 ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}</div>
 <div class="res">${b.pass ? '✓ Right' : '✗ Wrong'}<small>the right answer: ${esc(expectText(b.def.expect))}</small></div></section>` : '';
 
-  const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${esc(d.model ?? 'unknown')}</b></span>
+  const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${icon(d.model)}${esc(d.model ?? 'unknown')}</b></span>
 <span>Bought <b>${time(r.purchase.at)}</b></span>${c.paypal ? `<span>PayPal <b>${esc(c.paypal.disputeId)}</b></span>` : ''}</div>`;
 
   const cause = `<section class="cause ${v}" style="view-transition-name:${vtName(c.hash)}"><div class="main">
@@ -923,7 +928,7 @@ function declinePage(c) {
   const needles = pages.flatMap((p) => p.hidden.map((h) => h.text)).filter(read);
   const shown = highlight(input, needles);
   const pageSrc = `/case/${c.hash}/page`;
-  const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${esc(d.model ?? 'unknown')}</b></span>
+  const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${icon(d.model)}${esc(d.model ?? 'unknown')}</b></span>
 <span>Declined <b>${time(d.at)}</b></span></div>`;
   const head = `<section class="cause DECLINED" style="view-transition-name:${vtName(c.hash)}"><div class="main">
 <div class="eyebrow">No purchase · no payment · nothing to dispute</div>
@@ -1012,7 +1017,7 @@ function studySection(study, num, keys) {
   const pct = (a, n) => (n ? `${Math.round((a / n) * 100)}%` : '–');
   const fooledModels = rows.filter((r) => r.cells.some((c) => c.effect !== null && c.effect >= 0.5)).map((r) => modelName(r.model));
   const head = `<div class="srow head"><div>Model</div>${study.lies.map((l) => `<div>${esc(l.who === 'merchant' ? 'Shop' : 'Review site')} hides a fake price<b>${esc(l.lie)}</b></div>`).join('')}</div>`;
-  const body = rows.map((r) => `<div class="srow" data-m="${modelFamily(r.model)}" data-mm="${keys.get(r.model)}"><div class="sm"><b>${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
+  const body = rows.map((r) => `<div class="srow" data-m="${modelFamily(r.model)}" data-mm="${keys.get(r.model)}"><div class="sm"><b>${icon(r.model)}${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
 ${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'hit' ? ' hit' : k === 'anyway' ? ' anyway' : k === 'clean' ? ' clean' : ''}" data-lie="${esc(c.lie)}" data-r="${k}" tabindex="0" data-tip="${esc(cellTip(c, k, r.model, st.sampled, study.n))}">
 <div class="eff">${c.effect === null ? '–' : `${c.effect > 0 ? '+' : ''}${Math.round(c.effect * 100)}`}<small>${c.effect === null ? '' : CELL_LABEL[k]}</small></div>
 <div class="sbar lie"><span>with lie</span><i><u style="width:${pct(c.lieBought, c.lieN)}"></u></i><b>${c.lieBought}/${c.lieN}</b></div>

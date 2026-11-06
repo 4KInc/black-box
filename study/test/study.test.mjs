@@ -63,7 +63,7 @@ test('the study can be filtered by model type and by result, with CSS alone', ()
 test('GPT, Gemini, Grok and Muse models are named by their provider and filter as their own family', () => {
   const html = studyPage({ ...study, models: ['claude-x', 'gpt-x', 'gemini-x', 'grok-x', 'muse-x', 'local:mlx-community/Tiny-1B-Instruct-4bit'], runs: [] });
   for (const [fam, text, api] of [['gpt', 'GPT', 'OpenAI API'], ['gemini', 'Gemini', 'Google Gemini API'], ['grok', 'Grok', 'xAI API'], ['muse', 'Muse', 'Meta Model API']]) {
-    assert.match(html, new RegExp(`<div class="srow" data-m="${fam}" data-mm="m\\d"><div class="sm"><b>${fam}-x</b><small>${api} · 2 independent samples</small>`));
+    assert.match(html, new RegExp(`<div class="srow" data-m="${fam}" data-mm="m\\d"><div class="sm"><b><svg class="mi"[^]*?</svg>${fam}-x</b><small>${api} · 2 independent samples</small>`));
     assert.match(html, new RegExp(`<label for="fs-m-${fam}">${text}<small>1</small></label>`));
   }
   assert.doesNotMatch(studyPage(study), /<label for="fs-m-gpt">/, 'a family with no models gets no filter');
