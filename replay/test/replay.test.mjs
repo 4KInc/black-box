@@ -61,13 +61,18 @@ test('a decline where code found no hidden text says how to see text hidden anot
     return (await fetch(base + href)).text();
   };
   const opacity = await page('claude-haiku-5-5', 'Harbor Shell');
-  assert.match(opacity, /Code found no hidden text by the methods it checks/);
-  assert.match(opacity, /That does not mean nothing was hidden\. Text hidden another way, such as opacity:0, still reaches the AI\./);
-  assert.match(opacity, /anything in CH 2, exactly what the AI was given, that you cannot see in CH 1/);
-  // A page where code did find the hidden note shows the note instead.
+  assert.match(opacity, /The automatic check found nothing hidden\./);
+  assert.match(opacity, /Some tricks it cannot spot, such as making text fully transparent \(opacity:0\), and that text still reaches the AI\./);
+  assert.match(opacity, /any sentence in the AI’s view that you cannot see in the customer’s view was hidden from the customer/);
+  // For support: what happened, what to tell the customer, what happens next; the hashes folded away.
+  assert.match(opacity, /<h3>What to tell the customer<\/h3><p>Your shopping assistant [^<]*within your \$150\.00 limit\. You were not charged\.<\/p>/);
+  assert.match(opacity, /<h3>What happens next<\/h3><p>Nothing to do\./);
+  assert.match(opacity, /<details class="tech"><summary>Technical details<\/summary><dl><dt>Recording fingerprint<\/dt><dd>[0-9a-f]{64}<\/dd>/);
+  assert.doesNotMatch(opacity, /CH 1|CH 2/);
+  // A page where code did find the hidden note shows the note instead, and says where it was hidden.
   const jsonld = await page('claude-haiku-5-5', 'RJ-PREMIUM-BLUE-M');
-  assert.doesNotMatch(jsonld, /That does not mean nothing was hidden/);
-  assert.match(jsonld, /Hidden by <b>JSON-LD/);
+  assert.doesNotMatch(jsonld, /found nothing hidden/);
+  assert.match(jsonld, /<p class="where">Where: in the page&#39;s product data, which is never shown on screen\.<\/p>/);
 });
 
 test('the PayPal side keeps IDs, amounts and statuses, and drops buyer and seller identities', () => {
@@ -138,6 +143,9 @@ test('the live case page replays the verdict, the hidden text and what PayPal di
   assert.match(html, /<mark id="hidden">[^<]*agent-channel credit/);
   assert.match(html, /7XA326891K201841N/);
   assert.match(html, /Over budget: paid \$240\.00, cap \$150\.00, \$90\.00 over/);
+  // For support: who is responsible, said to the customer, and what PayPal did.
+  assert.match(html, /<h3>What to tell the customer<\/h3><p>The shop&#39;s page hid a misleading price that only AI assistants could read, and your assistant paid \$240\.00, over your \$150\.00 limit\. The shop is responsible\. PayPal has refunded \$240\.00 to you\.<\/p>/);
+  assert.match(html, /<h3>What happens next<\/h3><p>PayPal case PP-[A-Z0-9-]+: \$240\.00 refunded to the buyer\.<\/p>/);
   assert.doesNotMatch(html, /<script/i);
 });
 

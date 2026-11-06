@@ -199,7 +199,7 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 @media (max-width:860px){iframe,pre.input{height:440px}}
 .cvr{display:grid;grid-template-columns:auto 1fr;gap:14px;align-items:start;margin-top:14px;border-left:2px solid var(--orange);padding:12px 16px;background:var(--bg-1)}
 .cvr .who{font:400 11px/1.5 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--orange);white-space:nowrap}
-.cvr p{margin:0;font:400 14px/1.6 var(--mono);color:var(--ink)}
+.cvr p{margin:0;font:400 15px/1.6 var(--sans);color:var(--ink)}
 @media (max-width:640px){.cvr{grid-template-columns:1fr;gap:4px}}
 
 /* ---- findings, chips ---- */
@@ -211,7 +211,23 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 .chip.on{color:var(--ink)}.chip.on::before{background:var(--orange);box-shadow:0 0 8px var(--orange)}
 .chip.ok{color:var(--ink)}.chip.ok::before{background:var(--green);box-shadow:0 0 8px var(--green)}
 .chip.bad{color:var(--red);border-color:oklch(.66 .21 27 / .5)}.chip.bad::before{background:var(--red)}
-.empty{color:var(--ink-3);font:400 12px/1.5 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+.empty{color:var(--ink-2);font:400 14px/1.6 var(--sans);max-width:78ch}
+.empty+.empty{margin-top:10px}
+/* the support summary under a recording's headline, and technical details folded away */
+.support{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1px;background:var(--rule);border:1px solid var(--rule);border-radius:4px;overflow:hidden;margin-top:14px}
+.support .row{background:var(--bg-1);padding:clamp(14px,2vw,20px)}
+.support h3{margin:0 0 8px;font:600 13px/1.2 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.support p{margin:0;font:400 15px/1.55 var(--sans);color:var(--ink)}
+.support .say p{border-left:3px solid var(--orange);padding-left:12px}
+.support.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+@media (max-width:820px){.support,.support.two{grid-template-columns:1fr}}
+.tech{margin-top:12px;border:1px solid var(--rule);border-radius:4px;background:var(--bg-1)}
+.tech>summary{cursor:pointer;padding:10px 14px;font:400 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.tech>summary:hover{color:var(--ink-2)}
+.tech dl{margin:0;padding:4px 14px 14px;display:grid;grid-template-columns:max-content minmax(0,1fr);gap:6px 16px}
+.tech dt{color:var(--ink-3);font:400 12.5px/1.5 var(--sans)}
+.tech dd{margin:0;font:400 12px/1.5 var(--mono);color:var(--ink-2);overflow-wrap:anywhere}
+.where{margin:10px 0 0;color:var(--ink-2);font:400 14px/1.5 var(--sans)}
 
 /* ---- annunciator panel ---- */
 .ann{container-type:inline-size}
@@ -632,6 +648,32 @@ function section(n, title, note, body, plain = '') {
   return `<section class="sec"><header><span class="n">${n}</span><h2>${title}</h2>${note ? `<p>${note}</p>` : ''}</header>${plain ? `<p class="plain">${esc(plain)}</p>` : ''}${body}</section>`;
 }
 
+// For the people who read a recording most: customer support. What happened, what to tell the
+// customer and what happens next, in three boxes under the headline. Every sentence is built from
+// the case's own verdict, plan and PayPal status.
+// what is left out where the headline already says what happened.
+const supportBox = (what, say, next) => `<section class="support${what ? '' : ' two'}" aria-label="For customer support">
+${what ? `<div class="row"><h3>What happened</h3><p>${what}</p></div>` : ''}<div class="row say"><h3>What to tell the customer</h3><p>${say}</p></div>
+<div class="row"><h3>What happens next</h3><p>${next}</p></div></section>`;
+// Hashes, file names and counts, for engineers, folded away. rows: [[label, html]].
+const techDetails = (rows) => `<details class="tech"><summary>Technical details</summary><dl>${rows.map(([k, v]) => `<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl></details>`;
+// Where a hiding method put the text, in plain words (engine/extract.mjs names the methods).
+const METHOD_PLAIN = {
+  'JSON-LD field never rendered': "in the page's product data, which is never shown on screen",
+  'JSON-LD Offer never rendered': "in the page's price data, which is never shown on screen",
+  'meta content never rendered': "in the page's metadata, which is never shown on screen",
+  'display:none': 'with styling that stops it showing (display:none)',
+  'visibility:hidden': 'with styling that makes it invisible (visibility:hidden)',
+  'off-screen': 'placed off the edge of the screen',
+  'zero size': 'in a box shrunk to nothing',
+  'zero font': 'in text shrunk to nothing',
+  'coloured like its background': 'in text the same colour as the background',
+  'aria-hidden': 'marked as hidden',
+};
+const methodPlain = (m) => METHOD_PLAIN[m] ?? m;
+const VIEW_CUSTOMER = "<i>Customer's view</i>The shop's page, as a person sees it";
+const VIEW_AI = "<i>AI's view</i>Exactly what the AI was given";
+
 // ---------------------------------------------------------------- plain words
 // One sentence per section for readers who are not engineers, written from this case's own facts.
 
@@ -720,6 +762,39 @@ function plainWords(c, j) {
   return { story, '2.0': channels, '3.0': hidden, '4.0': panel, '7.0': proof };
 }
 
+// The support summary for a purchase (the headline already says what happened): who is
+// responsible, said to the customer, and what
+// Black Box does on PayPal (or has done, when the purchase was disputed).
+function supportFor(c, j) {
+  const m = c.record.mandate;
+  const paid = j.order.capturedCents;
+  const cap = money(m.maxTotalCents);
+  const v = j.verdict.verdict;
+  const explain = {
+    [VERDICT.MERCHANT]: `The shop's page hid a misleading price that only AI assistants could read, and your assistant paid ${money(paid)}, over your ${cap} limit. The shop is responsible.`,
+    [VERDICT.AGENT]: `Your assistant paid ${money(paid)}, over your ${cap} limit, and nothing on the shop's page misled it. The company that runs your assistant is responsible for the ${money(Math.max(0, paid - m.maxTotalCents))} over your limit.`,
+    [VERDICT.USER]: `Your assistant bought what you asked for, within your ${cap} limit, and nothing on the shop's page misled it.`,
+    [VERDICT.HUMAN]: {
+      1: "We can't rely on the recording of this purchase.",
+      3: "The shop's page tried to steer your assistant, but it stayed within your limit.",
+      4: "Something on the shop's page tried to mislead your assistant, but we can't prove the shop wrote it.",
+    }[j.verdict.rule] ?? 'This purchase needs a closer look.',
+  }[v];
+  const credit = c.paypal && buyerCredit(c.paypal);
+  const refund = j.plan.refundCents ? money(j.plan.refundCents) : '';
+  const outcome = {
+    none: "A person reviews it before any money moves. We'll get back to you.",
+    'accept-claim': credit ? `PayPal has refunded ${money(credit.amount.cents, credit.amount.currency)} to you.` : `If you dispute it with PayPal, you get ${refund} back.`,
+    'accept-claim-partial': credit ? `PayPal has refunded ${money(credit.amount.cents, credit.amount.currency)} to you.` : `If you dispute it with PayPal, you get ${refund} back.`,
+    'make-offer': c.paypal?.executed ? `PayPal has offered you ${refund} back.` : `If you dispute it with PayPal, you are offered ${refund} back.`,
+    'provide-evidence': c.paypal?.executed ? "The purchase stands. We've sent PayPal the evidence that it matched your request." : "The purchase stands. If you dispute it, we'll send PayPal the evidence that it matched your request.",
+  }[j.plan.action] ?? '';
+  const next = c.paypal
+    ? `PayPal case ${esc(c.paypal.disputeId)}: ${esc(paypalStatus(c.paypal))}.`
+    : `Not disputed. If the customer disputes it as “${esc(reasonPlain(j.reason))}”, Black Box will ${j.plan.action === 'none' ? 'take no automatic action, and a person decides' : esc(planPlain(j.plan))}.`;
+  return supportBox(null, esc(`${explain} ${outcome}`), `${next}${v === VERDICT.HUMAN ? ' Escalate it to a dispute specialist.' : ''}`);
+}
+
 export function casePage(c, j) {
   if (!j) return declinePage(c);
   const P = plainWords(c, j);
@@ -748,6 +823,8 @@ ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}
 <h1 class="v">${label(v)}</h1><p class="who">${WHO[v]}</p><p class="story">${esc(P.story)}</p></div>
 <div class="pp">${causePanel(c, j)}</div></section>`;
 
+  const support = supportFor(c, j);
+
   // 1. the mandate and the money
   const paid = j.order.capturedCents;
   const g = gaugeScale(paid, m.maxTotalCents);
@@ -757,56 +834,57 @@ ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}
   const overLine = j.mandate.violations.length
     ? j.mandate.violations.map((x) => `<div class="verdictline bad">✕ ${esc(x.code === 'OVER_CAP' ? `Over budget: paid ${money(paid)}, cap ${money(m.maxTotalCents)}, ${money(paid - m.maxTotalCents)} over` : `${x.code}: ${x.detail}`)}</div>`).join('')
     : '<div class="verdictline good">✓ Within the mandate</div>';
-  const mandate = sec('1.0', 'What the buyer allowed', '', `<div class="grid2">
+  const mandate = sec('1.0', 'What the customer asked for', '', `<div class="grid2">
 <div class="panel"><div class="eyebrow">Allowed</div><p class="mandate-line">${esc(mandateSentence(m))}</p>${seal}
-<div class="k mono" style="margin-top:12px">mandate sha256 ${short(r.mandate_hash, 20)}</div></div>
+${techDetails([['Mandate fingerprint (SHA-256)', esc(r.mandate_hash)]])}</div>
 <div class="panel"><div class="eyebrow">Spent</div><p class="mandate-line">${esc(j.product?.name ?? r.purchase.sku)} · ${money(paid)}</p>
 <div class="gauge"><div class="track" role="img" aria-label="Paid ${money(paid)} against a budget of ${money(m.maxTotalCents)}"><div class="fill" style="width:${g.fill}"></div>${g.over ? `<div class="over" style="left:${g.overFrom};width:${g.overW}"></div>` : ''}<div class="cap" style="left:${g.cap}"></div></div>
 <div class="legend"><span>budget <b>${money(m.maxTotalCents)}</b></span><span>paid <b>${money(paid)}</b></span></div></div>${overLine}</div></div>`);
 
   // 2. the two channels
-  const found = j.findings.find((f) => f.inModelInput && f.namesPurchasedItem) ?? j.findings.find((f) => f.inModelInput);
+  // The text that contradicts the listing first: accurate hidden product data is not the story.
+  const found = j.findings.find((f) => f.inModelInput && f.namesPurchasedItem && f.contradictsListing)
+    ?? j.findings.find((f) => f.inModelInput && f.namesPurchasedItem) ?? j.findings.find((f) => f.inModelInput);
   const flagged = j.flaggedPassages.find((p) => p.namesPurchasedItem);
-  const hiddenRead = found ?? (flagged && { text: flagged.quote, method: 'flagged by the AI flagger; code did not find it hidden' });
-  const contrast = `<div class="contrast"><div class="panel"><div class="ch"><i>CH 1</i>Shown to a person</div>
+  const hiddenRead = found ?? (flagged && { text: flagged.quote, method: 'found by the AI check, not by the automatic one' });
+  const contrast = `<div class="contrast"><div class="panel"><div class="ch"><i>Customer's view</i>Shown on the page</div>
 <div class="price">${money(j.product?.priceCents ?? r.purchase.price_cents)}<small>${esc(j.product?.name ?? r.purchase.sku)}</small></div></div>
-<div class="panel"><div class="ch two"><i>CH 2</i>${hiddenRead ? `Hidden from people, read by the agent · ${esc(hiddenRead.method)}` : 'Read by the agent'}</div>
-${hiddenRead ? `<blockquote><mark>“${esc(hiddenRead.text)}”</mark></blockquote>` : '<p class="empty">Nothing hidden that names this item.</p>'}</div></div>`;
-  const channels = sec('2.0', 'What the AI saw', '', `${contrast}<div class="grid2">
-<div><div class="ch"><i>CH 1</i>The signed page, as a person sees it</div>
+<div class="panel"><div class="ch two"><i>AI's view</i>${hiddenRead ? 'Hidden from the customer, read by the AI' : 'Read by the AI'}</div>
+${hiddenRead ? `<blockquote><mark>“${esc(hiddenRead.text)}”</mark></blockquote><p class="where">Where: ${esc(methodPlain(hiddenRead.method))}.</p>` : '<p class="empty">Nothing hidden that names this item.</p>'}</div></div>`;
+  const channels = sec('2.0', 'What the shopping agent saw', '', `${contrast}<div class="grid2">
+<div><div class="ch">${VIEW_CUSTOMER}</div>
 <iframe sandbox="" referrerpolicy="no-referrer" loading="lazy" title="Recorded product page" src="${pageSrc}"></iframe></div>
-<div><div class="ch two"><i>CH 2</i>Exactly what the AI was given${marked ? `<a href="#hidden">${marked} hidden passage${marked > 1 ? 's' : ''} highlighted ↓</a>` : ''}</div>
+<div><div class="ch two">${VIEW_AI}${marked ? `<a href="#hidden">${marked} hidden passage${marked > 1 ? 's' : ''} highlighted ↓</a>` : ''}</div>
 <pre class="input" tabindex="0">${inputs.map((i) => i.html).join('\n\n')}</pre></div></div>
-${d.reason ? `<div class="cvr"><span class="who">${esc(d.model)}</span><p>“${esc(d.reason)}”</p></div>` : ''}`);
+${d.reason ? `<div class="cvr"><span class="who">Why ${esc(d.model)} bought it</span><p>“${esc(d.reason)}”</p></div>` : ''}`);
 
   // 3. hidden text and the flagger
-  const findings = j.findings.length ? j.findings.map((f) => `<div class="panel finding"><div class="eyebrow">Hidden by <b>${esc(f.method)}</b>${f.thirdPartyIssuer ? ` · signed by third party ${esc(f.thirdPartyIssuer)}` : ''}</div>
-<q>${esc(f.text)}</q><div class="chips">${chip(f.concealedInReadChannel ? 'on' : '', 'Hidden from people')}${chip(f.namesPurchasedItem ? 'on' : '', 'Names the item')}${chip(f.contradictsListing ? 'on' : '', 'Contradicts the listing')}
+  const findings = j.findings.length ? j.findings.map((f) => `<div class="panel finding"><div class="eyebrow">Hidden from the customer${f.thirdPartyIssuer ? ` · written by another company (${esc(new URL(f.thirdPartyIssuer).host)})` : ''}</div>
+<q>${esc(f.text)}</q><p class="where">Where: ${esc(methodPlain(f.method))}.</p><div class="chips">${chip(f.concealedInReadChannel ? 'on' : '', 'Hidden from people')}${chip(f.namesPurchasedItem ? 'on' : '', 'Names the item')}${chip(f.contradictsListing ? 'on' : '', 'Contradicts the listing')}
 ${chip(f.inModelInput ? 'on' : '', 'Reached the model')}${chip(f.signedByMerchant ? 'on' : '', 'Merchant-signed')}${chip(f.selfContained ? 'on' : '', 'Self-contained page')}${chip(f.thirdPartySigned ? 'bad' : 'on', f.thirdPartySigned ? 'Third-party signature' : 'No third party')}</div></div>`).join('')
-    : '<div class="panel"><p class="empty">Code found no hidden text on the purchased page.</p></div>';
+    : '<div class="panel"><p class="empty">The automatic check found nothing hidden on the page that was bought from.</p></div>';
   const flagger = j.flagger ? `<div class="panel" style="margin-top:12px"><div class="eyebrow">AI check · <b>${esc(j.flagger.model)}</b> · can only send a case to a person</div>
 ${j.flaggedPassages.length ? j.flaggedPassages.map((p) => `<q class="finding" style="display:block;margin:12px 0 8px">${esc(p.quote)}</q><div class="k" style="font-size:12.5px;margin-bottom:8px">${esc(p.reason)}</div>
 <div class="chips">${chip('ok', 'Found word for word in the model input')}${chip(p.namesPurchasedItem ? 'on' : '', p.namesPurchasedItem ? 'Names the item bought: counts' : 'Other product: ignored for this purchase')}</div>`).join('') : '<p class="empty" style="margin-top:10px">Found no text aimed at automated buyers.</p>'}</div>`
     : '<div class="panel" style="margin-top:12px"><p class="empty">No AI check on this case. The verdict is code only.</p></div>';
-  const hidden = sec('3.0', 'Hidden text', '', findings + flagger);
+  const hidden = sec('3.0', 'What was hidden from the customer', '', findings + flagger);
 
   // 4. annunciator panel
   const group = (title, keys) => `<div><h3>${title}</h3><div class="lamps">${keys.map((k) => `<div class="lampc ${lamp(k, j.facts[k])}" tabindex="0" data-tip="${esc(FACT_PLAIN[k])}" role="img" aria-label="${esc(FACT_PLAIN[k])} ${j.facts[k] ? 'True' : 'False'}.">${esc(FACT[k][0])}<small>${j.facts[k] ? 'TRUE' : 'FALSE'}</small></div>`).join('')}</div></div>`;
-  const panel = sec('4.0', 'The checks', `${FACT_KEYS.length} yes/no facts. Green is fine, red failed, orange points at the shop. Hover or tap one to see what it means.`, `<div class="panel ann"><div class="groups">
+  const panel = sec('4.0', 'The checks behind the decision', `${FACT_KEYS.length} yes/no facts. Green is fine, red failed, orange points at the shop. Hover or tap one to see what it means.`, `<div class="panel ann"><div class="groups">
 ${group('Record integrity', RECORD_CHECKS)}${group('Mandate', ['mandateBroken'])}${group(`Merchant responsible · all ${MERCHANT_CONDITIONS.length}`, MERCHANT_CONDITIONS)}${group('Other signals', SIGNALS)}</div></div>`);
 
   // 5. decision ladder
-  const ladder = sec('5.0', 'The rules', 'Checked in order. Exactly one applies.', `<ol class="ladder">
+  const ladder = sec('5.0', 'How the decision was made', 'Six rules, checked in order. Exactly one applies.', `<ol class="ladder">
 ${RULES.map((rule) => `<li class="${rule.verdict}${rule.n === j.verdict.rule ? ' fired' : ''}"><span class="n">${rule.n}</span><span class="tag">${label(rule.verdict)}</span><span>${esc(RULE_SHORT[rule.n])}</span></li>`).join('')}</ol>`);
 
   // 6. tape and integrity
-  const tapeSec = sec('6.0', 'Timeline', '', `<div class="panel">${tape(c, j)}</div>`);
+  const tapeSec = sec('6.0', 'Step by step', '', `<div class="panel">${tape(c, j)}</div>`);
   const same = c.hash === j.order.customId;
-  const proof = sec('7.0', 'Tamper check', '', `<div class="panel">
-<div class="hasheq"><span class="k">record</span><span>${esc(c.hash)}</span><span class="${same ? 'eq' : 'ne'}">${same ? '=' : '≠'}</span><span></span><span class="k">PayPal</span><span>${esc(j.order.customId ?? '')}</span></div>
-<div class="chips" style="margin-top:14px">${chip(same ? 'ok' : 'bad', same ? 'Hashes equal' : 'Hashes differ')}${chip(integrity ? 'ok' : 'bad', integrity ? 'All record checks pass' : 'Record broken')}</div>
+  const proof = sec('7.0', 'Has this recording been edited?', '', `<div class="panel">
+<div class="chips">${chip(same ? 'ok' : 'bad', same ? 'Matches the PayPal payment' : 'Does not match the PayPal payment')}${chip(integrity ? 'ok' : 'bad', integrity ? 'All record checks pass' : 'Record broken')}</div>
 ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
-<div class="k mono" style="margin-top:12px">source ${esc(c.source)}</div></div>`);
+${techDetails([['Recording fingerprint', esc(c.hash)], ['Fingerprint in the PayPal payment (custom_id)', `${esc(j.order.customId ?? '')} <span class="${same ? 'eq' : 'ne'}">${same ? '=' : '≠'}</span>`], ['Source file', esc(c.source)]])}</div>`);
 
   // 8. the note PayPal receives with the evidence (USER verdicts only)
   const statements = statementsFor({ record: r, j, hash: c.hash, reason: j.reason });
@@ -817,7 +895,7 @@ ${j.integrityProblems.length ? `<ul class="problems">${j.integrityProblems.map((
 <details><summary>The ${statements.length} statements</summary><ol class="evlist">${statements.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>
 <div class="k" style="margin-top:10px;font-size:12.5px">Attached: the full record, as <span class="mono">blackbox-evidence.txt</span>.</div></div>`) : '';
 
-  return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.nav ?? (c.bench ? 'bench' : 'recordings') });
+  return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${support}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.nav ?? (c.bench ? 'bench' : 'recordings') });
 }
 
 // A recording where the agent bought nothing. No order, so no dispute and no verdict: it shows
@@ -836,28 +914,32 @@ function declinePage(c) {
   const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${esc(d.model ?? 'unknown')}</b></span>
 <span>Declined <b>${time(d.at)}</b></span></div>`;
   const head = `<section class="cause DECLINED" style="view-transition-name:${vtName(c.hash)}"><div class="main">
-<div class="eyebrow">No purchase · no order · nothing to dispute</div>
+<div class="eyebrow">No purchase · no payment · nothing to dispute</div>
 <h1 class="v">Bought nothing</h1><p class="who">The agent declined, so there is no PayPal payment and no verdict.</p>
 <p class="story">“${esc(d.reason ?? '')}”</p></div></section>`;
-  const mandate = section('1.0', 'What the buyer allowed', '', `<div class="panel"><div class="eyebrow">Allowed</div><p class="mandate-line">${esc(mandateSentence(m))}</p>
-${r.mandate_auth ? '<span class="seal ok">◆ Passkey approval recorded</span>' : '<span class="seal legacy">No passkey approval</span>'}
-<div class="k mono" style="margin-top:12px">mandate sha256 ${short(r.mandate_hash, 20)}</div></div>`);
-  const channels = section('2.0', 'What the AI saw', '', `<div class="grid2">
-<div><div class="ch"><i>CH 1</i>The signed page, as a person sees it</div>
-<iframe sandbox="" referrerpolicy="no-referrer" loading="lazy" title="Recorded product page" src="${pageSrc}"></iframe></div>
-<div><div class="ch two"><i>CH 2</i>Exactly what the AI was given${shown.count ? `<a href="#hidden">${shown.count} hidden passage${shown.count > 1 ? 's' : ''} highlighted ↓</a>` : ''}</div>
-<pre class="input" tabindex="0">${shown.html}</pre></div></div>
-${d.reason ? `<div class="cvr"><span class="who">${esc(d.model)}</span><p>“${esc(d.reason)}”</p></div>` : ''}`);
   const found = pages.flatMap((p) => p.hidden.map((h) => ({ ...h, path: p.f.path })));
-  const hidden = section('3.0', 'Hidden text it read', 'What code finds hidden on the pages the agent read. With no purchase this is not a check: nothing is judged.', found.length
-    ? found.map((h) => `<div class="panel finding"><div class="eyebrow">Hidden by <b>${esc(h.method)}</b> · <span class="mono">${esc(h.path)}</span></div><q>${esc(h.text)}</q>
-<div class="chips">${chip(read(h.text) ? 'on' : '', read(h.text) ? 'Reached the model' : 'Not in the model input')}</div></div>`).join('')
-    : `<div class="panel"><p class="empty">Code found no hidden text by the methods it checks: data never rendered (JSON-LD, meta), display:none, visibility:hidden, off-screen, zero size, text coloured like its background, aria-hidden.</p>
-<p class="empty">That does not mean nothing was hidden. Text hidden another way, such as opacity:0, still reaches the AI. Compare the two channels in 2.0: anything in CH 2, exactly what the AI was given, that you cannot see in CH 1, the page as a person sees it, was hidden from people. On a dispute, the AI check looks for such text, and can only send the case to a person.</p></div>`);
-  const proof = section('4.0', 'The recording', '', `<div class="panel"><div class="k mono">record ${esc(c.hash)}</div>
-<div class="k mono" style="margin-top:8px">${r.fetches.length} pages kept byte for byte, ${r.model_inputs.length} model input${r.model_inputs.length === 1 ? '' : 's'}, ${r.decisions.length} decision${r.decisions.length === 1 ? '' : 's'}</div>
-<div class="k mono" style="margin-top:8px">source ${esc(c.source)}</div></div>`);
-  return layout(`Bought nothing · ${d.model ?? 'replay'} · Black Box`, `${crumbs}${head}${mandate}${channels}${hidden}${proof}`, { active: c.nav ?? 'recordings' });
+  const n = pages.length;
+  const support = supportBox(
+    `The AI shopping agent read ${n} product page${n === 1 ? '' : 's'} and decided not to buy.${found.length ? ' The page also had text hidden from the customer, shown below.' : ''}`,
+    `Your shopping assistant looked at what this shop had and decided not to buy anything, because nothing it found fit your request within your ${esc(money(m.maxTotalCents))} limit. You were not charged.`,
+    'Nothing to do. There is no payment, so there is nothing to refund or dispute.');
+  const mandate = section('1.0', 'What the customer asked for', '', `<div class="panel"><div class="eyebrow">Allowed</div><p class="mandate-line">${esc(mandateSentence(m))}</p>
+${r.mandate_auth ? '<span class="seal ok">◆ Approved with the customer’s passkey</span>' : '<span class="seal legacy">Not approved with a passkey</span>'}
+${techDetails([['Mandate fingerprint (SHA-256)', esc(r.mandate_hash)]])}</div>`);
+  const channels = section('2.0', 'What the shopping agent saw', '', `<div class="grid2">
+<div><div class="ch">${VIEW_CUSTOMER}</div>
+<iframe sandbox="" referrerpolicy="no-referrer" loading="lazy" title="Recorded product page" src="${pageSrc}"></iframe></div>
+<div><div class="ch two">${VIEW_AI}${shown.count ? `<a href="#hidden">${shown.count} hidden passage${shown.count > 1 ? 's' : ''} highlighted ↓</a>` : ''}</div>
+<pre class="input" tabindex="0">${shown.html}</pre></div></div>`);
+  const hidden = section('3.0', 'Was anything hidden from the customer?', '', found.length
+    ? found.map((h) => `<div class="panel finding"><div class="eyebrow">Hidden from the customer</div><q>${esc(h.text)}</q>
+<p class="where">Where: ${esc(methodPlain(h.method))}.</p>
+<div class="chips">${chip(read(h.text) ? 'on' : '', read(h.text) ? 'The AI read it' : 'The AI did not get it')}</div></div>`).join('')
+    : `<div class="panel"><p class="empty">The automatic check found nothing hidden. It catches the common tricks: text kept in the page’s data but never shown, hidden with styling, moved off the screen, shrunk to nothing, coloured like the background, or marked as hidden.</p>
+<p class="empty">Some tricks it cannot spot, such as making text fully transparent (opacity:0), and that text still reaches the AI. To check for yourself, compare the two views above: any sentence in the AI’s view that you cannot see in the customer’s view was hidden from the customer. If this became a dispute, an AI check would look for such text, and could only pass the case to a person.</p></div>`);
+  const proof = section('4.0', 'About this recording', '', `<div class="panel"><p class="empty">Black Box kept every page the agent read, exactly as the shop sent it, with what the AI was given and what it decided.</p>
+${techDetails([['Recording fingerprint', esc(c.hash)], ['Kept', `${r.fetches.length} pages byte for byte, ${r.model_inputs.length} model input${r.model_inputs.length === 1 ? '' : 's'}, ${r.decisions.length} decision${r.decisions.length === 1 ? '' : 's'}`], ['Source file', esc(c.source)]])}</div>`);
+  return layout(`Bought nothing · ${d.model ?? 'replay'} · Black Box`, `${crumbs}${head}${support}${mandate}${channels}${hidden}${proof}`, { active: c.nav ?? 'recordings' });
 }
 
 // ---------------------------------------------------------------- study
