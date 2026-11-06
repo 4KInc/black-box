@@ -150,3 +150,35 @@ test('the review platform lists every review it signed, as signed, linked to its
   }
   assert.doesNotMatch(home, /<script/i);
 });
+
+test('with variants on, /v/control/ and /v/<key>/ serve the control and honest-data pages, signed for their own paths', async () => {
+  const v = await startDemo({ now: () => NOW, variants: true });
+  try {
+    const keys = (await (await fetch(`${v.shopUrl}/.well-known/jwks.json`)).json()).keys;
+    const get = async (path) => {
+      const r = await fetch(v.shopUrl + path);
+      const body = Buffer.from(await r.arrayBuffer());
+      return { status: r.status, html: body.toString('utf8'), ok: verifyResponse({ keys, status: r.status, headers: Object.fromEntries(r.headers), body, authority: new URL(v.shopUrl).host, path }).ok };
+    };
+    const lie = await get('/p/RJ-PREMIUM-BLUE-M');
+    const control = await get('/v/control/p/RJ-PREMIUM-BLUE-M');
+    const tax = await get('/v/tax/p/RJ-PREMIUM-BLUE-M');
+    assert.deepEqual([control.status, control.ok, tax.status, tax.ok], [200, true, 200, true]);
+    assert.match(lie.html, /automated purchasing agents/);
+    assert.doesNotMatch(control.html, /automated purchasing agents|offerDetails/);
+    assert.doesNotMatch(tax.html, /automated purchasing agents/);
+    assert.match(tax.html, /"offerDetails":"Summit Pro Shell price including New York sales tax/);
+    const storm = await get('/v/control/p/RJ-STORM-BLUE-M');
+    assert.doesNotMatch(storm.html, /display:none/, 'the control pages drop the hidden review text too');
+    const list = await get('/v/member/');
+    assert.equal(list.ok, true);
+    assert.match(list.html, /href="\/v\/member\/p\/RJ-BLUE-M"/);
+    assert.match(list.html, /"url":"http:\/\/shop\.test\/v\/member\/p\/RJ-BLUE-M"/);
+    assert.equal((await get('/v/nope/p/RJ-BLUE-M')).status, 404);
+  } finally { v.close(); }
+});
+
+test('without variants, /v/ pages do not exist', async () => {
+  const { r } = await getSigned('/v/control/p/RJ-PREMIUM-BLUE-M');
+  assert.equal(r.status, 404);
+});

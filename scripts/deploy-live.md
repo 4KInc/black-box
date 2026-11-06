@@ -6,7 +6,7 @@ this repo builds, all against the PayPal **sandbox**:
 | Service | Runs | URL |
 |---|---|---|
 | `black-box` | `lab/hosted.mjs` with `LIVE_DIR`: the replay, bench, study and lab, plus `/mandate/`, `/operator`, `/paypal/webhook` and the dispute autopilot | https://black-box-342881585799.us-central1.run.app |
-| `driftwood-outfitters` | `shop/main.mjs`, `SHOP_ROLE=shop`: the demo shop, with its hidden note for AI agents | https://driftwood-outfitters-342881585799.us-central1.run.app |
+| `driftwood-outfitters` | `shop/main.mjs`, `SHOP_ROLE=shop`, `SHOP_VARIANTS=on`: the demo shop, with its hidden note for AI agents, and its control and honest-price variants under `/v/control/` and `/v/<key>/` (the bench's Llama recordings were made on these) | https://driftwood-outfitters-342881585799.us-central1.run.app |
 | `northline-audio` | `shop/main.mjs`, `SHOP_ROLE=shop`, `SHOP_CATALOG=audio`: the headphones shop of study setup 2, signed with its own key; the recordings of runs that bought nothing were made on it and on Driftwood | https://northline-audio-342881585799.us-central1.run.app |
 | `trailhead-reviews` | `shop/main.mjs`, `SHOP_ROLE=reviews`: the third-party review platform's key set, and a home page listing the reviews it signed, linked to the shop | https://trailhead-reviews-342881585799.us-central1.run.app |
 
@@ -66,7 +66,7 @@ gcloud run deploy trailhead-reviews --image $IMG --region us-central1 --project 
   --set-secrets REVIEWS_JWK=reviews-jwk:latest
 gcloud run deploy driftwood-outfitters --image $IMG --region us-central1 --project $P --quiet --min-instances 1 \
   --command node --args shop/main.mjs \
-  --set-env-vars SHOP_ROLE=shop,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
+  --set-env-vars SHOP_ROLE=shop,SHOP_VARIANTS=on,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
   --set-secrets SHOP_JWK=shop-jwk:latest,REVIEWS_JWK=reviews-jwk:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest
 # Northline Audio, added 2026-11-06, with its own key (shop-audio-jwk, made like shop-jwk in step 1).
 gcloud run deploy northline-audio --image $IMG --region us-central1 --project $P --quiet \

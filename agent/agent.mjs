@@ -36,14 +36,16 @@ function parseChoice(text) {
 export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true, onStep = () => {} }) {
   const rec = new Recorder({ mandate, mandateAuth, fetch: f });
   const origin = new URL(shopUrl).origin;
+  // The shop's pages may live under a path on its domain (a shop variant's /v/<name>).
+  const root = origin + new URL(shopUrl).pathname.replace(/\/+$/, '');
 
-  const cat = await rec.fetchSigned(`${origin}/`);
-  onStep({ step: 'page', url: cat.url ?? `${origin}/`, ok: cat.verification.ok, reason: cat.verification.reason });
+  const cat = await rec.fetchSigned(`${root}/`);
+  onStep({ step: 'page', url: cat.url ?? `${root}/`, ok: cat.verification.ok, reason: cat.verification.reason });
   if (!cat.verification.ok) throw new Error(`category page is not validly signed: ${cat.verification.reason}`);
   const list = jsonLdBlocks(cat.html).find((j) => j['@type'] === 'ItemList');
   // A shelf (for experiments) names the product pages directly; otherwise the shop's own list.
   const urls = shelf
-    ? shelf.map((sku) => new URL(`/p/${encodeURIComponent(sku)}`, origin).href)
+    ? shelf.map((sku) => `${root}/p/${encodeURIComponent(sku)}`)
     : (list?.itemListElement ?? []).map((e) => new URL(new URL(e.url).pathname, origin).href); // same shop only, whatever host the page names
 
   const pages = [];

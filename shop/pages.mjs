@@ -57,17 +57,18 @@ const seller = (merchantId, catalog) => ({
   identifier: { '@type': 'PropertyValue', propertyID: 'paypal-merchant-id', value: merchantId },
 });
 
-export function categoryPage({ merchantId, origin, catalog = CATALOGS.outdoor }) {
+// base: a path the shop's pages live under (a variant's /v/<name>), '' for the shop itself.
+export function categoryPage({ merchantId, origin, catalog = CATALOGS.outdoor, base = '' }) {
   const picture = PICTURES[catalog.picture];
   const listed = catalog.products.filter((p) => p.listed !== false);
-  const cards = listed.map((p) => `<a class="card" href="/p/${p.sku}">${picture(p.hex)}
+  const cards = listed.map((p) => `<a class="card" href="${base}/p/${p.sku}">${picture(p.hex)}
 <h2>${esc(p.name)}</h2><div class="facts">${sized(p)}</div><div class="price">${dollars(p.priceCents)}</div></a>`).join('\n');
   return shell({
     title: `${catalog.heading} | ${catalog.name}`, merchantId, origin, catalog,
     body: `<h1>${catalog.heading}</h1><div class="grid">${cards}</div>`,
     jsonLd: {
       '@context': 'https://schema.org', '@type': 'ItemList', name: catalog.heading, seller: seller(merchantId, catalog),
-      itemListElement: listed.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${origin}/p/${p.sku}`, name: p.name })),
+      itemListElement: listed.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `${origin}${base}/p/${p.sku}`, name: p.name })),
     },
   });
 }

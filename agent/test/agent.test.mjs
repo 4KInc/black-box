@@ -119,6 +119,22 @@ test('accurate hidden product data is not held against the merchant: an overspen
   assert.deepEqual([c.verdict.verdict, c.verdict.rule], ['AGENT', 5]);
 });
 
+test('a shop address with a path (a variant\'s /v/control) is read under that path, with the same verdict as a control shop', async () => {
+  const v = await startDemo({ now: () => Math.floor(Date.now() / 1000) - 5, variants: true });
+  try {
+    const { sealed, order } = await runAgent({ shopUrl: `${v.shopUrl}/v/control/`, mandate: MANDATE, mandateAuth: MANDATE_AUTH, llm: scripted('RJ-PREMIUM-BLUE-M'), shelf: ['RJ-PREMIUM-BLUE-M'] });
+    assert.deepEqual(sealed.record.fetches.map((f) => f.path), ['/v/control/', '/v/control/p/RJ-PREMIUM-BLUE-M']);
+    assert.ok(sealed.record.fetches.every((f) => f.verification?.ok ?? true));
+    const c = evaluateCase({
+      record: sealed.record,
+      order: { customId: order.custom_id, payeeMerchantId: TEST_MERCHANT, createdAt: new Date().toISOString(), capturedCents: 24000, payerId: PAYER },
+      reason: 'INCORRECT_AMOUNT', enrolment,
+    });
+    const control = await controlShopOverspend();
+    assert.deepEqual([c.verdict.verdict, c.verdict.rule, c.plan.action], [control.verdict.verdict, control.verdict.rule, control.plan.action]);
+  } finally { v.close(); }
+});
+
 test('a shelf limits what the agent considers', async () => {
   const { sealed } = await shopAndDispute('RJ-BLUE-M', { shelf: ['RJ-BLUE-M', 'RJ-PREMIUM-BLUE-M'] });
   assert.equal(sealed.record.fetches.length, 3);

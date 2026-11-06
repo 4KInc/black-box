@@ -14,24 +14,36 @@ const RECORD_HASH = /^[0-9a-f]{64}$/;
 
 // injections: false serves the same pages with the hidden texts removed (the control condition).
 // catalog: which shop to be (CATALOGS key); Driftwood Outfitters unless told otherwise.
-export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true, extraData = null, catalog: catalogKey = 'outdoor' }) {
+// variants: true also serves the variant pages under /v/<name>/ (see VARIANTS below).
+export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true, extraData = null, catalog: catalogKey = 'outdoor', variants = false }) {
   const catalog = CATALOGS[catalogKey];
   if (!catalog) throw new Error(`unknown catalog ${catalogKey}`);
   if (isBenchKey(shopJwk) || isBenchKey(reviewsJwk)) throw new Error('refusing the TEST-ONLY bench key: its private half is public');
   const SHOP_NAME = catalog.name;
-  const base = injections ? catalog.products : catalog.products.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
-  // One accurate-but-different price statement (catalog LEGIT_PRICE_DATA) on the Summit Pro Shell.
-  if (extraData && !LEGIT_PRICE_DATA[extraData]) throw new Error(`unknown SHOP_EXTRA_DATA ${extraData}`);
-  const products = extraData
-    ? base.map((p) => (p.sku === 'RJ-PREMIUM-BLUE-M' ? { ...p, productData: { ...p.productData, offerDetails: LEGIT_PRICE_DATA[extraData] } } : p))
-    : base;
-  const bySku = (sku) => products.find((p) => p.sku === sku);
-  // Reviews are signed once by the platform; the shop only embeds them.
-  const reviewsBySku = Object.fromEntries(products.map((p) => [
-    p.sku, p.reviews.map((review) => signedReview({ jwk: reviewsJwk, iss: reviewsIssuer, sku: p.sku, review })),
-  ]));
+  // One view of the catalog: the hidden texts on or off, and an optional accurate-but-different
+  // price statement (catalog LEGIT_PRICE_DATA) on the Summit Pro Shell.
+  function view({ injections, extraData }) {
+    const base = injections ? catalog.products : catalog.products.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
+    if (extraData && !LEGIT_PRICE_DATA[extraData]) throw new Error(`unknown SHOP_EXTRA_DATA ${extraData}`);
+    const products = extraData
+      ? base.map((p) => (p.sku === 'RJ-PREMIUM-BLUE-M' ? { ...p, productData: { ...p.productData, offerDetails: LEGIT_PRICE_DATA[extraData] } } : p))
+      : base;
+    // Reviews are signed once by the platform; the shop only embeds them.
+    const reviewsBySku = Object.fromEntries(products.map((p) => [
+      p.sku, p.reviews.map((review) => signedReview({ jwk: reviewsJwk, iss: reviewsIssuer, sku: p.sku, review })),
+    ]));
+    return { products, bySku: (sku) => products.find((p) => p.sku === sku), reviewsBySku, ctx: { merchantId, origin, catalog: { ...catalog, products } } };
+  }
+  const main = view({ injections, extraData });
+  const { bySku, ctx } = main;
+  // variants: also serve the control pages (hidden texts off) at /v/control/ and each
+  // LEGIT_PRICE_DATA page at /v/<key>/, signed with the same key, so one hosted shop can stand in
+  // for the shops run locally with SHOP_INJECTIONS=off and SHOP_EXTRA_DATA=<key>.
+  const VARIANTS = variants ? {
+    control: view({ injections: false, extraData: null }),
+    ...Object.fromEntries(Object.keys(LEGIT_PRICE_DATA).map((k) => [k, view({ injections: false, extraData: k })])),
+  } : {};
   const keySet = JSON.stringify(jwks(shopJwk));
-  const ctx = { merchantId, origin, catalog: { ...catalog, products } };
 
   function sendSigned(req, res, status, html) {
     const body = Buffer.from(html);
@@ -100,12 +112,17 @@ export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, ori
         res.writeHead(200, { 'content-type': 'application/json' });
         return res.end(keySet);
       }
-      if (req.method === 'GET' && url.pathname === '/') return sendSigned(req, res, 200, categoryPage(ctx));
-      const m = url.pathname.match(/^\/p\/([A-Z0-9-]+)$/);
-      if (req.method === 'GET' && m) {
-        const product = bySku(m[1]);
-        if (!product) return sendSigned(req, res, 404, messagePage({ ...ctx, title: 'Not found', text: 'No such product.' }));
-        return sendSigned(req, res, 200, productPage({ ...ctx, product, signedReviews: reviewsBySku[product.sku] }));
+      const v = url.pathname.match(/^\/v\/([a-z-]+)(\/.*)$/);
+      const shown = v ? VARIANTS[v[1]] : main;
+      const path = v ? v[2] : url.pathname;
+      if (req.method === 'GET' && shown) {
+        if (path === '/') return sendSigned(req, res, 200, categoryPage({ ...shown.ctx, base: v ? `/v/${v[1]}` : '' }));
+        const m = path.match(/^\/p\/([A-Z0-9-]+)$/);
+        if (m) {
+          const product = shown.bySku(m[1]);
+          if (!product) return sendSigned(req, res, 404, messagePage({ ...ctx, title: 'Not found', text: 'No such product.' }));
+          return sendSigned(req, res, 200, productPage({ ...shown.ctx, product, signedReviews: shown.reviewsBySku[product.sku] }));
+        }
       }
       if (req.method === 'POST' && url.pathname === '/checkout') return await checkout(req, res);
       if (req.method === 'GET' && url.pathname === '/paypal/return') return await paypalReturn(req, res, url);
