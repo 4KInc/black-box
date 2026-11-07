@@ -10,6 +10,7 @@ import { judge, loadCases } from './cases.mjs';
 import { runBench } from '../bench/bench.mjs';
 import { benchPage, casePage, indexPage, pageHtml, recordJson, siteIntro, studyPage } from './page.mjs';
 import { latestStudies } from './cases.mjs';
+import { caseReport, reportName } from './report.mjs';
 import { factsPage, labPage, labResult, runLab } from '../lab/lab.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
@@ -33,6 +34,18 @@ const RECORD_JSON = (hash) => ({
   'content-disposition': `attachment; filename="black-box-${hash.slice(0, 12)}.json"`,
   'x-content-type-options': 'nosniff',
 });
+
+// The case report as a PDF, for a PayPal dispute reviewer.
+const REPORT_PDF = (c) => ({
+  'content-type': 'application/pdf',
+  'content-disposition': `attachment; filename="${reportName(c)}"`,
+  'x-content-type-options': 'nosniff',
+});
+// Where a case page lives, for the report's "check it yourself" line.
+const pageUrl = (req, path) => {
+  const host = req.headers['x-forwarded-host'] ?? req.headers.host;
+  return host ? `${/^(localhost|127\.)/.test(host) ? 'http' : 'https'}://${host}${path}` : null;
+};
 
 const HEADERS = {
   'content-type': 'text/html; charset=utf-8',
@@ -62,14 +75,21 @@ export function createReplay({ root = ROOT, intro = '', live = false } = {}) {
       if (pathname === '/lab/facts') return send(200, factsPage(searchParams));
       if (pathname === '/bench') return send(200, benchPage(runBench(root)));
       if (pathname === '/study') { const st = latestStudies(root); return st.length ? send(200, studyPage(st)) : send(404, 'No study yet: node study/run.mjs'); }
-      const b = pathname.match(/^\/bench\/([A-Z]\d{2})(\/page|\/record\.json)?$/);
+      const b = pathname.match(/^\/bench\/([A-Z]\d{2})(\/page|\/record\.json|\/report\.pdf)?$/);
       const br = b && runBench(root).find((r) => r.def.id === b[1]);
       if (br && b[2] === '/record.json') { res.writeHead(200, RECORD_JSON(br.c.hash)); return res.end(recordJson(br.c.record)); }
+      if (br && b[2] === '/report.pdf' && br.j) { res.writeHead(200, REPORT_PDF(br.c)); return res.end(caseReport(br.c, br.j, { caseUrl: pageUrl(req, `/bench/${br.def.id}`) })); }
       if (br && b[2]) { res.writeHead(200, RECORDED); return res.end(pageHtml(br.c.record)); }
       if (br) return send(200, casePage({ ...br.c, benchResult: br }, br.j));
-      const m = pathname.match(/^\/case\/([0-9a-f]{64})(\/page|\/record\.json)?$/);
+      const m = pathname.match(/^\/case\/([0-9a-f]{64})(\/page|\/record\.json|\/report\.pdf)?$/);
       const c = m && cases().find((x) => x.hash === m[1]);
       if (c && m[2] === '/record.json') { res.writeHead(200, RECORD_JSON(c.hash)); return res.end(recordJson(c.record)); }
+      if (c && m[2] === '/report.pdf') {
+        const j = judge(c, { root });
+        if (!j) return send(404, 'The agent bought nothing, so there is no case to report.');
+        res.writeHead(200, REPORT_PDF(c));
+        return res.end(caseReport(c, j, { caseUrl: pageUrl(req, `/case/${c.hash}`) }));
+      }
       if (c && m[2]) { res.writeHead(200, RECORDED); return res.end(pageHtml(c.record)); }
       if (c) return send(200, casePage(c, judge(c, { root })));
       send(404, 'No such case');

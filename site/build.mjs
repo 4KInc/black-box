@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { runBench } from '../bench/bench.mjs';
 import { judge, latestStudies, loadCases } from '../replay/cases.mjs';
 import { benchPage, casePage, indexPage, pageHtml, recordJson, setDemoHref, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
+import { caseReport } from '../replay/report.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 // The lab needs a server; the static site links to the hosted one, or leaves the link out.
@@ -47,6 +48,8 @@ function write(path, html, depth, csp = PAGE_CSP) {
 }
 
 const INTRO = siteIntro({ live: false });
+// Where the site is published, for the case report's "check it yourself" line.
+const SITE_URL = process.env.SITE_URL ?? 'https://4kinc.github.io/black-box';
 
 // A scratch root holding only what is committed: the fixtures, and the buyer's enrolled
 // passkey (public key) in the registry the replay reads.
@@ -68,6 +71,7 @@ try {
     write(`case/${c.hash}`, casePage(c, j), 2);
     write(`case/${c.hash}/page`, pageHtml(c.record), 3, RECORDED_CSP);
     writeFileSync(join(OUT, 'case', c.hash, 'record.json'), recordJson(c.record));
+    if (j) writeFileSync(join(OUT, 'case', c.hash, 'report.pdf'), caseReport(c, j, { caseUrl: `${SITE_URL}/case/${c.hash}/` }));
   }
 
   const studies = latestStudies(root);
@@ -79,6 +83,7 @@ try {
     write(`bench/${r.def.id}`, casePage({ ...r.c, benchResult: r }, r.j), 2);
     write(`bench/${r.def.id}/page`, pageHtml(r.c.record), 3, RECORDED_CSP);
     writeFileSync(join(OUT, 'bench', r.def.id, 'record.json'), recordJson(r.c.record));
+    if (r.j) writeFileSync(join(OUT, 'bench', r.def.id, 'report.pdf'), caseReport(r.c, r.j, { caseUrl: `${SITE_URL}/bench/${r.def.id}/` }));
   }
   const failed = bench.filter((r) => !r.pass).length;
   console.log(`site     ${OUT}\ncases    ${cases.length} replays, ${bench.length} bench cases (${bench.length - failed} pass)`);

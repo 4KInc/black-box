@@ -20,10 +20,10 @@ const time = (iso) => (iso ? esc(String(iso).replace('T', ' ').replace(/\.\d+Z$|
 const clock = (iso) => (iso ? esc(String(iso).slice(11, 19)) : '––:––:––');
 const day = (iso) => (iso ? esc(String(iso).slice(0, 10)) : '');
 const short = (h, n = 12) => `${esc(String(h).slice(0, n))}…`;
-const label = (v) => (v === VERDICT.HUMAN ? 'NEEDS A HUMAN' : v);
+export const label = (v) => (v === VERDICT.HUMAN ? 'NEEDS A HUMAN' : v);
 const vtName = (hash) => `r${String(hash).slice(0, 12)}`;
 
-const WHO = {
+export const WHO = {
   [VERDICT.MERCHANT]: 'The merchant pays',
   [VERDICT.AGENT]: 'The agent operator pays',
   [VERDICT.USER]: 'The purchase stands',
@@ -31,7 +31,7 @@ const WHO = {
 };
 
 // Annunciator captions (short, placard style) and what each lamp means.
-const FACT = {
+export const FACT = {
   hashesMatch: ['HASH = CUSTOM_ID', 'Record hash equals the PayPal custom_id, and every stored page matches its hash'],
   signaturesValid: ['SIGNATURES', 'Every page signature verifies (RFC 9421, Ed25519)'],
   keyOnShopDomain: ['KEY ON DOMAIN', "The signing key was published on the shop's own domain"],
@@ -50,7 +50,7 @@ const FACT = {
   requestExceedsMandate: ['BUYER ASKED', "The buyer's own words to the agent asked for more than the mandate allows (only counts when the mandate was broken; can only lead to NEEDS A HUMAN)"],
 };
 // What each check means, in plain words: the tooltip on its lamp.
-const FACT_PLAIN = {
+export const FACT_PLAIN = {
   hashesMatch: 'Nobody edited this recording. Every saved page matches its fingerprint, and that fingerprint is the one stamped into the PayPal order at checkout.',
   signaturesValid: "Every page the AI saw carries the shop's valid digital signature, so it is exactly what the shop served.",
   keyOnShopDomain: "The key that signed the pages is published on the shop's own website, so the signature really is the shop's.",
@@ -681,14 +681,19 @@ const METHOD_PLAIN = {
   'coloured like its background': 'in text the same colour as the background',
   'aria-hidden': 'marked as hidden',
 };
-const methodPlain = (m) => METHOD_PLAIN[m] ?? m;
+export const methodPlain = (m) => METHOD_PLAIN[m] ?? m;
 // The recording as a JSON file to download: /case/<hash>/record.json, or the bench case's. A page
 // with no file of its own (the lab's tampered copies) sets recordHref to null and gets no button.
 const recordHref = (c) => ('recordHref' in c ? c.recordHref : `${c.bench ? `/bench/${c.bench.id}` : `/case/${c.hash}`}/record.json`);
 export const recordJson = (record) => `${JSON.stringify(record, null, 2)}\n`;
+// Beside it, the case report as a PDF for a PayPal dispute reviewer (replay/report.mjs), when the
+// agent bought something: a decline has no dispute to report on.
 const downloadButton = (c) => {
   const href = recordHref(c);
-  return href ? `<a class="dl" href="${esc(href)}" download="black-box-${c.hash.slice(0, 12)}.json">↓ Download the recording (JSON)</a>` : '';
+  if (!href) return '';
+  const json = `<a class="dl" href="${esc(href)}" download="black-box-${c.hash.slice(0, 12)}.json">↓ Download the recording (JSON)</a>`;
+  const pdf = !c.record.purchase ? '' : ` <a class="dl" href="${esc(href.replace(/record\.json$/, 'report.pdf'))}" download="black-box-${esc(c.paypal?.disputeId ?? c.hash.slice(0, 12))}.pdf">↓ Download the case report (PDF)</a>`;
+  return json + pdf;
 };
 const VIEW_CUSTOMER = "<i>Customer's view</i>The shop's page, as a person sees it";
 const VIEW_AI = "<i>AI's view</i>Exactly what the AI was given";

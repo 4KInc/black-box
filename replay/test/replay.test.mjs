@@ -76,6 +76,25 @@ test('a decline where code found no hidden text says how to see text hidden anot
   assert.match(jsonld, /<p class="where">Where: in the page&#39;s product data, which is never shown on screen\.<\/p>/);
 });
 
+test('each case downloads as a PDF report for the dispute reviewer, made from the same judgment as the page', async () => {
+  const page = await (await fetch(`${base}/case/${LIVE}`)).text();
+  assert.match(page, new RegExp(`<a class="dl" href="/case/${LIVE}/report\\.pdf" download="black-box-PP-R-YCI-10196914\\.pdf">↓ Download the case report \\(PDF\\)</a>`));
+  const r = await fetch(`${base}/case/${LIVE}/report.pdf`);
+  assert.equal(r.status, 200);
+  assert.equal(r.headers.get('content-type'), 'application/pdf');
+  assert.equal(r.headers.get('content-disposition'), 'attachment; filename="black-box-PP-R-YCI-10196914.pdf"');
+  const pdf = Buffer.from(await r.arrayBuffer());
+  assert.equal(pdf.subarray(0, 8).toString('latin1'), '%PDF-1.4');
+  const again = Buffer.from(await (await fetch(`${base}/case/${LIVE}/report.pdf`)).arrayBuffer());
+  assert.ok(pdf.equals(again), 'the same record gives the same file');
+  // The report says what the page says: the verdict, the dispute and the record's fingerprint.
+  const { inflateSync } = await import('node:zlib');
+  const text = [...pdf.toString('latin1').matchAll(/stream\n([\s\S]*?)\nendstream/g)].map((m) => inflateSync(Buffer.from(m[1], 'latin1')).toString('latin1')).join('\n');
+  for (const s of ['MERCHANT', 'rule 2', 'PP-R-YCI-10196914', LIVE, 'Accept the buyer']) assert.ok(text.includes(s), s);
+  assert.equal((await fetch(`${base}/bench/P08/report.pdf`)).status, 200);
+  assert.equal((await fetch(`${base}/case/${'0'.repeat(64)}/report.pdf`)).status, 404);
+});
+
 test('each recording downloads as JSON, the very record its fingerprint is of', async () => {
   const { recordHash } = await import('../../recorder/recorder.mjs');
   const index = await (await fetch(base + '/')).text();
