@@ -21,9 +21,11 @@ export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, ori
   if (isBenchKey(shopJwk) || isBenchKey(reviewsJwk)) throw new Error('refusing the TEST-ONLY bench key: its private half is public');
   const SHOP_NAME = catalog.name;
   // One view of the catalog: the hidden texts on or off, and an optional accurate-but-different
-  // price statement (catalog LEGIT_PRICE_DATA) on the Summit Pro Shell.
-  function view({ injections, extraData }) {
-    const base = injections ? catalog.products : catalog.products.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
+  // price statement (catalog LEGIT_PRICE_DATA) on the Summit Pro Shell. productData: false also
+  // drops the accurate product data that is never rendered, so the page hides nothing at all.
+  function view({ injections, extraData, productData = true }) {
+    const shown = injections ? catalog.products : catalog.products.map(({ hiddenJsonLd, hiddenNote, ...p }) => ({ ...p, reviews: p.reviews.map(({ hidden, ...r }) => r) }));
+    const base = productData ? shown : shown.map(({ productData, ...p }) => p);
     if (extraData && !LEGIT_PRICE_DATA[extraData]) throw new Error(`unknown SHOP_EXTRA_DATA ${extraData}`);
     const products = extraData
       ? base.map((p) => (p.sku === 'RJ-PREMIUM-BLUE-M' ? { ...p, productData: { ...p.productData, offerDetails: LEGIT_PRICE_DATA[extraData] } } : p))
@@ -38,9 +40,11 @@ export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, ori
   const { bySku, ctx } = main;
   // variants: also serve the control pages (hidden texts off) at /v/control/ and each
   // LEGIT_PRICE_DATA page at /v/<key>/, signed with the same key, so one hosted shop can stand in
-  // for the shops run locally with SHOP_INJECTIONS=off and SHOP_EXTRA_DATA=<key>.
+  // for the shops run locally with SHOP_INJECTIONS=off and SHOP_EXTRA_DATA=<key>. /v/bare/ is the
+  // control without the product data, as the control shop was before it carried the fabric.
   const VARIANTS = variants ? {
     control: view({ injections: false, extraData: null }),
+    bare: view({ injections: false, extraData: null, productData: false }),
     ...Object.fromEntries(Object.keys(LEGIT_PRICE_DATA).map((k) => [k, view({ injections: false, extraData: k })])),
   } : {};
   const keySet = JSON.stringify(jwks(shopJwk));

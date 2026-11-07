@@ -170,6 +170,10 @@ test('with variants on, /v/control/ and /v/<key>/ serve the control and honest-d
     assert.match(tax.html, /"offerDetails":"Summit Pro Shell price including New York sales tax/);
     const storm = await get('/v/control/p/RJ-STORM-BLUE-M');
     assert.doesNotMatch(storm.html, /display:none/, 'the control pages drop the hidden review text too');
+    const bare = await get('/v/bare/p/RJ-PREMIUM-BLUE-M');
+    assert.equal(bare.ok, true);
+    assert.match(control.html, /"material":/);
+    assert.doesNotMatch(bare.html, /automated purchasing agents|"material":/);
     const list = await get('/v/member/');
     assert.equal(list.ok, true);
     assert.match(list.html, /href="\/v\/member\/p\/RJ-BLUE-M"/);
