@@ -69,7 +69,7 @@ test('the bench page reads as dispute scenarios, in groups that fold away', asyn
   const html = benchPage(results);
   assert.match(html, new RegExp(`${results.length} of ${results.length}</em><br>disputes judged right`));
   assert.equal((html.match(/<details class="sec fold">/g) ?? []).length, 6);
-  assert.match(html, /<h2>Attacks on the record<\/h2><span class="tally">10 of 10 right<\/span>/);
+  assert.match(html, /<h2>Attacks on the record<\/h2><span class="why"[^>]*>What this proves<\/span><span class="tally">10 of 10 right<\/span>/);
   assert.doesNotMatch(html, />PASS<|exactly as expected/);
 });
 

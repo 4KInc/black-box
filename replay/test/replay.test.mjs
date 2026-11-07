@@ -76,6 +76,14 @@ test('a decline where code found no hidden text says how to see text hidden anot
   assert.match(jsonld, /<p class="where">Where: in the page&#39;s product data, which is never shown on screen\.<\/p>/);
 });
 
+test('each scenario group says what it proves, in a tooltip a judge can hover, tap or tab to', async () => {
+  const html = await (await fetch(`${base}/bench`)).text();
+  const tips = [...html.matchAll(/<span class="why" tabindex="0" data-tip="([^"]+)" aria-label="What this proves: [^"]+">What this proves<\/span>/g)].map((m) => m[1]);
+  assert.equal(tips.length, 6, 'one per group');
+  assert.ok(tips.every((t) => t.startsWith('Proves ')));
+  assert.match(html, /\.why\[data-tip\]:hover::after,\.fold>summary \.why\[data-tip\]:focus::after\{content:attr\(data-tip\)/);
+});
+
 test('each case downloads as a PDF report for the dispute reviewer, made from the same judgment as the page', async () => {
   const page = await (await fetch(`${base}/case/${LIVE}`)).text();
   assert.match(page, new RegExp(`<a class="dl" href="/case/${LIVE}/report\\.pdf" download="black-box-PP-R-YCI-10196914\\.pdf">↓ Download the case report \\(PDF\\)</a>`));

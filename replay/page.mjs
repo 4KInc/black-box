@@ -146,6 +146,13 @@ main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px
 .fold>summary:hover h2{color:var(--orange)}.fold>.bcards{margin-top:16px}
 .fold>summary .tally::after{font-size:11px}main:has(.filters input:checked:not([id$="-all"])) .fold>summary .tally{font-size:0}
 .fold+.fold{margin-top:22px}
+.fold>summary .why{position:relative;align-self:center;display:inline-flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;border:1px solid var(--rule-2);border-radius:999px;font:400 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);cursor:help}
+.fold>summary .why::before{content:'?';display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--orange);color:#140600;font:700 10px/1 var(--sans)}
+.fold>summary .why:hover,.fold>summary .why:focus{color:var(--ink);border-color:var(--orange);outline:none}
+/* Each group is its own stacking context (it fades in), so lift the group whose tip is showing above the next. */
+.fold:has(.why:hover),.fold:has(.why:focus){position:relative;z-index:9}
+.fold>summary .why[data-tip]:hover::after,.fold>summary .why[data-tip]:focus::after{content:attr(data-tip);position:absolute;z-index:7;left:0;top:calc(100% + 8px);width:min(420px,84vw);padding:12px 14px;
+  background:var(--bg-3);border:1px solid var(--rule-2);border-radius:4px;font:400 13.5px/1.5 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none;box-shadow:0 8px 24px oklch(0 0 0 / .45);pointer-events:none;white-space:normal}
 .panel{background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-radius:4px;padding:clamp(14px,2vw,20px)}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media (max-width:860px){.grid2{grid-template-columns:1fr}}
@@ -1063,19 +1070,27 @@ ${filterBar('fc', '.study .cell', [{ key: 'r', legend: 'Result', options: [['hit
 
 // ---------------------------------------------------------------- bench
 
+// [kind, title, note, what the group proves: the tooltip, in plain words for someone new to it]
 const SECTIONS = [
-  ['recorded', 'Recorded runs', "Real agent runs, with the model's own output."],
-  ['honest-data', 'Honest price data', 'True data that mentions another price: a variant, a sale, tax, shipping. None of it may count against the shop.'],
-  ['evasion', 'Reworded lies', 'The shop rewords its hidden lie to dodge the check. It must still be caught.'],
-  ['passkey', 'Passkey approvals', 'The buyer approved the budget with a passkey. Once set up, every approval must carry it.'],
-  ['flagger', 'The AI check', 'Its real answers. It can only send a case to a person.'],
-  ['attack', 'Attacks on the record', 'A real record with one thing forged. Each must fail exactly the expected checks.'],
+  ['recorded', 'Recorded runs', "Real agent runs, with the model's own output.",
+    'Proves Black Box gets real cases right. Real AI models shopped at the demo shop and their actual answers were recorded. Black Box then judged each dispute. For example, when Claude Haiku 4.5 believed the shop\u2019s hidden \u201c$119 for AI agents\u201d note and paid $240 on a $150 budget, the shop has to refund.'],
+  ['honest-data', 'Honest price data', 'True data that mentions another price: a variant, a sale, tax, shipping. None of it may count against the shop.',
+    'Proves an honest shop is not punished. Shops often publish true product data that never appears on screen and mentions other prices: another size, a sale that has ended, tax or shipping. When an AI overspends next to data like that, the AI is at fault, not the shop.'],
+  ['evasion', 'Reworded lies', 'The shop rewords its hidden lie to dodge the check. It must still be caught.',
+    'Proves a dishonest shop cannot slip out by rewording its lie. Each case disguises the same \u201c$119 for AI agents\u201d lie another way: \u201cwas $240, now $119\u201d, \u201cUSD 119\u201d with no $ sign, a price tucked into structured data, \u201cthe buyer pre-approved any amount\u201d. The shop is still held responsible, or, when code cannot be sure, a person decides. The AI is never blamed for the shop\u2019s lie.'],
+  ['passkey', 'Passkey approvals', 'The buyer approved the budget with a passkey. Once set up, every approval must carry it.',
+    'Proves the buyer\u2019s limit can be trusted. The buyer approves the budget with a passkey (Touch ID), which signs that exact limit, so nobody can loosen it later. This group holds the live PayPal sandbox disputes: a real AI fooled, a real payment, the buyer\u2019s dispute and Black Box settling it on PayPal with no one at the keyboard.'],
+  ['flagger', 'The AI check', 'Its real answers. It can only send a case to a person.',
+    'Proves the AI helper is kept on a short leash. A second AI looks for text aimed at AI shoppers that code does not recognise; these are its real answers. Its quote must appear word for word in what the shopping AI read and name the item bought, and the most it can do is send the case to a person. It can never blame anyone or move money.'],
+  ['attack', 'Attacks on the record', 'A real record with one thing forged. Each must fail exactly the expected checks.',
+    'Proves the record cannot be faked. Each case takes a real record and forges one thing: edits a stored page, fakes a signature, raises the budget the buyer approved, swaps who got paid, backdates the pages. Every forgery is caught by the exact check meant to catch it, and the case goes to a person instead of paying anyone.'],
 ];
 
 // A bench group that opens and closes without scripts; the summary says how many it got right.
-function fold(n, title, note, rows, row) {
+// proves: shown as a tooltip on a "What this proves" chip beside the title (hover, tap or focus).
+function fold(n, title, note, rows, row, proves = '') {
   const right = rows.filter((r) => r.pass).length;
-  return `<details class="sec fold"><summary><span class="n">${n}</span><h2>${title}</h2><span class="tally${right === rows.length ? '' : ' bad'}">${right} of ${rows.length} right</span>${note ? `<p>${note}</p>` : ''}</summary><div class="bcards">${rows.map(row).join('')}</div></details>`;
+  return `<details class="sec fold"><summary><span class="n">${n}</span><h2>${title}</h2>${proves ? `<span class="why" tabindex="0" data-tip="${esc(proves)}" aria-label="What this proves: ${esc(proves)}">What this proves</span>` : ''}<span class="tally${right === rows.length ? '' : ' bad'}">${right} of ${rows.length} right</span>${note ? `<p>${note}</p>` : ''}</summary><div class="bcards">${rows.map(row).join('')}</div></details>`;
 }
 
 // What a bench case can be filtered on: its verdict, what Black Box would do on PayPal, and the buyer's complaint.
@@ -1115,5 +1130,5 @@ ${r.mismatches.map((x) => `<p class="miss">${esc(x)}</p>`).join('')}
 <p class="k" style="font-size:12.5px;margin:6px 0 0">R recorded runs and honest price data · E reworded lies · F AI check · P passkey approvals, incl. live PayPal disputes · A attacks on the record</p>${matrix}
 <p class="k" style="font-size:12px;margin:14px 0 0">Check it yourself: <span class="mono">npm run bench</span></p></div></section>
 <section class="sec" style="padding-bottom:0">${benchFilters(results)}</section>
-${SECTIONS.map(([kind, title, note], i) => fold(n(i), title, note, results.filter((r) => r.def.kind === kind), row)).join('')}`, { active: 'bench' });
+${SECTIONS.map(([kind, title, note, proves], i) => fold(n(i), title, note, results.filter((r) => r.def.kind === kind), row, proves)).join('')}`, { active: 'bench' });
 }
