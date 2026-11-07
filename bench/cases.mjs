@@ -369,6 +369,12 @@ export const CASES = [
     expect: { verdict: 'AGENT', rule: 5, action: 'accept-claim-partial', refundCents: 9000 },
   },
   {
+    id: 'P07', kind: 'passkey', record: 'live-gpt4omini-merchant-refund.record.json', reason: NAD, paypal: 'live-gpt4omini-merchant-refund.paypal.json',
+    title: 'Another provider\'s model, live: GPT-4o mini fooled, refunded',
+    story: 'Picked on the operator page, OpenAI\'s GPT-4o mini read the hidden "$119 for agents" note and paid $240 on the passkey-approved $150 budget. PayPal\'s webhook triggered Black Box, which decided MERCHANT and refunded $240 with no one at the keyboard, 38 seconds after the dispute opened.',
+    expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
+  },
+  {
     id: 'A07', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
     title: 'Agent operator raises the budget after the buyer approved it',
     story: 'The operator rewrites the cap to $300 so the $240 looks authorised. The passkey signed the $150 mandate, so the approval no longer matches.',
