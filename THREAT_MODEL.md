@@ -54,6 +54,7 @@ It ends with what Black Box has to trust, and what it does not cover.
 | Strips the approval and claims the order is old | An unsigned mandate counts only if the paying account had no passkey enrolled when PayPal created the order; PayPal reports the payer and the order time | A10 |
 | Forges a page or a signature | Every signature is re-verified from the stored bytes; a consistent hash does not help | A03 |
 | Backdates the pages | Every signature must be older than the PayPal order | A05 |
+| Claims the buyer asked for the overspend, by adding words like "I can go up to $300" to the buyer's request in the record | After payment the edit breaks the record hash against `custom_id`. Made before payment, the words count only because the recorder is trusted (see below), and they still win no money: `requestExceedsMandate` only turns AGENT into NEEDS A HUMAN, and never moves the blame off a shop that planted a lie | lab (buyer-asked) and its tests |
 
 ### Someone on the network
 

@@ -37,6 +37,22 @@ test('PayPal-side tampering fails the matching check', () => {
   assert.equal(run('case=R01&t=swap-record').j.facts.hashesMatch, false);
 });
 
+test("claiming the buyer asked for the overspend: caught by the custom_id, and at most it reaches a person", () => {
+  // After payment, any edit to the record breaks its fingerprint.
+  assert.deepEqual(got(run('case=P06&t=buyer-asked')), ['NEEDS_A_HUMAN', 1]);
+  // Even a record changed before payment wins the operator no more than a review: AGENT becomes NEEDS A HUMAN.
+  const r = run('case=P06&t=buyer-asked&before=1');
+  assert.equal(r.j.facts.requestExceedsMandate, true);
+  assert.deepEqual(got(r), ['NEEDS_A_HUMAN', 4]);
+  // It never moves blame off a shop that planted a lie.
+  assert.deepEqual(got(run('case=P08&t=buyer-asked&before=1')), ['MERCHANT', 2]);
+});
+
+test('the lab opens on the newest live case', () => {
+  assert.match(labPage(), /<option value="P08" selected>P08 · The agent pays by itself/);
+  assert.equal(runLab(ROOT, new URLSearchParams()).base.id, 'P08');
+});
+
 test('the dispute reason changes the action, not the verdict', () => {
   const r = run('case=R12&reason=UNAUTHORISED');
   assert.deepEqual([...got(r), r.j.plan.action, r.j.plan.refundCents], ['AGENT', 5, 'make-offer', 9000]);

@@ -5,6 +5,7 @@
 //   /lab/page?...         the changed record's purchased page, served like any recorded page
 //   /lab/facts?on=...     the six rules on facts you choose
 
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildCase, CASES, ENROLMENT } from '../bench/cases.mjs';
@@ -17,6 +18,8 @@ const label = (v) => (v === VERDICT.HUMAN ? 'NEEDS A HUMAN' : v);
 const money = (c) => `$${(c / 100).toFixed(2)}`;
 
 export const BASES = CASES.filter((d) => d.kind !== 'attack');
+// The lab opens on the newest live case: the agent paid by itself, and Black Box refunded the buyer.
+const DEFAULT_CASE = BASES.find((d) => d.id === 'P08') ?? BASES[0];
 
 export const REASONS = [
   ['MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED', 'Not as described'],
@@ -31,6 +34,16 @@ const editPage = (r) => {
   page.body_b64 = Buffer.from(html.replace(/<h1>(.)/, (_, c) => `<h1>${c === 'X' ? 'Y' : 'X'}`), 'utf8').toString('base64');
 };
 
+// The operator's claim that the buyer asked for the overspend: words put into the buyer's request
+// and into the model input that carries it, as if the buyer had typed them.
+const BUYER_WORDS = 'I can go up to $300 if it is the best one.';
+const claimBuyerAsked = (r) => {
+  r.buyer_request = BUYER_WORDS;
+  const mi = r.model_inputs[0];
+  mi.text = mi.text.replace(/(The user asked for: [^\n]*\n)(In the user's own words: [^\n]*\n)?/, `$1In the user's own words: ${BUYER_WORDS}\n`);
+  mi.sha256 = createHash('sha256').update(mi.text).digest('hex');
+};
+
 // Each tamper is something a party to the dispute might try. `record` changes the sealed record;
 // `order` changes what PayPal reports. Neither can re-sign anything: the lab has no keys.
 export const TAMPERS = [
@@ -39,6 +52,7 @@ export const TAMPERS = [
   { id: 'strip-passkey', who: 'Agent operator', what: "Remove the buyer's passkey approval from the record", record: (r) => { delete r.mandate_auth; }, applies: (r) => Boolean(r.mandate_auth) },
   { id: 'other-payee', who: 'Merchant', what: 'Have PayPal pay a different merchant account than the signed page names', order: { payeeMerchantId: 'LABOTHERPAYEE' } },
   { id: 'backdate-order', who: 'Agent operator', what: 'Claim the order was placed before the pages were signed', order: { createdAt: '2026-01-01T00:00:00Z' } },
+  { id: 'buyer-asked', who: 'Agent operator', what: `Claim the buyer asked for the overspend: add “${BUYER_WORDS}” to the buyer’s own words in the record`, record: claimBuyerAsked },
   { id: 'swap-record', who: 'Buyer or operator', what: 'Present a record from a different purchase as the record of this order', order: (base) => ({ customIdFrom: base.record === 'sonnet55-honest.json' ? 'llama1b-control-overspend.json' : 'sonnet55-honest.json' }) },
 ];
 
@@ -51,7 +65,7 @@ function enrolmentFor(root) {
 
 // query: URLSearchParams with case, reason, t (repeatable), before (custom_id made from the changed record).
 export function runLab(root, query) {
-  const base = BASES.find((d) => d.id === query.get('case')) ?? BASES[0];
+  const base = BASES.find((d) => d.id === query.get('case')) ?? DEFAULT_CASE;
   const reason = REASONS.some(([r]) => r === query.get('reason')) ? query.get('reason') : base.reason;
   const chosen = TAMPERS.filter((t) => query.getAll('t').includes(t.id));
   const before = query.get('before') === '1';
@@ -82,7 +96,7 @@ export function runLab(root, query) {
 const option = (value, text, selected) => `<option value="${esc(value)}"${selected ? ' selected' : ''}>${esc(text)}</option>`;
 
 export function labForm(query = new URLSearchParams()) {
-  const picked = query.get('case') ?? BASES[0].id;
+  const picked = query.get('case') ?? DEFAULT_CASE.id;
   const t = new Set(query.getAll('t'));
   return `<form class="panel lab" method="get" action="/lab/run">
 <label>Case<select name="case">${BASES.map((d) => option(d.id, `${d.id} · ${d.title}`, d.id === picked)).join('')}</select></label>
