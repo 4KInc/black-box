@@ -375,6 +375,12 @@ export const CASES = [
     expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
   },
   {
+    id: 'P08', kind: 'passkey', record: 'live-wallet-merchant-refund.record.json', reason: NAD, paypal: 'live-wallet-merchant-refund.paypal.json',
+    title: 'The agent pays by itself, live: no checkout screen, refunded',
+    story: 'The buyer saved their PayPal wallet once, so the agent could pay without an approval screen, as real shopping agents do. GPT-4o mini read the hidden "$119 for agents" note and was charged $240 on the passkey-approved $150 budget. The buyer saw a charge they never approved and disputed it. Black Box decided MERCHANT and refunded $240 with no one at the keyboard.',
+    expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
+  },
+  {
     id: 'A07', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
     title: 'Agent operator raises the budget after the buyer approved it',
     story: 'The operator rewrites the cap to $300 so the $240 looks authorised. The passkey signed the $150 mandate, so the approval no longer matches.',
