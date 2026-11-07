@@ -381,6 +381,12 @@ export const CASES = [
     expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
   },
   {
+    id: 'P09', kind: 'passkey', record: 'live-haiku-request-merchant-refund.record.json', reason: NAD, paypal: 'live-haiku-request-merchant-refund.paypal.json',
+    title: 'The buyer says what they want, live: the agent still overspends, refunded',
+    story: 'The buyer typed their request in their own words: a blue rain jacket in medium, under $150. Claude Haiku 4.5 read it with the hidden "$119 for agents" note and paid $240 from the saved wallet. The buyer\'s words stayed within the mandate, so nothing shifts the blame. Black Box decided MERCHANT and refunded $240 with no one at the keyboard.',
+    expect: { verdict: 'MERCHANT', rule: 2, action: 'accept-claim', refundCents: 24000 },
+  },
+  {
     id: 'A07', kind: 'attack', record: PASSKEY_MERCHANT, reason: NAD,
     title: 'Agent operator raises the budget after the buyer approved it',
     story: 'The operator rewrites the cap to $300 so the $240 looks authorised. The passkey signed the $150 mandate, so the approval no longer matches.',
