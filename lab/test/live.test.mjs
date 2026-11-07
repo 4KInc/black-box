@@ -138,7 +138,11 @@ test('the buyer saves their PayPal wallet once, and the agent then pays with no 
   const [m] = mandates(root);
   assert.ok(m, 'the mandate from the test before');
   const headers = { 'content-type': 'application/x-www-form-urlencoded' };
-  assert.match(await (await fetch(base + '/wallet', { headers: auth() })).text(), /No wallet saved yet/);
+  const walletRes = await fetch(base + '/wallet', { headers: auth() });
+  assert.match(await walletRes.text(), /No wallet saved yet/);
+  // Browsers apply form-action to the redirect after a form post, so PayPal must be allowed here.
+  assert.match(walletRes.headers.get('content-security-policy'), /form-action 'self' https:\/\/www\.sandbox\.paypal\.com https:\/\/www\.paypal\.com$/);
+  assert.match((await fetch(base + '/operator', { headers: auth() })).headers.get('content-security-policy'), /form-action 'self'$/, 'other pages keep the strict policy');
   assert.equal((await fetch(base + '/wallet')).status, 401);
   assert.equal((await post('/wallet/connect', '', { origin: 'https://evil.example' })).status, 403);
   // Without a wallet, the form offers only the approval link, and a wallet run is refused.

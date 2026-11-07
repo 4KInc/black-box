@@ -177,6 +177,9 @@ export function stepLine(s, { env = process.env, shopUrl } = {}) {
 }
 
 const SANDBOX = 'https://www.sandbox.paypal.com/myaccount/summary';
+// The wallet page's form redirects to PayPal for the buyer's approval, and browsers apply
+// form-action to that redirect too, so this one page also allows PayPal as a form target.
+const WALLET_CSP = HEADERS['content-security-policy'].replace("form-action 'self'", "form-action 'self' https://www.sandbox.paypal.com https://www.paypal.com");
 
 export function demoPage({ shopUrl }) {
   const step = (n, title, text, href, link) => `<li class="panel"><div class="eyebrow"><b>${n}</b> ${title}</div><p>${text}</p>${href ? `<p><a class="go" href="${esc(href)}">${link} →</a></p>` : ''}</li>`;
@@ -240,7 +243,7 @@ export function createLive({
         return mandate.emit('request', req, res);
       }
       if (url.pathname === '/operator' && req.method === 'GET') return send(200, operatorPage(root, { env, shopUrl }));
-      if (url.pathname === '/wallet' && req.method === 'GET') return send(200, walletPage(root));
+      if (url.pathname === '/wallet' && req.method === 'GET') return send(200, walletPage(root), { 'content-security-policy': WALLET_CSP });
       if (url.pathname.startsWith('/wallet/') && req.method === 'POST' && !origins.has(req.headers.origin)) return send(403, 'Cross-site request refused.');
       if (url.pathname === '/wallet/connect' && req.method === 'POST') {
         // PayPal's saved payment methods: a setup token the buyer approves once, on PayPal.
