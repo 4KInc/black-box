@@ -90,7 +90,7 @@ test('each case downloads as a PDF report for the dispute reviewer, made from th
   // The report says what the page says: the verdict, the dispute and the record's fingerprint.
   const { inflateSync } = await import('node:zlib');
   const text = [...pdf.toString('latin1').matchAll(/stream\n([\s\S]*?)\nendstream/g)].map((m) => inflateSync(Buffer.from(m[1], 'latin1')).toString('latin1')).join('\n');
-  for (const s of ['MERCHANT', 'rule 2', 'PP-R-YCI-10196914', LIVE, 'Accept the buyer']) assert.ok(text.includes(s), s);
+  for (const s of ['The merchant pays', 'MERCHANT \\267 RULE 2', 'PP-R-YCI-10196914', LIVE, 'Full refund from the merchant: $240.00']) assert.ok(text.includes(s), s);
   assert.equal((await fetch(`${base}/bench/P08/report.pdf`)).status, 200);
   assert.equal((await fetch(`${base}/case/${'0'.repeat(64)}/report.pdf`)).status, 404);
 });
