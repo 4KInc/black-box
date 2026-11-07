@@ -1,13 +1,13 @@
 {
-  "disputeId": "PP-R-TIC-10193413",
+  "disputeId": "PP-R-ZNR-10196996",
   "reason": "INCORRECT_AMOUNT",
-  "filedAt": "2026-10-18T17:40:16.438Z",
-  "customId": "dff881543e7de9a2cc051590beb2be71df61c90b210996c8abf58bdc6f9969f8",
+  "filedAt": "2026-11-07T14:26:25.732Z",
+  "customId": "b655b55c41e2ddd3c8031671241ff0eefdb9680e194f859434af46e73539c9c2",
   "payeeMerchantId": "MCYKQUXGB936U",
   "payerId": "248NAZAAM9JCE",
-  "orderId": "8CS48705P0780712C",
-  "orderCreatedAt": "2026-10-18T17:37:21Z",
-  "captureId": "6HY97587TG3096712",
+  "orderId": "2MK82508SL121884P",
+  "orderCreatedAt": "2026-11-07T14:23:29Z",
+  "captureId": "7N661115UC853435J",
   "captured": {
     "cents": 24000,
     "currency": "USD"
@@ -16,21 +16,30 @@
     "flagged": false,
     "passages": [],
     "model": "claude-sonnet-5-5",
-    "at": "2026-10-18T17:44:07.982Z"
+    "at": "2026-11-07T14:30:10.239Z"
   },
   "evidenceNote": null,
   "escalated": null,
   "executed": {
     "action": "accept-claim REFUND",
     "httpStatus": 200,
-    "at": "2026-10-18T17:46:02.422Z",
-    "debugId": "f7725803a8513"
+    "at": "2026-11-07T14:30:13.996Z",
+    "debugId": "f649093dadf19"
   },
   "after": {
     "status": "UNDER_REVIEW",
     "outcome": null,
-    "updatedAt": "2026-10-18T17:46:01.921Z",
+    "updatedAt": "2026-11-07T14:30:13.394Z",
     "moneyMovements": [
+      {
+        "party": "BUYER",
+        "type": "CREDIT",
+        "reason": "DISPUTE_SETTLEMENT",
+        "amount": {
+          "cents": 9000,
+          "currency": "USD"
+        }
+      },
       {
         "party": "SELLER",
         "type": "DEBIT",
@@ -48,20 +57,11 @@
           "cents": 887,
           "currency": "USD"
         }
-      },
-      {
-        "party": "BUYER",
-        "type": "CREDIT",
-        "reason": "DISPUTE_SETTLEMENT",
-        "amount": {
-          "cents": 9000,
-          "currency": "USD"
-        }
       }
     ],
     "refundTransactions": [
       {
-        "id": "3HT10544UK8167430",
+        "id": "8T67393168882224W",
         "amount": {
           "cents": 9000,
           "currency": "USD"
@@ -69,37 +69,14 @@
       }
     ]
   },
-  "trigger": "watcher (autopilot, AUTO_EXECUTE=on)",
-  "firstAttempts": [
-    {
-      "at": "2026-10-18T17:44:08.245Z",
-      "step": "accept-claim PARTIAL_REFUND",
-      "httpStatus": 400,
-      "issue": "INVALID_ACCEPT_CLAIM_TYPE",
-      "debugId": "ca4c9596a5b75"
-    },
-    {
-      "at": "2026-10-18T17:44:36.913Z",
-      "step": "accept-claim PARTIAL_REFUND",
-      "httpStatus": 400,
-      "issue": "INVALID_ACCEPT_CLAIM_TYPE",
-      "debugId": "ca4c95a1d8a2f"
-    },
-    {
-      "at": "2026-10-18T17:45:07.168Z",
-      "step": "accept-claim PARTIAL_REFUND",
-      "httpStatus": 400,
-      "issue": "INVALID_ACCEPT_CLAIM_TYPE",
-      "debugId": "ca4c95ada2ff7"
-    }
-  ],
+  "trigger": "webhook CUSTOMER.DISPUTE.CREATED (autopilot, AUTO_EXECUTE=on)",
   "payout": {
-    "at": "2026-11-02T07:26:01.572Z",
+    "at": "2026-11-07T14:34:39.745Z",
     "httpStatus": 201,
-    "debugId": "f13980133035f",
-    "batchId": "VCNS2FXR525FS",
+    "debugId": "f453361c9d476",
+    "batchId": "ZLR5F7QM5LBQ4",
     "status": "SUCCESS",
-    "itemId": "PVM8NRTEVATZU",
+    "itemId": "WHZ46XYEC3C38",
     "itemStatus": "SUCCESS",
     "amount": {
       "cents": 9000,
