@@ -101,7 +101,24 @@ gcloud run services update black-box --region us-central1 --project $P --update-
 `--update-secrets` adds the key and keeps the service's other settings; no rebuild is needed. The
 Meta team behind the key needs billing set up first, or every call fails with HTTP 402.
 
-## 7. Check it
+## 7. OpenAI, Google and xAI models on /operator (optional)
+
+GPT-5.5, GPT-4o mini, Gemini 3.1 Pro, Gemini 3.5 Flash-Lite, Grok 4.7 and Grok 4.20 are offered
+on `/operator` only when the service has that provider's key. Added 2026-11-07:
+
+```sh
+for k in openai-api-key:OPENAI_API_KEY gemini-api-key:GEMINI_API_KEY xai-api-key:XAI_API_KEY; do
+  val ${k#*:} .env | tr -d '\n' | gcloud secrets create ${k%%:*} --data-file=- --project $P
+  gcloud secrets add-iam-policy-binding ${k%%:*} --member serviceAccount:$SA --role roles/secretmanager.secretAccessor --project $P
+done
+gcloud run services update black-box --region us-central1 --project $P \
+  --update-secrets OPENAI_API_KEY=openai-api-key:latest,GEMINI_API_KEY=gemini-api-key:latest,XAI_API_KEY=xai-api-key:latest
+```
+
+The small open models from the study (Qwen, Mistral, Llama) run on a local `mlx_lm.server`, so
+the hosted demo cannot offer them.
+
+## 8. Check it
 
 - `https://driftwood-outfitters-…/` and `https://northline-audio-…/` show the shops; `/.well-known/jwks.json` returns each one's key.
 - `https://black-box-…/operator` asks for the operator password (the user name can be anything).

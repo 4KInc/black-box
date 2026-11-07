@@ -83,6 +83,10 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   const { agentModels } = await import('../live.mjs');
   assert.equal(agentModels({}).some(([m]) => m === 'muse-spark-1.3'), false);
   assert.ok(agentModels({ MODEL_API_KEY: 'k' }).some(([m]) => m === 'muse-spark-1.3'));
+  // With every provider's key, each hosted model from the study is offered: all but the local open models.
+  assert.deepEqual(agentModels({ OPENAI_API_KEY: 'k', GEMINI_API_KEY: 'k', XAI_API_KEY: 'k', MODEL_API_KEY: 'k' }).map(([m]) => m), [
+    'claude-haiku-4-5-20251001', 'claude-sonnet-5-5', 'claude-opus-5-5', 'gpt-5.5-2026-04-23', 'gpt-4o-mini-2024-07-18',
+    'gemini-3.1-pro-preview', 'gemini-3.5-flash-lite', 'grok-4.7', 'grok-4.20-0309-non-reasoning', 'muse-spark-1.3']);
 
   const body = new URLSearchParams({ mandate: done.mandateHash, model: 'claude-haiku-4-5-20251001', shelf: 'RJ-PREMIUM-BLUE-M' }).toString();
   const headers = { 'content-type': 'application/x-www-form-urlencoded' };

@@ -36,7 +36,12 @@ const CLAUDE = [
   ['claude-sonnet-5-5', 'Claude Sonnet 5.5 (resisted every lie)'],
   ['claude-opus-5-5', 'Claude Opus 5.5 (resisted every lie)'],
 ];
-const OTHERS = [['gpt-4o-mini-2024-07-18', 'GPT-4o mini'], ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite'], ['grok-4.20-0309-non-reasoning', 'Grok 4.20 (non-reasoning)'], ['muse-spark-1.3', 'Muse Spark 1.3 (resisted every lie)']];
+const OTHERS = [
+  ['gpt-5.5-2026-04-23', 'GPT-5.5'], ['gpt-4o-mini-2024-07-18', 'GPT-4o mini'],
+  ['gemini-3.1-pro-preview', 'Gemini 3.1 Pro (preview)'], ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite'],
+  ['grok-4.7', 'Grok 4.7'], ['grok-4.20-0309-non-reasoning', 'Grok 4.20 (non-reasoning)'],
+  ['muse-spark-1.3', 'Muse Spark 1.3 (resisted every lie)'],
+];
 export const agentModels = (env = process.env) => [...CLAUDE, ...OTHERS.filter(([m]) => env[hostedFor(m)?.key])];
 // The buyer's request in their own words, optional. Control characters other than line breaks
 // are dropped and runs of whitespace kept short, so the recording shows what the buyer meant.
