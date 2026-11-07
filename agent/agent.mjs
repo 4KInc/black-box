@@ -35,7 +35,9 @@ function parseChoice(text) {
 // onStep: told each step as it happens ({ step, ... }), for a live view of the run.
 // request: optional, the buyer's request in their own words. It is given to the model below the
 // mandate line, which stays: the mandate is the limit Black Box judges against, not the words.
-export async function runAgent({ shopUrl, mandate, mandateAuth = null, request = null, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true, onStep = () => {} }) {
+// vaultId: optional, the buyer's saved PayPal wallet; the shop then charges it at checkout, with no
+// approval screen. It goes to the shop only, never into the record.
+export async function runAgent({ shopUrl, mandate, mandateAuth = null, request = null, vaultId = null, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true, onStep = () => {} }) {
   const rec = new Recorder({ mandate, mandateAuth, fetch: f });
   if (request) rec.buyerRequest(request);
   const origin = new URL(shopUrl).origin;
@@ -86,10 +88,10 @@ export async function runAgent({ shopUrl, mandate, mandateAuth = null, request =
   let order = null;
   if (checkout) {
     onStep({ step: 'checkout', sku: choice.sku });
-    const r = await f(`${origin}/checkout`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sku: choice.sku, record_hash: sealed.hash }) });
+    const r = await f(`${origin}/checkout`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sku: choice.sku, record_hash: sealed.hash, ...(vaultId ? { vault_id: vaultId } : {}) }) });
     order = await r.json();
     if (r.status !== 201) throw new Error(`checkout failed: ${JSON.stringify(order)}`);
-    onStep({ step: 'order', orderId: order.order_id });
+    onStep({ step: 'order', orderId: order.order_id, paid: order.paid ?? null });
   }
   return { declined: false, sealed, choice, order };
 }

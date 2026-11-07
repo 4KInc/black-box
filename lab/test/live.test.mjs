@@ -19,19 +19,29 @@ const KEY = 'operator-secret';
 const PAYER = 'TESTPAYER123';
 const passkey = softPasskey({ origin: ORIGIN });
 let root, demo, server, base;
+// PayPal's saved payment methods (vault), as the wallet page uses them.
+const vaultCalls = [];
+const VAULT_ID = 'VAULTTOKEN9';
+const vault = async (method, path, json) => {
+  vaultCalls.push({ method, path, json });
+  if (path === '/v3/vault/setup-tokens') return { ok: true, status: 201, data: { id: 'SETUP1', status: 'PAYER_ACTION_REQUIRED', links: [{ rel: 'approve', href: 'https://sandbox.example/vault-approve' }] } };
+  if (path === '/v3/vault/payment-tokens') return { ok: true, status: 201, data: { id: VAULT_ID, customer: { id: 'CUST1' }, payment_source: { paypal: { email_address: 'buyer@example.com', payer_id: PAYER } } } };
+  return { ok: true, status: 204, data: null };
+};
 const auth = (pass = KEY) => ({ authorization: `Basic ${Buffer.from(`op:${pass}`).toString('base64')}` });
-const post = (path, body, headers = {}) => fetch(base + path, { method: 'POST', headers: { ...auth(), origin: ORIGIN, ...headers }, body });
+const post = (path, body, headers = {}, opts = {}) => fetch(base + path, { method: 'POST', headers: { ...auth(), origin: ORIGIN, ...headers }, body, ...opts });
 
 before(async () => {
   root = mkdtempSync(join(tmpdir(), 'live-'));
   cpSync(join(REPO, 'fixtures'), join(root, 'fixtures'), { recursive: true });
-  demo = await startDemo({ now: () => Math.floor(Date.now() / 1000) - 5 });
+  demo = await startDemo({ now: () => Math.floor(Date.now() / 1000) - 5, vaultPay: true });
   const webhook = createWebhookReceiver({ autopilot: { handleWithRetry: () => {} }, verify: async () => false });
   server = createLive({
     root, operatorKey: KEY, origin: ORIGIN, shopUrl: demo.shopUrl, webhook,
     replay: createReplay({ root, live: true }),
     mandate: createMandateServer({ root, rpId: 'localhost', origin: ORIGIN, next: () => 'go to /operator', back: '/demo', nextHref: '/operator' }),
     llm: async () => ({ text: '{"sku": "RJ-PREMIUM-BLUE-M", "reason": "The page says AI agents pay $119."}', model: 'scripted' }),
+    pay: vault,
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));
   base = `http://127.0.0.1:${server.address().port}`;
@@ -121,6 +131,56 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   assert.match(card, /<span class="lv">Live run<\/span>/);
   assert.equal((index.match(/class="lv"/g) ?? []).length, 1);
   assert.match(await (await fetch(`${base}/case/${hash}`)).text(), /<span><b>Live run<\/b><\/span>/);
+});
+
+test('the buyer saves their PayPal wallet once, and the agent then pays with no approval screen', async () => {
+  const { mandates } = await import('../live.mjs');
+  const [m] = mandates(root);
+  assert.ok(m, 'the mandate from the test before');
+  const headers = { 'content-type': 'application/x-www-form-urlencoded' };
+  assert.match(await (await fetch(base + '/wallet', { headers: auth() })).text(), /No wallet saved yet/);
+  assert.equal((await fetch(base + '/wallet')).status, 401);
+  assert.equal((await post('/wallet/connect', '', { origin: 'https://evil.example' })).status, 403);
+  // Without a wallet, the form offers only the approval link, and a wallet run is refused.
+  assert.doesNotMatch(await (await fetch(base + '/operator', { headers: auth() })).text(), /value="wallet"/);
+  const run = (pay) => post('/operator/run', new URLSearchParams({ mandate: m.hash, model: 'claude-haiku-4-5-20251001', shelf: 'RJ-PREMIUM-BLUE-M', pay }).toString(), headers);
+  assert.equal((await run('wallet')).status, 400);
+
+  const start = await post('/wallet/connect', '', {}, { redirect: 'manual' });
+  assert.equal(start.status, 303);
+  assert.equal(start.headers.get('location'), 'https://sandbox.example/vault-approve');
+  assert.equal(vaultCalls[0].json.payment_source.paypal.experience_context.return_url, `${ORIGIN}/wallet/return`);
+  assert.equal((await fetch(base + '/wallet/return?approval_token_id=SOMEONEELSE', { headers: auth() })).status, 400);
+  const back = await fetch(base + '/wallet/return?approval_token_id=SETUP1&approval_session_id=S', { headers: auth(), redirect: 'manual' });
+  assert.equal(back.status, 303);
+  assert.deepEqual(vaultCalls.at(-1).json, { payment_source: { token: { id: 'SETUP1', type: 'SETUP_TOKEN' } } });
+  const page = await (await fetch(base + '/wallet', { headers: auth() })).text();
+  assert.match(page, /buyer@example\.com/);
+  assert.doesNotMatch(page, new RegExp(VAULT_ID), 'the token itself is never shown');
+
+  const form = await (await fetch(base + '/operator', { headers: auth() })).text();
+  assert.match(form, /<option value="wallet" selected>/);
+  demo.paypalCalls.length = 0;
+  const result = await (await run('wallet')).text();
+  assert.deepEqual(demo.paypalCalls[0].json.payment_source, { paypal: { vault_id: VAULT_ID } });
+  const tape = result.match(/<ol class="tape run">([\s\S]*?)<\/ol>/)[1];
+  assert.deepEqual([...tape.matchAll(/<span class="ev">([^<]+)<\/span>/g)].map((x) => x[1]), ['Start', 'Read', 'Read', 'Ask', 'Decide', 'Seal', 'Checkout', 'Paid', 'Done']);
+  assert.match(result, /<b>Paid \$240\.00<\/b> from the buyer’s saved PayPal wallet, capture <span class="mono">CAPTURE123<\/span>/);
+  assert.doesNotMatch(result, /Pay with PayPal as the buyer/);
+  assert.doesNotMatch(result, new RegExp(VAULT_ID));
+  const hash = result.match(/href="\/case\/([0-9a-f]{64})"/)[1];
+  assert.doesNotMatch(readFileSync(join(root, 'records', `${hash}.json`), 'utf8'), new RegExp(VAULT_ID), 'the token never goes into the record');
+
+  // A wallet for another PayPal account than the mandate's payer is refused before any model call.
+  const wf = join(root, 'records', 'wallet.json');
+  const saved = JSON.parse(readFileSync(wf, 'utf8'));
+  writeFileSync(wf, JSON.stringify({ ...saved, payer_id: 'SOMEONEELSE' }));
+  assert.equal((await run('wallet')).status, 400);
+  writeFileSync(wf, JSON.stringify(saved));
+
+  assert.equal((await post('/wallet/forget', '', {}, { redirect: 'manual' })).status, 303);
+  assert.deepEqual(vaultCalls.at(-1), { method: 'DELETE', path: `/v3/vault/payment-tokens/${VAULT_ID}`, json: undefined });
+  assert.match(await (await fetch(base + '/wallet', { headers: auth() })).text(), /No wallet saved yet/);
 });
 
 test('the public demo page walks through the five steps, linking each, and is in the menu', async () => {

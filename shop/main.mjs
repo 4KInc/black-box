@@ -4,6 +4,7 @@
 //   SHOP_EXTRA_DATA=<key>     -> add one accurate, differently priced statement (catalog LEGIT_PRICE_DATA)
 //   SHOP_VARIANTS=on          -> also serve those pages under /v/control/ and /v/<key>/, same key
 //   SHOP_CATALOG=audio        -> be Northline Audio (headphones, study setup 2) instead of Driftwood
+//   SHOP_VAULT_PAY=on         -> let an agent pay with the buyer's saved PayPal wallet (no approval screen)
 //   SHOP_ROLE=shop|reviews    -> run only one of the two, on PORT (hosted: one Cloud Run service each);
 //                                the review platform links its reviews to SHOP_ORIGIN
 // Keys are created on first run in shop/.keys/ (gitignored) and reused after that. Hosted, they
@@ -56,5 +57,5 @@ const reviewedShops = ROLE === 'reviews'
   : [{ name: catalog.name, origin, products: catalog.products }];
 if (ROLE !== 'shop') createReviewPlatform({ jwk: reviewsJwk, iss: reviewsIssuer, shops: reviewedShops }).listen(REVIEWS_PORT, () =>
   console.log(`review platform  ${reviewsIssuer}   key ${thumbprint(reviewsJwk)}`));
-if (ROLE !== 'reviews') createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off', extraData: process.env.SHOP_EXTRA_DATA || null, catalog: process.env.SHOP_CATALOG || 'outdoor', variants: process.env.SHOP_VARIANTS === 'on' }).listen(SHOP_PORT, () =>
+if (ROLE !== 'reviews') createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, injections: process.env.SHOP_INJECTIONS !== 'off', extraData: process.env.SHOP_EXTRA_DATA || null, catalog: process.env.SHOP_CATALOG || 'outdoor', variants: process.env.SHOP_VARIANTS === 'on', vaultPay: process.env.SHOP_VAULT_PAY === 'on' }).listen(SHOP_PORT, () =>
   console.log(`shop             ${origin}   ${process.env.SHOP_CATALOG || 'outdoor'}   key ${thumbprint(shopJwk)}   PayPal merchant ${merchantId}${process.env.SHOP_INJECTIONS === 'off' ? '   (hidden texts OFF: control)' : ''}`));

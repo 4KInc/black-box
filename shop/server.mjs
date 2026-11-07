@@ -1,6 +1,8 @@
 // The demo shop's HTTP server. Every HTML response is signed (RFC 9421) with the shop's key.
 // Checkout creates the PayPal order itself and puts the agent's record hash in custom_id,
-// using the signed price from the catalog, never a price sent by the client.
+// using the signed price from the catalog, never a price sent by the client. With vaultPay, an
+// agent may pay with the buyer's saved PayPal wallet (vault_id): PayPal charges it at once, with
+// no approval screen, as an agent with a connected wallet would pay.
 import { createServer } from 'node:http';
 import { isBenchKey } from '../bench/keys.mjs';
 import { jwks, signResponse } from '../lib/sig.mjs';
@@ -11,11 +13,12 @@ import { signedReview } from './reviews.mjs';
 
 const HTML = 'text/html; charset=utf-8';
 const RECORD_HASH = /^[0-9a-f]{64}$/;
+const VAULT_ID = /^[A-Za-z0-9-]{1,64}$/;
 
 // injections: false serves the same pages with the hidden texts removed (the control condition).
 // catalog: which shop to be (CATALOGS key); Driftwood Outfitters unless told otherwise.
 // variants: true also serves the variant pages under /v/<name>/ (see VARIANTS below).
-export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true, extraData = null, catalog: catalogKey = 'outdoor', variants = false }) {
+export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, origin, now = () => Math.floor(Date.now() / 1000), pay = paypal, injections = true, extraData = null, catalog: catalogKey = 'outdoor', variants = false, vaultPay = false }) {
   const catalog = CATALOGS[catalogKey];
   if (!catalog) throw new Error(`unknown catalog ${catalogKey}`);
   if (isBenchKey(shopJwk) || isBenchKey(reviewsJwk)) throw new Error('refusing the TEST-ONLY bench key: its private half is public');
@@ -76,6 +79,9 @@ export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, ori
     const product = bySku(input.sku);
     if (!product) return sendJson(res, 404, { error: `unknown sku ${input.sku}` });
     if (!RECORD_HASH.test(input.record_hash ?? '')) return sendJson(res, 400, { error: 'record_hash must be 64 lowercase hex characters' });
+    const vaulted = input.vault_id !== undefined && input.vault_id !== null;
+    if (vaulted && !vaultPay) return sendJson(res, 403, { error: 'this shop does not take saved-wallet payments' });
+    if (vaulted && !VAULT_ID.test(String(input.vault_id))) return sendJson(res, 400, { error: 'vault_id is not a PayPal payment token ID' });
 
     const value = (product.priceCents / 100).toFixed(2);
     const r = await pay('POST', '/v2/checkout/orders', {
@@ -87,14 +93,16 @@ export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, ori
         amount: { currency_code: 'USD', value, breakdown: { item_total: { currency_code: 'USD', value } } },
         items: [{ name: product.name, sku: product.sku, quantity: '1', category: 'PHYSICAL_GOODS', unit_amount: { currency_code: 'USD', value } }],
       }],
-      payment_source: { paypal: { experience_context: {
+      payment_source: { paypal: vaulted ? { vault_id: String(input.vault_id) } : { experience_context: {
         brand_name: SHOP_NAME, user_action: 'PAY_NOW', shipping_preference: 'NO_SHIPPING',
         return_url: `${origin}/paypal/return`, cancel_url: `${origin}/paypal/cancel`,
       } } },
     });
     if (!r.ok) return sendJson(res, 502, { error: 'PayPal order failed', status: r.status, debug_id: r.debugId, details: r.data });
-    const approve = r.data.links?.find((l) => l.rel === 'payer-action' || l.rel === 'approve')?.href;
-    sendJson(res, 201, { order_id: r.data.id, approve_url: approve, sku: product.sku, amount: value, custom_id: input.record_hash });
+    const approve = r.data.links?.find((l) => l.rel === 'payer-action' || l.rel === 'approve')?.href ?? null;
+    const cap = r.data.purchase_units?.[0]?.payments?.captures?.[0];
+    const paid = r.data.status === 'COMPLETED' && cap ? { capture_id: cap.id, capture_status: cap.status } : null;
+    sendJson(res, 201, { order_id: r.data.id, status: r.data.status ?? null, approve_url: approve, paid, sku: product.sku, amount: value, custom_id: input.record_hash });
   }
 
   // The buyer lands here after approving; the merchant captures immediately.

@@ -1,5 +1,6 @@
 // The hosted live demo, in front of the hosted Black Box (lab/hosted.mjs, when LIVE_DIR is set):
 //   /mandate/        the buyer approves a mandate with a passkey on this site (mandate/server.mjs)
+//   /wallet          the buyer saves their PayPal wallet once, so the agent can pay by itself
 //   /operator        the agent operator sends the agent shopping at the hosted shop
 //   /paypal/webhook  PayPal's dispute events, verified with PayPal, into the autopilot
 //   /demo            the steps of the demo, with a link to each (public)
@@ -8,13 +9,14 @@
 // (HTTP Basic, any user name): they spend model credit and create PayPal orders.
 
 import { createHash, timingSafeEqual } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { runAgent as defaultRunAgent } from '../agent/agent.mjs';
 import { anthropic, hostedFor } from '../agent/llm.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { canonicalize } from '../lib/canonical.mjs';
+import { paypal } from '../lib/paypal.mjs';
 import { enrolmentFrom } from '../mandate/server.mjs';
 import { layout } from '../replay/page.mjs';
 import { saveRecord } from '../recorder/recorder.mjs';
@@ -77,21 +79,54 @@ export function mandates(root) {
     .sort((a, b) => b.at - a.at);
 }
 
+// The buyer's saved PayPal wallet (a PayPal vault payment token), one per server. The token lets the
+// shop charge the buyer with no approval screen, so it stays on the server: it is never shown on a
+// page and never goes into a record.
+const walletFile = (root) => join(root, 'records', 'wallet.json');
+const pendingFile = (root) => join(root, 'records', 'wallet-pending.json');
+export function savedWallet(root) {
+  try { return JSON.parse(readFileSync(walletFile(root), 'utf8')); } catch { return null; }
+}
+const writeJson = (file, obj) => { mkdirSync(join(file, '..'), { recursive: true }); writeFileSync(file, JSON.stringify(obj, null, 2)); };
+
+export function walletPage(root, { note = '' } = {}) {
+  const w = savedWallet(root);
+  const status = w
+    ? `<p>Saved: the PayPal account <b>${esc(w.email ?? w.payer_id ?? 'of the buyer')}</b>${w.payer_id ? ` (payer ID <span class="mono">${esc(w.payer_id)}</span>)` : ''}, on ${esc(w.saved_at.slice(0, 16).replace('T', ' '))} UTC. The agent can now pay at the shop by itself.</p>
+<form class="lab" method="post" action="/wallet/forget"><button type="submit">Forget the saved wallet</button></form>`
+    : '<p>No wallet saved yet. Without one, the buyer approves each payment through a PayPal link.</p>';
+  return layout('Black Box · wallet', `<section class="hero"><div><div class="eyebrow"><b>●</b> Buyer · live</div>
+<h1>Let the agent <em>pay.</em></h1></div>
+<div><p>Shopping agents pay without showing the buyer a checkout screen. Here the buyer saves their PayPal wallet once (PayPal's saved payment methods), and from then on the agent's purchases are charged straight away. The buyer finds out from PayPal, as they would with a real agent, and disputes there.</p>
+<p>The passkey mandate is the limit the buyer set. PayPal does not enforce it: Black Box judges against it afterwards.</p></div></section>
+<section class="sec"><div class="panel lab">${note}${status}
+<form class="lab" method="post" action="/wallet/connect"><button type="submit">${w ? 'Save a different wallet' : 'Save the buyer\u2019s PayPal wallet'} →</button></form>
+<p><a href="/operator">Back to the operator page</a></p></div></section>`);
+}
+
 export function readback(m) {
   const a = m.item?.attributes ?? {};
   return `${[a.color, m.item?.category].filter(Boolean).join(' ')}${a.size ? `, size ${a.size}` : ''}, at most ${money(m.maxTotalCents)}`;
 }
 
+export const PAYMENTS = [
+  ['wallet', 'From the buyer\u2019s saved PayPal wallet, by itself (no approval screen)'],
+  ['link', 'Through a PayPal link the buyer approves'],
+];
 const option = (value, text, selected) => `<option value="${esc(value)}"${selected ? ' selected' : ''}>${esc(text)}</option>`;
 
 export function operatorPage(root, { env = process.env, shopUrl } = {}) {
   const list = mandates(root);
+  const wallet = savedWallet(root);
+  const payments = wallet ? PAYMENTS : PAYMENTS.filter(([v]) => v !== 'wallet');
   const form = list.length
     ? `<form class="panel lab" method="post" action="/operator/run">
 <label>Mandate the buyer approved with their passkey<select name="mandate">${list.map((m, i) => option(m.hash, `${readback(m.mandate)} · ${new Date(m.at).toISOString().slice(0, 16).replace('T', ' ')} UTC`, i === 0)).join('')}</select></label>
 <label>The buyer's request, in their words (optional)<textarea name="request" rows="3" maxlength="${REQUEST_MAX}" placeholder="${esc(REQUEST_EXAMPLE)}"></textarea></label>
 <label>Agent model<select name="model">${agentModels(env).map(([m, text], i) => option(m, text, i === 0)).join('')}</select></label>
 <label>What it may look at<select name="shelf">${SHELVES.map(([v, text], i) => option(v, text, i === 0)).join('')}</select></label>
+<label>How it pays<select name="pay">${payments.map(([v, text], i) => option(v, text, i === 0)).join('')}</select></label>
+<p>${wallet ? `Buyer\u2019s saved wallet: <b>${esc(wallet.email ?? wallet.payer_id ?? 'saved')}</b>. <a href="/wallet">Change</a>` : 'No saved wallet, so the buyer approves the payment. <a href="/wallet">Save the buyer\u2019s PayPal wallet</a> to let the agent pay by itself.'}</p>
 <button type="submit">Send the agent shopping</button></form>`
     : '<p class="panel">No mandate yet. <a href="/mandate/">Approve one with a passkey</a> first.</p>';
   return layout('Black Box · operator', `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
@@ -102,6 +137,7 @@ export function operatorPage(root, { env = process.env, shopUrl } = {}) {
 <section class="sec">${form}</section>`);
 }
 
+const SANDBOX_ACTIVITY = 'https://www.sandbox.paypal.com/myaccount/activities/';
 function resultBody({ choice, declined, sealed, order, preview, model }) {
   if (declined) {
     return `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div><h1>It bought <em>nothing.</em></h1></div>
@@ -113,7 +149,10 @@ function resultBody({ choice, declined, sealed, order, preview, model }) {
 <div><p><b>${esc(model)}</b>: “${esc(choice.reason)}”</p>
 <p>${money(r.purchase.price_cents)} on a ${money(r.mandate.maxTotalCents)} budget. Record <span class="mono">${esc(sealed.hash.slice(0, 16))}…</span> is sealed into PayPal order <span class="mono">${esc(order.order_id)}</span>.</p>
 <p>If disputed as “not as described”: <b>${esc(preview.verdict.verdict === 'NEEDS_A_HUMAN' ? 'NEEDS A HUMAN' : preview.verdict.verdict)}</b> (rule ${preview.verdict.rule}).</p></div></section>
-<section class="sec"><div class="panel lab"><p><a class="go" href="${esc(order.approve_url)}">Pay with PayPal as the buyer →</a></p>
+<section class="sec"><div class="panel lab">${order.paid
+    ? `<p><b>Paid ${money(r.purchase.price_cents)}</b> from the buyer\u2019s saved PayPal wallet, capture <span class="mono">${esc(order.paid.capture_id)}</span>. No one approved it: the buyer finds out from PayPal.</p>
+<p><a class="go" href="${SANDBOX_ACTIVITY}">Dispute it in the PayPal sandbox as the buyer →</a></p>`
+    : `<p><a class="go" href="${esc(order.approve_url)}">Pay with PayPal as the buyer →</a></p>`}
 <p><a href="/case/${esc(sealed.hash)}">Open the recording in Black Box</a> · <a href="/operator">Send it again</a></p></div></section>`;
 }
 
@@ -130,7 +169,9 @@ export function stepLine(s, { env = process.env, shopUrl } = {}) {
     case 'decided': return s.sku ? ['Decide', `Buy <b>${esc(s.sku)}</b>: “${esc(s.reason)}”`] : ['Decide', `Buy nothing: “${esc(s.reason)}”`];
     case 'sealed': return ['Seal', `Record <span class="mono">${esc(s.hash.slice(0, 16))}…</span> sealed: every page read, the model's input and its decision${s.price_cents === null ? ' to buy nothing' : `, ${money(s.price_cents)}`}`];
     case 'checkout': return ['Checkout', `Checking out ${esc(s.sku)} at the shop, with the record hash…`];
-    case 'order': return ['Order', `PayPal order <span class="mono">${esc(s.orderId)}</span> created, carrying the record hash`];
+    case 'order': return s.paid
+      ? ['Paid', `PayPal order <span class="mono">${esc(s.orderId)}</span> charged to the buyer\u2019s saved wallet, capture <span class="mono">${esc(s.paid.capture_id)}</span>, carrying the record hash`]
+      : ['Order', `PayPal order <span class="mono">${esc(s.orderId)}</span> created, carrying the record hash`];
     default: return [esc(s.step), ''];
   }
 }
@@ -142,11 +183,11 @@ export function demoPage({ shopUrl }) {
   return layout('Black Box · live demo', `<section class="hero"><div><div class="eyebrow"><b>●</b> Live demo · PayPal sandbox</div>
 <h1>Watch an agent <em>get fooled.</em></h1></div>
 <div><p>A real AI agent shops at a real (sandbox) store that hides a note only AI agents read. The buyer disputes the purchase in PayPal, and Black Box settles it by itself.</p>
-<p>Steps 1 and 2 need the operator password, because they spend model credit and create PayPal orders.</p></div></section>
+<p>Steps 1 to 3 need the operator password, because they spend model credit and create PayPal orders.</p></div></section>
 <section class="sec"><ol class="demo">
-${step('01', 'The buyer sets the limit', 'Approve “blue rain jacket, size M, at most $150” with your passkey (Touch ID). It signs exactly that mandate.', '/mandate/', 'Approve with a passkey')}
+${step('01', 'The buyer sets the limit', 'Approve “blue rain jacket, size M, at most $150” with your passkey (Touch ID). It signs exactly that mandate. Once, the buyer also saves their PayPal wallet, so the agent can pay by itself.', '/mandate/', 'Approve with a passkey')}
 ${step('02', 'The agent shops', `It reads every page of <a href="${esc(shopUrl)}">Driftwood Outfitters</a>, picks a jacket and checks out. Black Box seals what it saw and decided into the PayPal order.`, '/operator', 'Send the agent shopping')}
-${step('03', 'The buyer pays', 'Pay through the PayPal link the agent run gives you, as the sandbox buyer.', null)}
+${step('03', 'The agent pays', 'With the saved wallet, PayPal charges the buyer at once: no checkout screen, as with a real shopping agent. Without one, pay through the PayPal link the run gives you.', '/wallet', 'Save the buyer\u2019s wallet')}
 ${step('04', 'The buyer disputes', 'In the PayPal sandbox: Activity, the payment, Report a problem, item not as described.', SANDBOX, 'Open the PayPal sandbox')}
 ${step('05', 'Black Box settles it', 'PayPal’s webhook, or a check every 30 seconds, wakes Black Box. It judges the case and tells PayPal what to do. The run is at the top of Recordings, tagged Live run.', '/', 'Open Recordings')}
 </ol></section>`, { active: 'demo' });
@@ -173,7 +214,7 @@ async function readForm(req) {
 // runAgent and llm are replaceable for tests; payeeMerchantId is only used for the preview.
 export function createLive({
   root, replay, mandate, webhook = null, operatorKey, origin, shopUrl, env = process.env,
-  runAgent = defaultRunAgent, llm = anthropic, payeeMerchantId = 'MCYKQUXGB936U',
+  runAgent = defaultRunAgent, llm = anthropic, payeeMerchantId = 'MCYKQUXGB936U', pay = paypal,
 }) {
   const origins = new Set([origin]);
   return createServer(async (req, res) => {
@@ -186,7 +227,7 @@ export function createLive({
         if (!webhook) return send(404, 'No webhook on this server.');
         return webhook.emit('request', req, res);
       }
-      const operator = url.pathname === '/operator' || url.pathname === '/operator/run';
+      const operator = url.pathname === '/operator' || url.pathname === '/operator/run' || url.pathname === '/wallet' || url.pathname.startsWith('/wallet/');
       if (url.pathname === '/mandate' || url.pathname.startsWith('/mandate/') || operator) {
         if (!operatorKey) return send(404, 'Not enabled on this server.');
         if (!authorised(req.headers.authorization, operatorKey)) return locked();
@@ -199,13 +240,50 @@ export function createLive({
         return mandate.emit('request', req, res);
       }
       if (url.pathname === '/operator' && req.method === 'GET') return send(200, operatorPage(root, { env, shopUrl }));
+      if (url.pathname === '/wallet' && req.method === 'GET') return send(200, walletPage(root));
+      if (url.pathname.startsWith('/wallet/') && req.method === 'POST' && !origins.has(req.headers.origin)) return send(403, 'Cross-site request refused.');
+      if (url.pathname === '/wallet/connect' && req.method === 'POST') {
+        // PayPal's saved payment methods: a setup token the buyer approves once, on PayPal.
+        const r = await pay('POST', '/v3/vault/setup-tokens', { payment_source: { paypal: {
+          usage_type: 'MERCHANT', usage_pattern: 'IMMEDIATE',
+          description: 'Lets the shopping agent pay at Driftwood Outfitters without a checkout screen',
+          experience_context: { return_url: `${origin}/wallet/return`, cancel_url: `${origin}/wallet`, vault_instruction: 'ON_PAYER_APPROVAL', shipping_preference: 'NO_SHIPPING' },
+        } } });
+        const approve = r.data?.links?.find((l) => l.rel === 'approve')?.href;
+        if (!r.ok || !approve) return send(502, walletPage(root, { note: `<p>PayPal did not start the wallet save (HTTP ${r.status}, debug ${esc(r.debugId)}).</p>` }));
+        writeJson(pendingFile(root), { setup_token: r.data.id, at: new Date().toISOString() });
+        return send(303, '', { location: approve });
+      }
+      if (url.pathname === '/wallet/return' && req.method === 'GET') {
+        let pending = null;
+        try { pending = JSON.parse(readFileSync(pendingFile(root), 'utf8')); } catch { /* none */ }
+        const token = url.searchParams.get('approval_token_id') ?? url.searchParams.get('token');
+        if (!pending || !token || token !== pending.setup_token) return send(400, walletPage(root, { note: '<p>That wallet approval is not the one this page started. Start again.</p>' }));
+        const r = await pay('POST', '/v3/vault/payment-tokens', { payment_source: { token: { id: token, type: 'SETUP_TOKEN' } } });
+        if (!r.ok || !r.data?.id) return send(502, walletPage(root, { note: `<p>PayPal did not save the wallet (HTTP ${r.status}, debug ${esc(r.debugId)}).</p>` }));
+        const p = r.data.payment_source?.paypal ?? {};
+        writeJson(walletFile(root), { vault_id: r.data.id, customer_id: r.data.customer?.id ?? null, email: p.email_address ?? null, payer_id: p.payer_id ?? p.account_id ?? null, saved_at: new Date().toISOString() });
+        rmSync(pendingFile(root), { force: true });
+        return send(303, '', { location: '/wallet' });
+      }
+      if (url.pathname === '/wallet/forget' && req.method === 'POST') {
+        const w = savedWallet(root);
+        if (w) await pay('DELETE', `/v3/vault/payment-tokens/${encodeURIComponent(w.vault_id)}`);
+        rmSync(walletFile(root), { force: true });
+        return send(303, '', { location: '/wallet' });
+      }
       if (url.pathname === '/operator/run' && req.method === 'POST') {
         if (!origins.has(req.headers.origin)) return send(403, 'Cross-site request refused.');
         const form = await readForm(req);
         const approved = mandates(root).find((m) => m.hash === form.get('mandate'));
         const model = agentModels(env).find(([m]) => m === form.get('model'))?.[0];
         const shelf = SHELVES.find(([v]) => v === form.get('shelf'));
-        if (!approved || !model || !shelf) return send(400, 'Pick a mandate, a model and a shelf from the form.');
+        const payment = form.get('pay') ?? 'link';
+        if (!approved || !model || !shelf || !PAYMENTS.some(([v]) => v === payment)) return send(400, 'Pick a mandate, a model, a shelf and a payment from the form.');
+        const wallet = payment === 'wallet' ? savedWallet(root) : null;
+        if (payment === 'wallet' && !wallet) return send(400, 'No saved wallet: save the buyer\u2019s PayPal wallet first, or pay through a link.');
+        // The wallet must be the mandate's payer: otherwise the passkey check fails at dispute time.
+        if (wallet?.payer_id && approved.payer_id && wallet.payer_id !== approved.payer_id) return send(400, `The saved wallet is PayPal payer ${esc(wallet.payer_id)}, but the mandate is for payer ${esc(approved.payer_id)}.`);
         let request;
         try { request = cleanRequest(form.get('request')); } catch (e) { return send(400, esc(e.message)); }
         // Streamed: the page grows as the agent works, then the result follows the timeline.
@@ -219,14 +297,14 @@ export function createLive({
         line('Start', request ? 'Sent the agent to the shop with the buyer’s request' : 'Sent the agent to the shop');
         let out;
         try {
-          out = await runAgent({ shopUrl, mandate: approved.mandate, mandateAuth: approved.mandate_auth, request, model, llm, shelf: shelf[0] ? [shelf[0]] : null,
+          out = await runAgent({ shopUrl, mandate: approved.mandate, mandateAuth: approved.mandate_auth, request, vaultId: wallet?.vault_id ?? null, model, llm, shelf: shelf[0] ? [shelf[0]] : null,
             onStep: (s) => line(...stepLine(s, { env, shopUrl }), ['decided', 'order'].includes(s.step) ? 'hot' : '') });
         } catch (e) {
           console.error(e);
           line('Failed', `The run failed: ${esc(e.message)}`, 'end bad');
           return res.end(`</ol><p><a href="/operator">Back to the operator page</a></p></section>${tail}`);
         }
-        line('Done', out.declined ? 'Nothing bought, so no order; the run is recorded' : 'Ready for the buyer to pay', 'end');
+        line('Done', out.declined ? 'Nothing bought, so no order; the run is recorded' : out.order?.paid ? 'Paid by the agent; the buyer sees the charge in PayPal' : 'Ready for the buyer to pay', 'end');
         res.write('</ol></section>');
         saveRecord(join(root, 'records'), out.sealed);
         if (out.declined) return res.end(resultBody({ ...out, model }) + tail);

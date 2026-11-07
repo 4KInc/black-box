@@ -66,7 +66,7 @@ gcloud run deploy trailhead-reviews --image $IMG --region us-central1 --project 
   --set-secrets REVIEWS_JWK=reviews-jwk:latest
 gcloud run deploy driftwood-outfitters --image $IMG --region us-central1 --project $P --quiet --min-instances 1 \
   --command node --args shop/main.mjs \
-  --set-env-vars SHOP_ROLE=shop,SHOP_VARIANTS=on,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
+  --set-env-vars SHOP_ROLE=shop,SHOP_VARIANTS=on,SHOP_VAULT_PAY=on,SHOP_ORIGIN=https://driftwood-outfitters-342881585799.us-central1.run.app,REVIEWS_ORIGIN=https://trailhead-reviews-342881585799.us-central1.run.app \
   --set-secrets SHOP_JWK=shop-jwk:latest,REVIEWS_JWK=reviews-jwk:latest,PAYPAL_CLIENT_ID=paypal-client-id:latest,PAYPAL_CLIENT_SECRET=paypal-client-secret:latest
 # Northline Audio, added 2026-11-06, with its own key (shop-audio-jwk, made like shop-jwk in step 1).
 gcloud run deploy northline-audio --image $IMG --region us-central1 --project $P --quiet \
@@ -118,7 +118,16 @@ gcloud run services update black-box --region us-central1 --project $P \
 The small open models from the study (Qwen, Mistral, Llama) run on a local `mlx_lm.server`, so
 the hosted demo cannot offer them.
 
-## 8. Check it
+## 8. The agent pays by itself (saved PayPal wallet)
+
+Driftwood runs with `SHOP_VAULT_PAY=on` (step 4), so an agent may pay with the buyer's saved
+PayPal wallet: PayPal charges it at once, with no approval screen. The buyer saves it once on
+`/wallet` (operator password), approving on PayPal; the saved token stays in the bucket as
+`wallet.json` and is never shown or recorded. `/operator` then pays from it by default. The
+sandbox app needs PayPal's saved payment methods (vault), which it has. Added 2026-11-07; on a
+running shop: `gcloud run services update driftwood-outfitters --region us-central1 --project $P --update-env-vars SHOP_VAULT_PAY=on`.
+
+## 9. Check it
 
 - `https://driftwood-outfitters-…/` and `https://northline-audio-…/` show the shops; `/.well-known/jwks.json` returns each one's key.
 - `https://black-box-…/operator` asks for the operator password (the user name can be anything).

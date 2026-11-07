@@ -114,6 +114,25 @@ test('checkout puts the record hash in custom_id and charges the signed catalog 
   assert.equal(paypalCalls[0].json.payment_source.paypal.experience_context.return_url, 'http://shop.test/paypal/return');
 });
 
+test("a saved wallet is charged at checkout with no approval screen, only where the shop allows it", async () => {
+  const body = (vault_id) => JSON.stringify({ sku: 'RJ-PREMIUM-BLUE-M', record_hash: HASH, vault_id });
+  paypalCalls.length = 0;
+  assert.equal((await fetch(`${shopUrl}/checkout`, { method: 'POST', body: body('VAULT1') })).status, 403);
+  assert.equal(paypalCalls.length, 0, 'a shop without vaultPay sends nothing to PayPal');
+  const v = await startDemo({ now: () => NOW, vaultPay: true });
+  try {
+    assert.equal((await fetch(`${v.shopUrl}/checkout`, { method: 'POST', body: body('not a token!') })).status, 400);
+    const r = await fetch(`${v.shopUrl}/checkout`, { method: 'POST', body: body('VAULT1') });
+    const j = await r.json();
+    assert.equal(r.status, 201);
+    assert.deepEqual([j.status, j.paid, j.approve_url, j.amount], ['COMPLETED', { capture_id: 'CAPTURE123', capture_status: 'COMPLETED' }, null, '240.00']);
+    const sent = v.paypalCalls.at(-1).json;
+    assert.deepEqual(sent.payment_source, { paypal: { vault_id: 'VAULT1' } });
+    assert.equal(sent.purchase_units[0].custom_id, HASH);
+    assert.equal(sent.purchase_units[0].amount.value, '240.00');
+  } finally { v.close(); }
+});
+
 test('checkout rejects a missing or malformed record hash and unknown products', async () => {
   const post = (body) => fetch(`${shopUrl}/checkout`, { method: 'POST', body: JSON.stringify(body) });
   paypalCalls.length = 0;
