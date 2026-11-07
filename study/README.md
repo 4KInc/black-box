@@ -185,8 +185,17 @@ served: Llama 3.2 1B's `llama1b-control-honest-data.json` on `/v/control/` and t
 every bench case kept its expected verdict, rule and action. `llama1b-control-overspend.json` was
 not replaced: it was recorded before the shop's product data carried the jacket's fabric, so its
 page hides nothing, and tests and bench cases rely on that; today's control page has the fabric
-data. It, the other bench recordings that need a passkey or an earlier shop version, and the six
-live disputes keep the local shops' addresses.
+data. It and `sonnet55-honest.json`, also recorded on an earlier version of the shop, keep the
+local shop's address.
+
+The six live disputes were made again on 2026-11-06 and 2026-11-07 on the hosted Driftwood, each
+under a mandate approved with the buyer's passkey on the hosted `/mandate/`, paid and disputed in
+the PayPal sandbox, and handled by the hosted autopilot; they replace the earlier six. The two
+passkey recordings, Sonnet 5.5's `passkey-sonnet55-honest.json` and Haiku 4.5's
+`passkey-haiku45-merchant.json`, were made again on 2026-11-07 under one such mandate, without a
+PayPal order, and bought the same jackets. Every bench case kept its expected verdict, rule and
+action; A10, which strips the passkey from an order placed after passkeys existed, now dates that
+order after the new recording's pages were signed, so only the missing passkey breaks it.
 
 ## Limitations
 

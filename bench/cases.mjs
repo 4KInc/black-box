@@ -26,7 +26,8 @@ const purchasedPage = (r) => r.fetches[r.purchase.page_index];
 const PASSKEY_MERCHANT = 'passkey-haiku45-merchant.json';
 // The buyer's enrolled passkey (public key only) for PayPal payer 248NAZAAM9JCE, approved with Touch ID.
 export const ENROLMENT = 'passkey-enrolment.json';
-const AFTER_CUTOFF = '2026-10-16T00:00:00Z';
+// After the buyer's first passkey, and after the recording's pages were signed.
+const AFTER_CUTOFF = '2026-11-08T00:00:00Z';
 
 // ---- rewritten pages (the evasion cases) ----
 // Replaces the purchased page with edit(html), signed as the shop would sign it (same `created`
