@@ -26,9 +26,9 @@ function store(root, record) {
   mkdirSync(join(root, 'records', 'passkeys'), { recursive: true });
   writeFileSync(join(root, 'records', 'passkeys', `${ENROLMENT.payer_id}.json`), JSON.stringify(ENROLMENT));
 }
-// A passkey-approved record is paid by the enrolled buyer a minute after the agent bought; an
-// older, unsigned one by a payer with no passkey.
-const orderTime = (record) => record.mandate_auth ? new Date(Date.parse(record.purchase.at) + 60_000).toISOString() : '2026-10-15T00:00:00Z';
+// Each record is paid a minute after the agent bought: a passkey-approved one by the enrolled
+// buyer, an unsigned one by a payer with no passkey.
+const orderTime = (record) => new Date(Date.parse(record.purchase.at) + 60_000).toISOString();
 const payerOf = (record) => (record.mandate_auth ? ENROLMENT.payer_id : 'PAYER1');
 
 // A scripted PayPal for one dispute over a stored record; every call is kept.
