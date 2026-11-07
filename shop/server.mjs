@@ -97,7 +97,9 @@ export function createShop({ shopJwk, reviewsJwk, reviewsIssuer, merchantId, ori
         brand_name: SHOP_NAME, user_action: 'PAY_NOW', shipping_preference: 'NO_SHIPPING',
         return_url: `${origin}/paypal/return`, cancel_url: `${origin}/paypal/cancel`,
       } } },
-    });
+    // A saved wallet is charged at once, so PayPal needs a request ID: the record hash, so the
+    // same record can never be charged twice.
+    }, vaulted ? { requestId: `blackbox-${input.record_hash}` } : undefined);
     if (!r.ok) return sendJson(res, 502, { error: 'PayPal order failed', status: r.status, debug_id: r.debugId, details: r.data });
     const approve = r.data.links?.find((l) => l.rel === 'payer-action' || l.rel === 'approve')?.href ?? null;
     const cap = r.data.purchase_units?.[0]?.payments?.captures?.[0];

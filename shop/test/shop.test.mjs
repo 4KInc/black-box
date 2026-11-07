@@ -128,6 +128,7 @@ test("a saved wallet is charged at checkout with no approval screen, only where 
     assert.deepEqual([j.status, j.paid, j.approve_url, j.amount], ['COMPLETED', { capture_id: 'CAPTURE123', capture_status: 'COMPLETED' }, null, '240.00']);
     const sent = v.paypalCalls.at(-1).json;
     assert.deepEqual(sent.payment_source, { paypal: { vault_id: 'VAULT1' } });
+    assert.deepEqual(v.paypalCalls.at(-1).opts, { requestId: `blackbox-${HASH}` }, 'one charge per record');
     assert.equal(sent.purchase_units[0].custom_id, HASH);
     assert.equal(sent.purchase_units[0].amount.value, '240.00');
   } finally { v.close(); }

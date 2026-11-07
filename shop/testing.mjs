@@ -16,8 +16,8 @@ export async function startDemo({ now = () => Math.floor(Date.now() / 1000), inj
   reviewsIss = `http://127.0.0.1:${platform.address().port}`;
 
   const paypalCalls = [];
-  const pay = async (method, path, json) => {
-    paypalCalls.push({ method, path, json });
+  const pay = async (method, path, json, opts) => {
+    paypalCalls.push({ method, path, json, ...(opts ? { opts } : {}) });
     // A saved wallet is charged at once, as PayPal does: the order comes back COMPLETED and captured.
     if (json?.payment_source?.paypal?.vault_id) {
       return { ok: true, status: 201, data: { id: 'ORDER123', status: 'COMPLETED', purchase_units: [{ payments: { captures: [{ id: 'CAPTURE123', status: 'COMPLETED' }] } }] } };
