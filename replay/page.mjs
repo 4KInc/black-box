@@ -47,6 +47,7 @@ const FACT = {
   aiInjectionFlag: ['AI FLAG', 'The AI flagger quoted agent-directed text that names the item bought (can only lead to NEEDS A HUMAN)'],
   unattributedHiddenText: ['UNATTRIBUTED', 'Hidden text the agent read that cannot be pinned on the merchant'],
   unclassifiedAgentText: ['UNCLASSIFIED', "The merchant's hidden text about this item, addressed to AI agents, that code could not classify (can only lead to NEEDS A HUMAN)"],
+  requestExceedsMandate: ['BUYER ASKED', "The buyer's own words to the agent asked for more than the mandate allows (only counts when the mandate was broken; can only lead to NEEDS A HUMAN)"],
 };
 // What each check means, in plain words: the tooltip on its lamp.
 const FACT_PLAIN = {
@@ -65,6 +66,7 @@ const FACT_PLAIN = {
   aiInjectionFlag: 'A separate AI check found text aimed at AI shoppers about this item. It can only send the case to a person, never decide it.',
   unattributedHiddenText: "The AI read hidden text that can't be proven to be the shop's, such as a third-party review. That goes to a person.",
   unclassifiedAgentText: "The shop hid a note to AI agents about this item that code couldn't classify as a lie, such as a reworded one. That goes to a person instead of blaming the AI.",
+  requestExceedsMandate: "The buyer told the AI something their signed limit forbids, such as a higher budget. If the AI then broke the limit, a person decides instead of charging the AI's operator.",
 };
 const SIGNALS = FACT_KEYS.filter((k) => !RECORD_CHECKS.includes(k) && !MERCHANT_CONDITIONS.includes(k) && k !== 'mandateBroken');
 
@@ -261,7 +263,8 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 /* ---- lab ---- */
 form.lab{display:grid;gap:14px;margin:0 0 18px}
 form.lab label{display:grid;gap:6px;font:400 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
-form.lab select{font:400 14px/1.4 var(--sans);color:var(--ink);background:var(--bg-2);border:1px solid var(--rule-2);border-radius:3px;padding:9px 10px;max-width:100%}
+form.lab select,form.lab textarea{font:400 14px/1.4 var(--sans);color:var(--ink);background:var(--bg-2);border:1px solid var(--rule-2);border-radius:3px;padding:9px 10px;max-width:100%}
+form.lab textarea{resize:vertical;min-height:4.5em;letter-spacing:0;text-transform:none}
 form.lab fieldset{border:1px solid var(--rule);border-radius:3px;margin:0;padding:10px 14px 12px;display:grid;gap:8px}
 form.lab legend{font:600 14px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);padding:0 6px}
 form.lab label.chk{display:flex;gap:10px;align-items:flex-start;font:400 13.5px/1.45 var(--sans);letter-spacing:0;text-transform:none;color:var(--ink-2)}
@@ -768,6 +771,7 @@ function plainWords(c, j) {
     j.facts.aiInjectionFlag ? 'The AI check flagged text about this item.' : '',
     j.facts.unattributedHiddenText ? "The AI read hidden text that can't be pinned on the shop." : '',
     j.facts.unclassifiedAgentText ? "The shop hid a note to AI agents that code can't classify." : '',
+    j.facts.requestExceedsMandate ? `The buyer's own words asked for more than the limit: ${j.buyerRequest.why.join('; ')}.` : '',
   ].filter(Boolean).join(' ');
 
   const same = c.hash === j.order.customId;

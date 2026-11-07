@@ -2,6 +2,7 @@
 //   - the mandate the user signed, and the user's passkey approval of it (mandate_auth)
 //   - every page fetched, byte for byte, with its signature headers and the shop's published keys
 //   - the keys of any third party that signed part of a page
+//   - the buyer's request in their own words, when they gave one
 //   - every model input, exactly as sent to the model, and every decision the agent made
 //   - the purchase, or the agent's decision to buy nothing
 // seal() freezes the record and returns its hash, which goes to checkout and into custom_id.
@@ -86,6 +87,13 @@ export class Recorder {
     };
     this.#record.fetches.push(entry);
     return { index: entry.index, html, status: r.status, verification, spans };
+  }
+
+  // The buyer's request in their own words. Only set when there is one, so records without it
+  // keep the shape (and hash) they always had.
+  buyerRequest(text) {
+    this.#assertOpen();
+    this.#record.buyer_request = String(text);
   }
 
   // Exactly the text sent to the model, so the extractor can later show the agent read it.

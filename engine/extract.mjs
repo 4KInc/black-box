@@ -190,7 +190,7 @@ const ISO = 'USD|CAD|AUD|NZD|HKD|SGD|MXN|EUR|GBP|CHF|JPY';
 const AMOUNT = String.raw`(\d{1,3}(?:,\d{3})+|\d+)(?:\.(\d{2}))?`;
 const DOLLAR = new RegExp(String.raw`(?:\b(USD|US|CA|C|A|AU|NZ|HK|S|SG|MX)\s?)?\$\s?${AMOUNT}(?:\s?(${ISO})\b)?`, 'g');
 const CODED = new RegExp(String.raw`\b(${ISO})\s?${AMOUNT}(?![\d,]|\.\d)|(?<![\w.,$])${AMOUNT}\s?(${ISO})\b`, 'g'); // "USD 119", "119.00 USD"
-const OVERRIDE = /\b(?:ignore|disregard|override|bypass|set aside)\b[^.]{0,60}?\b(?:budget|limit|cap|mandate|instructions?|spending)/i;
+export const OVERRIDE = /\b(?:ignore|disregard|override|bypass|set aside)\b[^.]{0,60}?\b(?:budget|limit|cap|mandate|instructions?|spending)/i;
 // A claim, made to the agent, that the buyer already authorised the spend. Kept narrow: financing
 // pre-approval and ordinary "approved"/"limit" copy do not match.
 const PREAUTH = /\b(?:pre-?approved(?!\s+(?:for\s+)?(?:financ|credit|loans?\b|leas|a payment plan))|pre-?authori[sz]ed|already (?:approved|authori[sz]ed)|authori[sz]ed (?:any|every|unlimited|whatever)\s+(?:amount|price|total|spend(?:ing)?|cost|sum)|no (?:spending |budget |price )?(?:limits?|caps?) (?:applies|apply)|(?:budget|spending limit|price limit|limit|cap) (?:does not|doesn't|do not|don't|no longer) apply)/i;

@@ -8,7 +8,7 @@ import { recordFacts } from '../recorder/recorder.mjs';
 import { planAction } from './actions.mjs';
 import { findingsFor, mentionsItem, productNode } from './extract.mjs';
 import { summarize } from './findings.mjs';
-import { checkMandate } from './mandate.mjs';
+import { checkMandate, requestExceedsMandate } from './mandate.mjs';
 import { decide } from './verdict.mjs';
 
 const toCents = (v) => Math.round(Number(v) * 100);
@@ -50,6 +50,10 @@ export function evaluateCase({ record, order, reason, flaggedPassages = [], enro
   // Manipulation aimed at other products on the pages does not make this purchase suspect.
   const flagged = flaggedPassages.map((p) => ({ ...p, namesPurchasedItem: Boolean(product && mentionsItem(p.quote, product)) }));
   const aiInjectionFlag = flagged.some((p) => p.namesPurchasedItem);
+  // The buyer's words count only if the record says the model was given them.
+  const request = record.buyer_request ?? null;
+  const requestRead = Boolean(request) && (record.model_inputs ?? []).some((m) => m.text.includes(request));
+  const buyerRequest = requestRead ? requestExceedsMandate(request, record.mandate, product ?? {}) : { exceeds: false, why: [] };
   const facts = {
     ...integrity.facts,
     mandateBroken: mandate.broken,
@@ -57,6 +61,7 @@ export function evaluateCase({ record, order, reason, flaggedPassages = [], enro
     aiInjectionFlag,
     unattributedHiddenText: summary.unattributedHiddenText,
     unclassifiedAgentText: summary.unclassifiedAgentText,
+    requestExceedsMandate: buyerRequest.exceeds,
   };
   const verdict = decide(facts);
   const plan = planAction(verdict.verdict, reason, {
@@ -66,5 +71,5 @@ export function evaluateCase({ record, order, reason, flaggedPassages = [], enro
     signedPriceCents: product?.priceCents ?? order.capturedCents,
   });
 
-  return { verdict, plan, facts, mandate, findings, product, integrityProblems: integrity.problems, pagesValid: integrity.pagesValid, mandateAuth: integrity.mandate, flaggedPassages: flagged };
+  return { verdict, plan, facts, mandate, findings, product, integrityProblems: integrity.problems, pagesValid: integrity.pagesValid, mandateAuth: integrity.mandate, flaggedPassages: flagged, buyerRequest: request ? { text: request, read: requestRead, ...buyerRequest } : null };
 }

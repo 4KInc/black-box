@@ -88,8 +88,12 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   const headers = { 'content-type': 'application/x-www-form-urlencoded' };
   assert.equal((await post('/operator/run', body, { ...headers, origin: 'https://evil.example' })).status, 403);
   assert.equal((await post('/operator/run', body.replace('claude-haiku', 'not-a-model'), headers)).status, 400);
+  assert.match(form, /<textarea name="request" rows="3" maxlength="600"/);
+  assert.equal((await post('/operator/run', `${body}&request=${'x'.repeat(601)}`, headers)).status, 400);
   demo.paypalCalls.length = 0;
-  const result = await (await post('/operator/run', body, headers)).text();
+  const request = 'Find me a blue rain jacket, medium. Up to $150 <b>please</b>.';
+  const result = await (await post('/operator/run', `${body}&${new URLSearchParams({ request })}`, headers)).text();
+  assert.match(result, /The buyer asked: “Find me a blue rain jacket, medium\. Up to \$150 &lt;b&gt;please&lt;\/b&gt;\.”/);
   // The timeline of the run comes first, one line per step, in the order they happened.
   const tape = result.match(/<ol class="tape run">([\s\S]*?)<\/ol>/)[1];
   const events = [...tape.matchAll(/<span class="ev">([^<]+)<\/span>/g)].map((m) => m[1]);
@@ -104,6 +108,8 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   assert.match(result, /If disputed as “not as described”: <b>MERCHANT<\/b> \(rule 2\)/);
   const hash = result.match(/href="\/case\/([0-9a-f]{64})"/)[1];
   assert.equal(demo.paypalCalls[0].json.purchase_units[0].custom_id, hash);
+  const saved = JSON.parse(readFileSync(join(root, 'records', `${hash}.json`), 'utf8'));
+  assert.ok(saved.model_inputs[0].text.includes(`In the user's own words: ${request}`));
 
   // The run is on Recordings, tagged live; the committed recordings are not.
   const index = await (await fetch(base + '/')).text();

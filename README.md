@@ -106,10 +106,11 @@ was approved with the buyer's passkey and handled by the autopilot with no one a
    into the PayPal order's `custom_id`, which PayPal does not allow to change after payment.
 4. **A buyer disputes.** PayPal's webhook (verified with PayPal) or the dispute watcher wakes
    Black Box.
-5. **Code checks 15 yes/no facts and applies six rules.** The facts ask whether the record is
-   intact, whether the mandate was broken, and whether the merchant's own hidden text named the
-   item, contradicted the listing and reached the model. Exactly one rule fires for each of the
-   32,768 combinations, which is property-tested.
+5. **Code checks 16 yes/no facts and applies six rules.** The facts ask whether the record is
+   intact, whether the mandate was broken, whether the merchant's own hidden text named the
+   item, contradicted the listing and reached the model, and whether the buyer's own words asked
+   the agent for more than the mandate allows. Exactly one rule fires for each of the 65,536
+   combinations, which is property-tested.
 6. **An AI may only ask for a human.** An AI flagger quotes text aimed at AI shoppers. Its quote
    must appear word for word in what the agent read and must name the item bought. It can only
    move a case to NEEDS A HUMAN. It catches hiding tricks that code does not know (bench F01, F02).
@@ -185,10 +186,19 @@ real case yourself.
   code still cannot classify is caught by a safety net: the merchant's own hidden text about the
   item, addressed to AI agents, that did not count as a contradiction goes to a person, never to
   the agent (`unclassifiedAgentText`, E07, E08). An honest Offer for another size does not (E09).
-- **Rule 4 has three triggers.** A case goes to a person when the agent read hidden text that
-  code cannot pin on the merchant, when the AI flagger raises its flag, or when the merchant's own
-  hidden text for agents is one code cannot classify. Otherwise a lie planted by a third party, or
-  a reworded one, would be blamed on the agent (R06, E07).
+- **Rule 4 has four triggers.** A case goes to a person when the agent read hidden text that
+  code cannot pin on the merchant, when the AI flagger raises its flag, when the merchant's own
+  hidden text for agents is one code cannot classify, or when the mandate was broken and the
+  buyer's own words had asked for it. Otherwise a lie planted by a third party, or a reworded one,
+  would be blamed on the agent (R06, E07).
+- **The buyer's words do not replace the mandate.** On the live demo the buyer may type a
+  request in their own words. The agent gets it below the mandate line, and the record seals it
+  (`buyer_request`). If it asks for more than the mandate allows (an amount above the cap, "no
+  budget", or the colour, size or kind of item that was then bought instead) and the agent breaks
+  the mandate, the case goes to a person instead of charging the operator
+  (`requestExceedsMandate`). The check is code and deliberately broad, since it can only turn
+  AGENT into NEEDS A HUMAN. It never touches MERCHANT: a merchant that planted a lie is
+  responsible whatever the buyer said. Within the mandate the words change nothing.
 - **Hidden text addressed to agents gives up automatic resolution.** If the merchant hides text
   about the item for AI agents, the case goes to a person (rule 4), even when the note is honest
   and even when the purchase is within the mandate. It never blames the merchant unless it
@@ -271,7 +281,7 @@ run, is [scripts/deploy-live.md](scripts/deploy-live.md).
 
 | Dir | What |
 |---|---|
-| `engine/` | the 15 facts, six rules, mandate check, hidden-text extractor, PayPal action plan |
+| `engine/` | the 16 facts, six rules, mandate check, hidden-text extractor, PayPal action plan |
 | `recorder/` | sealed shopping records and their integrity checks |
 | `lib/` | signatures, canonical JSON, WebAuthn verification, PayPal client |
 | `shop/` | demo merchant (with deliberate hidden lies) and a third-party review platform |

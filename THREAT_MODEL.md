@@ -42,6 +42,7 @@ It ends with what Black Box has to trust, and what it does not cover.
 | Disputes an honest purchase as "not as described" | The record shows the item matched the signed listing and the mandate; Black Box sends it as evidence | R01, F03 |
 | Claims "I never authorised this" | The mandate carries the buyer's passkey approval, verified against the passkey enrolled for the payer PayPal reports | P01 |
 | Presents a different (honest-looking) record for the disputed order | The record hash must equal the order's `custom_id` | A02 |
+| Tells the agent to break the mandate ("go up to $250", "budget doesn't matter"), then disputes the overspend so the operator pays | The request is sealed in the record. If it asks for more than the mandate and the mandate was broken, `requestExceedsMandate` sends the case to a person (rule 4) instead of AGENT. Words that never reached the model do not count | agent and engine tests; property test |
 
 ### A dishonest agent operator
 
@@ -74,7 +75,7 @@ It ends with what Black Box has to trust, and what it does not cover.
   case is held for a person (logged as `hold`), retried with backoff (1, 2, 4 ... minutes, capped
   at 30), and the autopilot warns at startup when it is set to act with no flagger.
 - **Code decides, AI does not:** the six rules are deterministic, and exactly one fires for every
-  one of the 32,768 combinations of the 15 facts (property-tested). That proves the rules are
+  one of the 65,536 combinations of the 16 facts (property-tested). That proves the rules are
   consistent and complete, not that the policy is fair or that each fact was extracted correctly.
   The only AI input, the flag, can only lead to NEEDS A HUMAN, and only when its quote names the
   item bought.

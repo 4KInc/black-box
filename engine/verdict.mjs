@@ -45,11 +45,17 @@ export const FACT_KEYS = Object.freeze([
   'unclassifiedAgentText',   // the merchant's own hidden text, naming the item and addressed to AI agents,
                              // that the agent read but code did not find contradicting: a safety net, so a
                              // reworded lie goes to a person instead of being blamed on the agent
+  'requestExceedsMandate',   // the buyer's own words, sent to the agent, asked for more than the mandate allows
+                             // (a higher amount, no limit, another variant or item); only matters when the
+                             // mandate was broken, and can only move AGENT to NEEDS A HUMAN
 ]);
 
 const recordBroken = (f) => RECORD_CHECKS.some((k) => !f[k]);
 const allFive = (f) => MERCHANT_CONDITIONS.every((k) => f[k]);
 const otherSignal = (f) => f.aiInjectionFlag || f.unattributedHiddenText || f.unclassifiedAgentText;
+// The buyer told the agent to do what the mandate forbids, and it did. The mandate is still the
+// limit, but the operator should not pay automatically for following the buyer's own words.
+const buyerAskedForIt = (f) => f.requestExceedsMandate && f.mandateBroken;
 
 export const RULES = Object.freeze([
   {
@@ -69,13 +75,13 @@ export const RULES = Object.freeze([
   },
   {
     n: 4, verdict: VERDICT.HUMAN,
-    why: 'There is an injection signal that code cannot attribute to the merchant, or the merchant addressed hidden text about this item to AI agents that code cannot classify.',
-    when: (f) => !recordBroken(f) && !allFive(f) && otherSignal(f),
+    why: 'There is an injection signal that code cannot attribute to the merchant, the merchant addressed hidden text about this item to AI agents that code cannot classify, or the buyer\'s own words asked the agent for what the mandate forbids.',
+    when: (f) => !recordBroken(f) && !allFive(f) && (otherSignal(f) || buyerAskedForIt(f)),
   },
   {
     n: 5, verdict: VERDICT.AGENT,
-    why: 'The purchase breaks the mandate, and nothing the agent read contradicted the listing or was flagged as manipulation.',
-    when: (f) => !recordBroken(f) && !allFive(f) && !otherSignal(f) && f.mandateBroken,
+    why: 'The purchase breaks the mandate, and nothing the agent read contradicted the listing, was flagged as manipulation, or came from the buyer asking for it.',
+    when: (f) => !recordBroken(f) && !allFive(f) && !otherSignal(f) && !buyerAskedForIt(f) && f.mandateBroken,
   },
   {
     n: 6, verdict: VERDICT.USER,

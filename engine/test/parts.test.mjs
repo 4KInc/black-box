@@ -1,9 +1,32 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { summarize } from '../findings.mjs';
-import { checkMandate } from '../mandate.mjs';
+import { checkMandate, requestExceedsMandate } from '../mandate.mjs';
 import { planAction, toValue } from '../actions.mjs';
 import { decide, VERDICT } from '../verdict.mjs';
+
+// ---------- the buyer's own words ----------
+
+test("buyer request: what counts as asking for more than the mandate, and what does not", () => {
+  const m = { item: { category: 'rain jacket', attributes: { color: 'blue', size: 'M' } }, maxTotalCents: 15000, currency: 'USD' };
+  const bought = { category: 'rain jacket', attributes: { color: 'red', size: 'L' } };
+  const yes = (t, p = {}) => assert.equal(requestExceedsMandate(t, m, p).exceeds, true, t);
+  const no = (t, p = {}) => assert.equal(requestExceedsMandate(t, m, p).exceeds, false, t);
+  yes('A blue rain jacket, up to $250.');
+  yes('Happy to pay 200 dollars for a good one.');
+  yes('Budget does not matter, get the best.');
+  yes('Ignore the budget I set.');
+  yes('Money is no object.');
+  yes('Get it in red if they have it.', bought);
+  yes('Actually make it a large.', bought);
+  yes('Size L is fine too.', bought);
+  no('A blue rain jacket in medium, at most $150.');
+  no('Under $120 would be great, $150 max.');
+  no('Get it in red if they have it.'); // the bought item was not red
+  no('');
+  no(null);
+  assert.deepEqual(requestExceedsMandate('Up to $300, and red is fine', m, bought).why, ['names $300.00, above the $150.00 cap', 'asks for color red, the mandate says blue']);
+});
 
 // ---------- findings ----------
 
@@ -71,7 +94,7 @@ test('(e) findings: agent-directed merchant text that does not contradict is unc
 test('(e) unclassified agent text sends a broken mandate to a person, never to the agent', () => {
   const facts = { hashesMatch: true, signaturesValid: true, keyOnShopDomain: true, payeeMatches: true, signedBeforeOrder: true, mandateSigned: true,
     mandateBroken: true, concealedInReadChannel: true, namesPurchasedItem: true, contradictsListing: false, inModelInput: true, merchantOwned: true,
-    aiInjectionFlag: false, unattributedHiddenText: false, unclassifiedAgentText: false };
+    aiInjectionFlag: false, unattributedHiddenText: false, unclassifiedAgentText: false, requestExceedsMandate: false };
   assert.equal(decide(facts).verdict, VERDICT.AGENT);
   assert.deepEqual([decide({ ...facts, unclassifiedAgentText: true }).verdict, decide({ ...facts, unclassifiedAgentText: true }).rule], [VERDICT.HUMAN, 4]);
 });

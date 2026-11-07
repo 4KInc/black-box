@@ -38,6 +38,15 @@ const CLAUDE = [
 ];
 const OTHERS = [['gpt-4o-mini-2024-07-18', 'GPT-4o mini'], ['gemini-3.5-flash-lite', 'Gemini 3.5 Flash-Lite'], ['grok-4.20-0309-non-reasoning', 'Grok 4.20 (non-reasoning)'], ['muse-spark-1.3', 'Muse Spark 1.3 (resisted every lie)']];
 export const agentModels = (env = process.env) => [...CLAUDE, ...OTHERS.filter(([m]) => env[hostedFor(m)?.key])];
+// The buyer's request in their own words, optional. Control characters other than line breaks
+// are dropped and runs of whitespace kept short, so the recording shows what the buyer meant.
+export const REQUEST_MAX = 600;
+export const REQUEST_EXAMPLE = 'Find me a blue rain jacket in medium for a hiking trip. I can spend up to $150.';
+export function cleanRequest(raw) {
+  const text = String(raw ?? '').replace(/\r\n?/g, '\n').replace(/[^\P{Cc}\n]/gu, '').replace(/[ \t]+/g, ' ').replace(/\n{3,}/g, '\n\n').trim();
+  if (text.length > REQUEST_MAX) throw new RangeError(`The request is longer than ${REQUEST_MAX} characters.`);
+  return text || null;
+}
 export const SHELVES = [
   ['RJ-PREMIUM-BLUE-M', 'Summit Pro Shell only, as in the study'],
   ['', 'The whole shop'],
@@ -75,6 +84,7 @@ export function operatorPage(root, { env = process.env, shopUrl } = {}) {
   const form = list.length
     ? `<form class="panel lab" method="post" action="/operator/run">
 <label>Mandate the buyer approved with their passkey<select name="mandate">${list.map((m, i) => option(m.hash, `${readback(m.mandate)} · ${new Date(m.at).toISOString().slice(0, 16).replace('T', ' ')} UTC`, i === 0)).join('')}</select></label>
+<label>The buyer's request, in their words (optional)<textarea name="request" rows="3" maxlength="${REQUEST_MAX}" placeholder="${esc(REQUEST_EXAMPLE)}"></textarea></label>
 <label>Agent model<select name="model">${agentModels(env).map(([m, text], i) => option(m, text, i === 0)).join('')}</select></label>
 <label>What it may look at<select name="shelf">${SHELVES.map(([v, text], i) => option(v, text, i === 0)).join('')}</select></label>
 <button type="submit">Send the agent shopping</button></form>`
@@ -82,6 +92,7 @@ export function operatorPage(root, { env = process.env, shopUrl } = {}) {
   return layout('Black Box · operator', `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
 <h1>Send the agent <em>shopping.</em></h1></div>
 <div><p>A real AI agent shops at <a href="${esc(shopUrl)}">${esc(new URL(shopUrl).host)}</a> within the mandate below. Black Box records every page it reads and what it decides, and seals the record into the PayPal order.</p>
+<p>Paste what the buyer would tell their agent. The agent gets it with the mandate, which stays the limit Black Box judges against.</p>
 <p><a href="/mandate/">Approve a new mandate</a></p></div></section>
 <section class="sec">${form}</section>`);
 }
@@ -149,7 +160,7 @@ export function authorised(header, key) {
 
 async function readForm(req) {
   let raw = '';
-  for await (const chunk of req) { raw += chunk; if (raw.length > 4096) throw new Error('form too large'); }
+  for await (const chunk of req) { raw += chunk; if (raw.length > 16384) throw new Error('form too large'); }
   return new URLSearchParams(raw);
 }
 
@@ -190,18 +201,20 @@ export function createLive({
         const model = agentModels(env).find(([m]) => m === form.get('model'))?.[0];
         const shelf = SHELVES.find(([v]) => v === form.get('shelf'));
         if (!approved || !model || !shelf) return send(400, 'Pick a mandate, a model and a shelf from the form.');
+        let request;
+        try { request = cleanRequest(form.get('request')); } catch (e) { return send(400, esc(e.message)); }
         // Streamed: the page grows as the agent works, then the result follows the timeline.
         const [head, tail] = layout('Black Box · operator', '\u0000').split('\u0000');
         res.writeHead(200, HEADERS);
         res.write(`${head}${RUN_CSS}<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
-<h1>The agent is <em>shopping.</em></h1></div><div><p>${esc(modelName(env, model))} at <a href="${esc(shopUrl)}">${esc(new URL(shopUrl).host)}</a>, within: ${esc(readback(approved.mandate))}.</p></div></section>
+<h1>The agent is <em>shopping.</em></h1></div><div><p>${esc(modelName(env, model))} at <a href="${esc(shopUrl)}">${esc(new URL(shopUrl).host)}</a>, within: ${esc(readback(approved.mandate))}.</p>${request ? `<p>The buyer asked: “${esc(request)}”</p>` : ''}</div></section>
 <section class="sec"><ol class="tape run">`);
         const t0 = Date.now();
         const line = (ev, text, cls = '') => res.write(`<li${cls ? ` class="${cls}"` : ''}><span class="t">+${((Date.now() - t0) / 1000).toFixed(1)}s</span><span class="ev">${ev}</span><span>${text}</span></li>\n`);
-        line('Start', 'Sent the agent to the shop');
+        line('Start', request ? 'Sent the agent to the shop with the buyer’s request' : 'Sent the agent to the shop');
         let out;
         try {
-          out = await runAgent({ shopUrl, mandate: approved.mandate, mandateAuth: approved.mandate_auth, model, llm, shelf: shelf[0] ? [shelf[0]] : null,
+          out = await runAgent({ shopUrl, mandate: approved.mandate, mandateAuth: approved.mandate_auth, request, model, llm, shelf: shelf[0] ? [shelf[0]] : null,
             onStep: (s) => line(...stepLine(s, { env, shopUrl }), ['decided', 'order'].includes(s.step) ? 'hot' : '') });
         } catch (e) {
           console.error(e);

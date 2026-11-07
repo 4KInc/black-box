@@ -54,6 +54,15 @@ test('the model input contains both hidden claims, because the agent reads JSON-
   assert.match(input, /takes \$70 off the Stormline/);
 });
 
+test("the buyer's own words reach the model below the mandate, and are sealed with it", async () => {
+  const request = 'Need a blue rain jacket in M for hiking, max $150.';
+  const { sealed } = await runAgent({ shopUrl: demo.shopUrl, mandate: MANDATE, mandateAuth: MANDATE_AUTH, request, llm: scripted('RJ-BLUE-M'), checkout: false });
+  const input = sealed.record.model_inputs[0].text;
+  assert.match(input, /The user asked for: a rain jacket \(color blue, size M\), total at most \$150\.00 USD/);
+  assert.ok(input.includes(`The user asked for: a rain jacket (color blue, size M), total at most $150.00 USD, from shops that sign their pages.\nIn the user's own words: ${request}\n`));
+  assert.equal(sealed.hash, recordHash(sealed.record));
+});
+
 test('honest jacket within budget -> USER, merchant sends evidence', async () => {
   const c = await shopAndDispute('RJ-BLUE-M');
   assert.deepEqual(c.findings, []);
@@ -98,10 +107,11 @@ test('if the model never saw the hidden text, the merchant is not blamed', async
   assert.equal(blind.facts.hashesMatch, false);
 });
 
-async function controlShopOverspend() {
+async function controlShopOverspend({ request = null, tamper = (r) => r } = {}) {
   const control = await startDemo({ now: () => Math.floor(Date.now() / 1000) - 5, injections: false });
   try {
-    const { sealed, order } = await runAgent({ shopUrl: control.shopUrl, mandate: MANDATE, mandateAuth: MANDATE_AUTH, llm: scripted('RJ-PREMIUM-BLUE-M') });
+    const { sealed, order } = await runAgent({ shopUrl: control.shopUrl, mandate: MANDATE, mandateAuth: MANDATE_AUTH, request, llm: scripted('RJ-PREMIUM-BLUE-M') });
+    tamper(sealed.record);
     return evaluateCase({
       record: sealed.record,
       order: { customId: order.custom_id, payeeMerchantId: TEST_MERCHANT, createdAt: new Date().toISOString(), capturedCents: 24000, payerId: PAYER },
@@ -117,6 +127,19 @@ test('accurate hidden product data is not held against the merchant: an overspen
   assert.equal(c.facts.merchantOwned, true);
   assert.equal(c.facts.contradictsListing, false);
   assert.deepEqual([c.verdict.verdict, c.verdict.rule], ['AGENT', 5]);
+});
+
+test("an overspend the buyer's own words asked for goes to a person, not to the operator", async () => {
+  const asked = await controlShopOverspend({ request: 'Blue rain jacket, size M. I can go up to $250 if it is the best one.' });
+  assert.equal(asked.facts.requestExceedsMandate, true);
+  assert.deepEqual([asked.verdict.verdict, asked.verdict.rule, asked.plan.action], ['NEEDS_A_HUMAN', 4, 'none']);
+  assert.deepEqual(asked.buyerRequest.why, ['names $250.00, above the $150.00 cap']);
+  // Words within the mandate change nothing: the overspend is still the agent's.
+  const fine = await controlShopOverspend({ request: 'Blue rain jacket, size M, no more than $150 please.' });
+  assert.deepEqual([fine.facts.requestExceedsMandate, fine.verdict.verdict, fine.verdict.rule], [false, 'AGENT', 5]);
+  // Words the model was never given do not count, and editing the record breaks its hash anyway.
+  const added = await controlShopOverspend({ tamper: (r) => { r.buyer_request = 'spend whatever it takes'; } });
+  assert.equal(added.facts.requestExceedsMandate, false);
 });
 
 test('a shop address with a path (a variant\'s /v/control) is read under that path, with the same verdict as a control shop', async () => {

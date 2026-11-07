@@ -33,8 +33,11 @@ function parseChoice(text) {
 
 // shelf: optional list of SKUs to consider (a scenario's subset of the catalog).
 // onStep: told each step as it happens ({ step, ... }), for a live view of the run.
-export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true, onStep = () => {} }) {
+// request: optional, the buyer's request in their own words. It is given to the model below the
+// mandate line, which stays: the mandate is the limit Black Box judges against, not the words.
+export async function runAgent({ shopUrl, mandate, mandateAuth = null, request = null, shelf = null, llm = anthropic, model, fetch: f = fetch, checkout = true, onStep = () => {} }) {
   const rec = new Recorder({ mandate, mandateAuth, fetch: f });
+  if (request) rec.buyerRequest(request);
   const origin = new URL(shopUrl).origin;
   // The shop's pages may live under a path on its domain (a shop variant's /v/<name>).
   const root = origin + new URL(shopUrl).pathname.replace(/\/+$/, '');
@@ -58,7 +61,7 @@ export async function runAgent({ shopUrl, mandate, mandateAuth = null, shelf = n
   }
   if (!pages.length) throw new Error('no signed product pages to choose from');
 
-  const user = [describeMandate(mandate), '', ...pages.map((p) => pageForModel(p.url, p.html))].join('\n');
+  const user = [describeMandate(mandate), ...(request ? [`In the user's own words: ${request}`] : []), '', ...pages.map((p) => pageForModel(p.url, p.html))].join('\n');
   rec.modelInput('choose', `SYSTEM:\n${SYSTEM}\n\nUSER:\n${user}`);
   onStep({ step: 'ask', model, pages: pages.length });
   const reply = await llm({ system: SYSTEM, user, model });
