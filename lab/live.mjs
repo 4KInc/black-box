@@ -44,7 +44,39 @@ const OTHERS = [
   ['grok-4.7', 'Grok 4.7'], ['grok-4.20-0309-non-reasoning', 'Grok 4.20 (non-reasoning)'],
   ['muse-spark-1.3', 'Muse Spark 1.3 (resisted every lie)'],
 ];
-export const agentModels = (env = process.env) => [...CLAUDE, ...OTHERS.filter(([m]) => env[hostedFor(m)?.key])];
+// The models the form offers: LIVE_MODELS (comma-separated IDs), by default the two Claude models
+// the demo needs and GPT-4o mini. A model from another provider also needs that provider's key.
+// Anything else is refused on POST, so a password holder cannot pick a costlier model.
+export const DEFAULT_LIVE_MODELS = ['claude-haiku-4-5-20251001', 'claude-sonnet-5-5', 'gpt-4o-mini-2024-07-18'];
+export const liveModels = (env = process.env) => (env.LIVE_MODELS ? env.LIVE_MODELS.split(',').map((m) => m.trim()).filter(Boolean) : DEFAULT_LIVE_MODELS);
+export const agentModels = (env = process.env) => {
+  const allowed = liveModels(env);
+  return [...CLAUDE, ...OTHERS.filter(([m]) => env[hostedFor(m)?.key])].filter(([m]) => allowed.includes(m));
+};
+
+// At most LIVE_MAX_RUNS_PER_DAY agent runs (default 25) per UTC day, counted in a file under
+// records/ (LIVE_DIR when hosted), so a restart does not reset it.
+export const DEFAULT_MAX_RUNS = 25;
+export function maxRunsPerDay(env = process.env) {
+  const n = Number(env.LIVE_MAX_RUNS_PER_DAY ?? DEFAULT_MAX_RUNS);
+  return Number.isInteger(n) && n >= 0 ? n : DEFAULT_MAX_RUNS;
+}
+const runsFile = (root) => join(root, 'records', 'live-runs.json');
+const utcDay = (now) => new Date(now).toISOString().slice(0, 10);
+export function runsToday(root, now = Date.now()) {
+  try {
+    const { day, count } = JSON.parse(readFileSync(runsFile(root), 'utf8'));
+    return day === utcDay(now) && Number.isInteger(count) ? count : 0;
+  } catch { return 0; }
+}
+// Counts one run if the cap allows it; false when today's runs are used up. Synchronous, so two
+// requests in this process cannot both take the last run.
+export function takeRun(root, max, now = Date.now()) {
+  const count = runsToday(root, now);
+  if (count >= max) return false;
+  writeJson(runsFile(root), { day: utcDay(now), count: count + 1 });
+  return true;
+}
 // The buyer's request in their own words, optional. Control characters other than line breaks
 // are dropped and runs of whitespace kept short, so the recording shows what the buyer meant.
 export const REQUEST_MAX = 600;
@@ -68,6 +100,10 @@ export function mergeEnrolment(dir, enrolment) {
   const credentials = [...enrolment.credentials, ...known.filter((c) => !enrolment.credentials.some((e) => e.id === c.id))];
   writeFileSync(file, JSON.stringify({ payer_id: enrolment.payer_id, credentials }, null, 2));
 }
+
+// Is a mandate in force at `now`? An expired one is never offered: a run on it would break the
+// mandate by its dates alone, and a judge without a passkey device could not make a new one.
+export const inForce = (m, now = Date.now()) => !(Date.parse(m.notBefore) > now) && !(Date.parse(m.notAfter) < now);
 
 // The approved mandates on this server, newest first.
 export function mandates(root) {
@@ -115,8 +151,11 @@ export const PAYMENTS = [
 ];
 const option = (value, text, selected) => `<option value="${esc(value)}"${selected ? ' selected' : ''}>${esc(text)}</option>`;
 
-export function operatorPage(root, { env = process.env, shopUrl } = {}) {
-  const list = mandates(root);
+export function operatorPage(root, { env = process.env, shopUrl, now = Date.now() } = {}) {
+  const max = maxRunsPerDay(env);
+  const left = Math.max(0, max - runsToday(root, now));
+  const all = mandates(root);
+  const list = all.filter((m) => inForce(m.mandate, now));
   const wallet = savedWallet(root);
   const payments = wallet ? PAYMENTS : PAYMENTS.filter(([v]) => v !== 'wallet');
   const form = list.length
@@ -127,8 +166,9 @@ export function operatorPage(root, { env = process.env, shopUrl } = {}) {
 <label>What it may look at<select name="shelf">${SHELVES.map(([v, text], i) => option(v, text, i === 0)).join('')}</select></label>
 <label>How it pays<select name="pay">${payments.map(([v, text], i) => option(v, text, i === 0)).join('')}</select></label>
 <p>${wallet ? `Buyer\u2019s saved wallet: <b>${esc(wallet.email ?? wallet.payer_id ?? 'saved')}</b>. <a href="/wallet">Change</a>` : 'No saved wallet, so the buyer approves the payment. <a href="/wallet">Save the buyer\u2019s PayPal wallet</a> to let the agent pay by itself.'}</p>
-<button type="submit">Send the agent shopping</button></form>`
-    : '<p class="panel">No mandate yet. <a href="/mandate/">Approve one with a passkey</a> first.</p>';
+<p class="runs"><b>${left} of ${max}</b> runs left today (UTC). Each run spends model credit and creates a PayPal order.</p>
+<button type="submit"${left ? '' : ' disabled'}>Send the agent shopping</button></form>`
+    : `<p class="panel">${all.length ? `No mandate in force: the ${all.length} approved here ${all.length === 1 ? 'has' : 'have'} expired.` : 'No mandate yet.'} <a href="/mandate/">Approve one with a passkey</a> first.</p>`;
   return layout('Black Box · operator', `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
 <h1>Send the agent <em>shopping.</em></h1></div>
 <div><p>A real AI agent shops at <a href="${esc(shopUrl)}">${esc(new URL(shopUrl).host)}</a> within the mandate below. Black Box records every page it reads and what it decides, and seals the record into the PayPal order.</p>
@@ -217,7 +257,7 @@ async function readForm(req) {
 // runAgent and llm are replaceable for tests; payeeMerchantId is only used for the preview.
 export function createLive({
   root, replay, mandate, webhook = null, operatorKey, origin, shopUrl, env = process.env,
-  runAgent = defaultRunAgent, llm = anthropic, payeeMerchantId = 'MCYKQUXGB936U', pay = paypal,
+  runAgent = defaultRunAgent, llm = anthropic, payeeMerchantId = 'MCYKQUXGB936U', pay = paypal, now = () => Date.now(),
 }) {
   const origins = new Set([origin]);
   return createServer(async (req, res) => {
@@ -242,7 +282,7 @@ export function createLive({
         req.url = req.url.slice('/mandate'.length);
         return mandate.emit('request', req, res);
       }
-      if (url.pathname === '/operator' && req.method === 'GET') return send(200, operatorPage(root, { env, shopUrl }));
+      if (url.pathname === '/operator' && req.method === 'GET') return send(200, operatorPage(root, { env, shopUrl, now: now() }));
       if (url.pathname === '/wallet' && req.method === 'GET') return send(200, walletPage(root), { 'content-security-policy': WALLET_CSP });
       if (url.pathname.startsWith('/wallet/') && req.method === 'POST' && !origins.has(req.headers.origin)) return send(403, 'Cross-site request refused.');
       if (url.pathname === '/wallet/connect' && req.method === 'POST') {
@@ -278,17 +318,19 @@ export function createLive({
       if (url.pathname === '/operator/run' && req.method === 'POST') {
         if (!origins.has(req.headers.origin)) return send(403, 'Cross-site request refused.');
         const form = await readForm(req);
-        const approved = mandates(root).find((m) => m.hash === form.get('mandate'));
+        const approved = mandates(root).find((m) => m.hash === form.get('mandate') && inForce(m.mandate, now()));
         const model = agentModels(env).find(([m]) => m === form.get('model'))?.[0];
         const shelf = SHELVES.find(([v]) => v === form.get('shelf'));
         const payment = form.get('pay') ?? 'link';
-        if (!approved || !model || !shelf || !PAYMENTS.some(([v]) => v === payment)) return send(400, 'Pick a mandate, a model, a shelf and a payment from the form.');
+        if (!approved || !model || !shelf || !PAYMENTS.some(([v]) => v === payment)) return send(400, 'Pick a mandate in force, a model, a shelf and a payment from the form.');
         const wallet = payment === 'wallet' ? savedWallet(root) : null;
         if (payment === 'wallet' && !wallet) return send(400, 'No saved wallet: save the buyer\u2019s PayPal wallet first, or pay through a link.');
         // The wallet must be the mandate's payer: otherwise the passkey check fails at dispute time.
         if (wallet?.payer_id && approved.payer_id && wallet.payer_id !== approved.payer_id) return send(400, `The saved wallet is PayPal payer ${esc(wallet.payer_id)}, but the mandate is for payer ${esc(approved.payer_id)}.`);
         let request;
         try { request = cleanRequest(form.get('request')); } catch (e) { return send(400, esc(e.message)); }
+        const max = maxRunsPerDay(env);
+        if (!takeRun(root, max, now())) return send(429, `The live demo has used today's ${max} agent runs. It resets at midnight UTC. The recorded runs, the lab and the scenarios stay open.`, { 'retry-after': String(Math.ceil((Date.parse(`${utcDay(now())}T00:00:00Z`) + 86400000 - now()) / 1000)) });
         // Streamed: the page grows as the agent works, then the result follows the timeline.
         const [head, tail] = layout('Black Box · operator', '\u0000').split('\u0000');
         res.writeHead(200, HEADERS);

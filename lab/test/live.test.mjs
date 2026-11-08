@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { authorised, createLive, mergeEnrolment } from '../live.mjs';
+import { agentModels, authorised, createLive, DEFAULT_LIVE_MODELS, maxRunsPerDay, mergeEnrolment, runsToday, takeRun } from '../live.mjs';
 import { createReplay } from '../../replay/server.mjs';
 import { createMandateServer } from '../../mandate/server.mjs';
 import { createWebhookReceiver } from '../../executor/webhook.mjs';
@@ -90,13 +90,11 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   assert.match(form, /<option value="claude-haiku-4-5-20251001" selected>/);
   assert.doesNotMatch(form, /<script/i);
   // A provider is offered only when its key is set.
-  const { agentModels } = await import('../live.mjs');
-  assert.equal(agentModels({}).some(([m]) => m === 'muse-spark-1.3'), false);
-  assert.ok(agentModels({ MODEL_API_KEY: 'k' }).some(([m]) => m === 'muse-spark-1.3'));
-  // With every provider's key, each hosted model from the study is offered: all but the local open models.
-  assert.deepEqual(agentModels({ OPENAI_API_KEY: 'k', GEMINI_API_KEY: 'k', XAI_API_KEY: 'k', MODEL_API_KEY: 'k' }).map(([m]) => m), [
-    'claude-haiku-4-5-20251001', 'claude-sonnet-5-5', 'claude-opus-5-5', 'gpt-5.5-2026-04-23', 'gpt-4o-mini-2024-07-18',
-    'gemini-3.1-pro-preview', 'gemini-3.5-flash-lite', 'grok-4.7', 'grok-4.20-0309-non-reasoning', 'muse-spark-1.3']);
+    assert.equal(agentModels({}).some(([m]) => m === 'muse-spark-1.3'), false);
+  assert.ok(agentModels({ MODEL_API_KEY: 'k', LIVE_MODELS: 'muse-spark-1.3' }).some(([m]) => m === 'muse-spark-1.3'));
+  // LIVE_MODELS can list every hosted model from the study; each still needs its provider's key.
+  const every = 'claude-haiku-4-5-20251001,claude-sonnet-5-5,claude-opus-5-5,gpt-5.5-2026-04-23,gpt-4o-mini-2024-07-18,gemini-3.1-pro-preview,gemini-3.5-flash-lite,grok-4.7,grok-4.20-0309-non-reasoning,muse-spark-1.3';
+  assert.deepEqual(agentModels({ LIVE_MODELS: every, OPENAI_API_KEY: 'k', GEMINI_API_KEY: 'k', XAI_API_KEY: 'k', MODEL_API_KEY: 'k' }).map(([m]) => m), every.split(','));
 
   const body = new URLSearchParams({ mandate: done.mandateHash, model: 'claude-haiku-4-5-20251001', shelf: 'RJ-PREMIUM-BLUE-M' }).toString();
   const headers = { 'content-type': 'application/x-www-form-urlencoded' };
@@ -217,4 +215,86 @@ test('restarting keeps passkeys enrolled on the site, alongside the committed on
   mergeEnrolment(dir, committed);
   mergeEnrolment(dir, committed);
   assert.deepEqual(JSON.parse(readFileSync(file, 'utf8')).credentials.map((c) => c.id), ['committed', 'here']);
+});
+
+test('the model list is an allowlist: Haiku 4.5, Sonnet 5.5 and GPT-4o mini (with its key) by default, no Opus', () => {
+  assert.deepEqual(DEFAULT_LIVE_MODELS, ['claude-haiku-4-5-20251001', 'claude-sonnet-5-5', 'gpt-4o-mini-2024-07-18']);
+  assert.deepEqual(agentModels({}).map(([m]) => m), ['claude-haiku-4-5-20251001', 'claude-sonnet-5-5']);
+  assert.deepEqual(agentModels({ OPENAI_API_KEY: 'k' }).map(([m]) => m), ['claude-haiku-4-5-20251001', 'claude-sonnet-5-5', 'gpt-4o-mini-2024-07-18']);
+  assert.equal(agentModels({ OPENAI_API_KEY: 'k', GEMINI_API_KEY: 'k', XAI_API_KEY: 'k', MODEL_API_KEY: 'k' }).some(([m]) => m === 'claude-opus-5-5'), false);
+  assert.deepEqual(agentModels({ LIVE_MODELS: ' claude-sonnet-5-5 , not-a-model ' }).map(([m]) => m), ['claude-sonnet-5-5']);
+});
+
+test('a model that is not on the list is refused on POST, before a run is counted', async () => {
+  const before = runsToday(root);
+  const mandate = (await (await fetch(base + '/operator', { headers: auth() })).text()).match(/<select name="mandate"><option value="([0-9a-f]{64})"/)[1];
+  const body = new URLSearchParams({ mandate, model: 'claude-opus-5-5', shelf: 'RJ-PREMIUM-BLUE-M' }).toString();
+  const r = await post('/operator/run', body, { 'content-type': 'application/x-www-form-urlencoded' });
+  assert.equal(r.status, 400);
+  assert.equal(runsToday(root), before);
+});
+
+test('runs are capped per UTC day, in a file that survives restarts, and the count resets the next day', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'live-cap-'));
+  const day1 = Date.parse('2026-11-08T23:59:00Z');
+  const day2 = Date.parse('2026-11-09T00:00:30Z');
+  assert.equal(maxRunsPerDay({}), 25);
+  assert.equal(maxRunsPerDay({ LIVE_MAX_RUNS_PER_DAY: '3' }), 3);
+  assert.equal(maxRunsPerDay({ LIVE_MAX_RUNS_PER_DAY: 'lots' }), 25);
+  assert.deepEqual([takeRun(dir, 2, day1), takeRun(dir, 2, day1), takeRun(dir, 2, day1)], [true, true, false]);
+  assert.equal(runsToday(dir, day1), 2);
+  assert.deepEqual(JSON.parse(readFileSync(join(dir, 'records', 'live-runs.json'), 'utf8')), { day: '2026-11-08', count: 2 });
+  assert.equal(runsToday(dir, day2), 0);
+  assert.equal(takeRun(dir, 2, day2), true);
+  assert.equal(runsToday(dir, day2), 1);
+});
+
+test('over the cap the run is refused with 429, and the operator page shows the runs left', async () => {
+  const today = new Date().toISOString().slice(0, 10);
+  const capped = createLive({
+    root, operatorKey: KEY, origin: ORIGIN, shopUrl: demo.shopUrl, env: { LIVE_MAX_RUNS_PER_DAY: '2' },
+    replay: createReplay({ root, live: true }), mandate: createMandateServer({ root, rpId: 'localhost', origin: ORIGIN }),
+    runAgent: async () => { throw new Error('must not run over the cap'); },
+  });
+  await new Promise((r) => capped.listen(0, '127.0.0.1', r));
+  const at = `http://127.0.0.1:${capped.address().port}`;
+  try {
+    writeFileSync(join(root, 'records', 'live-runs.json'), JSON.stringify({ day: today, count: 1 }));
+    assert.match(await (await fetch(at + '/operator', { headers: auth() })).text(), /<b>1 of 2<\/b> runs left today \(UTC\)[\s\S]*<button type="submit">Send the agent shopping/);
+    writeFileSync(join(root, 'records', 'live-runs.json'), JSON.stringify({ day: today, count: 2 }));
+    const page = await (await fetch(at + '/operator', { headers: auth() })).text();
+    assert.match(page, /<b>0 of 2<\/b> runs left today/);
+    assert.match(page, /<button type="submit" disabled>Send the agent shopping/);
+    const mandate = page.match(/<select name="mandate"><option value="([0-9a-f]{64})"/)[1];
+    const r = await fetch(at + '/operator/run', { method: 'POST', headers: { ...auth(), origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ mandate, model: 'claude-haiku-4-5-20251001', shelf: 'RJ-PREMIUM-BLUE-M' }).toString() });
+    assert.equal(r.status, 429);
+    assert.match(await r.text(), /used today's 2 agent runs\. It resets at midnight UTC/);
+    assert.ok(Number(r.headers.get('retry-after')) > 0);
+  } finally { capped.close(); }
+});
+
+test('only mandates in force are offered, and an expired one is refused', async () => {
+  const { inForce, operatorPage } = await import('../live.mjs');
+  const m = { notBefore: '2026-11-01T00:00:00Z', notAfter: '2026-11-08T00:00:00Z' };
+  assert.equal(inForce(m, Date.parse('2026-11-05T00:00:00Z')), true);
+  assert.equal(inForce(m, Date.parse('2026-11-09T00:00:00Z')), false);
+  // A week and a day after the mandates made in these tests, none is in force.
+  const later = Date.now() + 8 * 86400_000;
+  const page = operatorPage(root, { env: {}, shopUrl: demo.shopUrl, now: later });
+  assert.match(page, /No mandate in force: the \d+ approved here ha(s|ve) expired\./);
+  assert.doesNotMatch(page, /<select name="mandate">/);
+  const expired = createLive({
+    root, operatorKey: KEY, origin: ORIGIN, shopUrl: demo.shopUrl, env: {}, now: () => later,
+    replay: createReplay({ root, live: true }), mandate: createMandateServer({ root, rpId: 'localhost', origin: ORIGIN }),
+    runAgent: async () => { throw new Error('must not run on an expired mandate'); },
+  });
+  await new Promise((r) => expired.listen(0, '127.0.0.1', r));
+  try {
+    const mandate = (await (await fetch(base + '/operator', { headers: auth() })).text()).match(/<select name="mandate"><option value="([0-9a-f]{64})"/)[1];
+    const r = await fetch(`http://127.0.0.1:${expired.address().port}/operator/run`, { method: 'POST', headers: { ...auth(), origin: ORIGIN, 'content-type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({ mandate, model: 'claude-haiku-4-5-20251001', shelf: 'RJ-PREMIUM-BLUE-M' }).toString() });
+    assert.equal(r.status, 400);
+    assert.match(await r.text(), /mandate in force/);
+  } finally { expired.close(); }
 });

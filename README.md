@@ -434,7 +434,11 @@ of runs that bought nothing were made.
 
 Runs made there appear on Recordings tagged **Live run**, with what PayPal did once the autopilot
 has acted. `/mandate/` and `/operator` need the operator password, since they spend model credit
-and create PayPal orders. Runs, mandates, passkeys and PayPal execution logs are kept in a Cloud
+and create PayPal orders. Judges get the operator login in the Devpost testing instructions.
+`/operator` offers only the models in `LIVE_MODELS` (by default Claude Haiku 4.5, Claude Sonnet
+5.5, and GPT-4o mini when its key is set) and refuses any other; it allows `LIVE_MAX_RUNS_PER_DAY`
+runs per UTC day (default 25, counted in `LIVE_DIR`, so a restart does not reset it), shows the
+runs left, and answers 429 once they are used. It offers only mandates still in force. Runs, mandates, passkeys and PayPal execution logs are kept in a Cloud
 Storage bucket mounted at `LIVE_DIR`; the keys come from Secret Manager. The deploy runbook, as
 run, is [scripts/deploy-live.md](scripts/deploy-live.md).
 
