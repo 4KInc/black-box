@@ -127,7 +127,26 @@ PayPal wallet: PayPal charges it at once, with no approval screen. The buyer sav
 sandbox app needs PayPal's saved payment methods (vault), which it has. Added 2026-11-07; on a
 running shop: `gcloud run services update driftwood-outfitters --region us-central1 --project $P --update-env-vars SHOP_VAULT_PAY=on`.
 
-## 9. Check it
+## 9. Caps on the live demo (submission deploy, 2026-11-08)
+
+`/operator` allows `LIVE_MAX_RUNS_PER_DAY` agent runs per UTC day (default 25, counted in
+`LIVE_DIR/live-runs.json`) and offers only the models in `LIVE_MODELS`. Run for the submission,
+on top of the settings above (`--update-env-vars` keeps every other variable and secret):
+
+```sh
+gcloud run deploy black-box --source . --region us-central1 --project $P --quiet \
+  --update-env-vars '^;^LIVE_MAX_RUNS_PER_DAY=25;LIVE_MODELS=claude-haiku-4-5-20251001,claude-sonnet-5-5,gpt-4o-mini-2024-07-18'
+node scripts/live.mjs preflight   # preflight ok: Anthropic key answers, PayPal sandbox token issued, flagger on
+```
+
+Revision `black-box-00063-752`. The shops were not redeployed: their code did not change. Checked:
+`/demo`, `/lab`, `/bench` and `/lab/facts` return 200; `/operator` and `/mandate/` return 401
+without the password; `/bench` reads 62 of 62; `/operator` shows "25 of 25 runs left today" and
+offers exactly the three models above. Judges without a passkey device use a mandate approved in
+advance: approve one at `/mandate/` valid for 40 days, so it is in force through judging
+(15 December 2026), since `/operator` offers only mandates in force.
+
+## 10. Check it
 
 - `https://driftwood-outfitters-…/` and `https://northline-audio-…/` show the shops; `/.well-known/jwks.json` returns each one's key.
 - `https://black-box-…/operator` asks for the operator password (the user name can be anything).
