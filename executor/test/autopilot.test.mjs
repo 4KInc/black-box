@@ -144,7 +144,7 @@ test('a scheduled retry of a held dispute runs even if its timer fires before th
   assert.equal(ap.status('PP-D-358'), 'executed');
 });
 
-test('at startup, acting without a flagger prints a warning that MERCHANT-type cases will be held', () => {
+test('at startup, acting without a flagger prints a warning that money-moving verdicts will be held', () => {
   assert.match(flaggerWarning({ AUTO_EXECUTE: 'on' }), /ANTHROPIC_API_KEY is not set.*HELD/);
   assert.match(flaggerWarning({ AUTO_EXECUTE: 'on', ANTHROPIC_API_KEY: 'k', FLAGGER: 'off' }), /FLAGGER=off.*HELD/);
   assert.equal(flaggerWarning({ AUTO_EXECUTE: 'on', ANTHROPIC_API_KEY: 'k' }), null);

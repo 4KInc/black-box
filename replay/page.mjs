@@ -431,7 +431,7 @@ ol.tape li.hot .ev{color:var(--orange)}
 .bcard .miss{margin:0;color:var(--red);font:400 10.5px/1.4 var(--mono)}
 .bcard .foot{display:flex;flex-direction:column;gap:3px;border-top:1px dashed var(--rule);padding-top:10px;font:400 11px/1.4 var(--mono);color:var(--ink-3)}
 .bcard .foot b{color:var(--ink);font-weight:400;font-size:12.5px}
-.bcard .foot .fails{color:var(--red)}
+.bcard .foot .fails{color:var(--red)}.bcard .foot .held{color:var(--amber)}
 .benchcard{display:grid;grid-template-columns:auto 1fr auto;gap:14px;align-items:center;margin-bottom:16px;padding:12px 16px;border:1px dashed var(--rule-2);border-radius:4px}
 .benchcard .id{font:700 26px/1 var(--display);color:var(--orange)}
 .benchcard h2{font:600 20px/1.15 var(--display);letter-spacing:.02em}
@@ -600,6 +600,7 @@ const planPlain = (plan) => ({
   'make-offer': `offer ${money(plan.refundCents)} back`,
   'provide-evidence': 'defend the sale',
 }[plan.action] ?? plan.action);
+const HELD_PLAIN = 'held: with no answer from the AI check, no money moves';
 // The record checks, in short, for "fails: ..." on bench cases.
 const CHECK_PLAIN = { hashesMatch: 'record matches the payment', signaturesValid: 'page signatures', keyOnShopDomain: "key on the shop's site",
   payeeMatches: 'right payee', signedBeforeOrder: 'signed before the order', mandateSigned: 'passkey approval' };
@@ -906,7 +907,8 @@ function supportFor(c, j) {
     : c.paypal
     ? `PayPal case ${esc(c.paypal.disputeId)}: ${esc(paypalStatus(c.paypal))}.`
     : `Not disputed. If the customer disputes it as “${esc(reasonPlain(j.reason))}”, Black Box will ${j.plan.action === 'none' ? 'take no automatic action, and a person decides' : esc(planPlain(j.plan))}.`;
-  return supportBox(null, esc(`${explain} ${outcome}`), `${next}${v === VERDICT.HUMAN ? ' Escalate it to a dispute specialist.' : ''}`);
+  const held = j.plan.heldWithoutFlagger ? ` Held: the AI check gave no answer, and without it no money moves, so the ${esc(planPlain(j.plan))} waits for its answer or a person. The verdict stays code's.` : '';
+  return supportBox(null, esc(`${explain} ${outcome}`), `${next}${held}${v === VERDICT.HUMAN ? ' Escalate it to a dispute specialist.' : ''}`);
 }
 
 export function casePage(c, j) {
@@ -1203,7 +1205,7 @@ export function benchPage(results) {
 <div class="top"><span class="dot"></span><span class="vv">${label(r.got.verdict)}</span><span class="rl">rule ${r.got.rule}</span><span class="ok ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? '✓ right' : '✗ wrong'}</span></div>
 <div class="bid">${esc(r.def.id)}</div><h3>${esc(r.def.title)}</h3>
 ${r.mismatches.map((x) => `<p class="miss">${esc(x)}</p>`).join('')}
-<div class="foot"><span>If disputed as “${esc(reasonPlain(r.def.reason))}”</span><b>${esc(planPlain(r.got))}</b>${failsText(r.got.broken) ? `<span class="fails">${esc(failsText(r.got.broken))}</span>` : ''}</div></a>`;
+<div class="foot"><span>If disputed as “${esc(reasonPlain(r.def.reason))}”</span><b>${esc(planPlain(r.got))}</b>${r.got.held ? `<span class="held">${HELD_PLAIN}</span>` : ''}${failsText(r.got.broken) ? `<span class="fails">${esc(failsText(r.got.broken))}</span>` : ''}</div></a>`;
   const n = (i) => `${i + 1}.0`;
   return layout('Black Box · dispute scenarios', `<section class="hero"><div><div class="eyebrow"><b>●</b> Dispute scenarios · run offline</div>
 <h1><em style="color:var(--${all ? 'green' : 'red'})">${passed} of ${results.length}</em><br>disputes judged right</h1></div>

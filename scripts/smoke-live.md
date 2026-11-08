@@ -3,8 +3,9 @@
 One MERCHANT case end to end on the current code: passkey mandate, fooled agent, PayPal checkout,
 buyer dispute, autopilot, refund. Everything runs against the PayPal **sandbox**.
 
-Since the flagger fails closed, a MERCHANT case is **held** (no refund) unless the AI flagger
-answers. Step 1 checks that before you start, and stops you if it would not.
+Since the flagger fails closed, a missing flagger now holds **every money-moving verdict**:
+no MERCHANT refund and no AGENT refund or offer is sent unless the AI flagger answers (USER
+evidence still goes). Step 1 checks that before you start, and stops you if it would not.
 
 ## 0. Prerequisites
 

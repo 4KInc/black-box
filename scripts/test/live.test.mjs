@@ -12,7 +12,7 @@ test('preflight passes only with a working Anthropic key, a PayPal token and the
   assert.match(missing[0], /ANTHROPIC_API_KEY is not set.*HELD/);
   assert.match(missing[1], /PAYPAL_CLIENT_ID/);
   const broken = await preflight({ env: { ...ENV, FLAGGER: 'off' }, askModel: async () => { throw new Error('401 invalid x-api-key'); }, paypalToken: async () => { throw new Error('invalid_client'); } });
-  assert.deepEqual(broken.map((p) => p.split(' ').slice(0, 3).join(' ')), ['the Anthropic key', 'FLAGGER=off: MERCHANT cases', 'the PayPal sandbox']);
+  assert.deepEqual(broken.map((p) => p.split(' ').slice(0, 3).join(' ')), ['the Anthropic key', 'FLAGGER=off: every money-moving', 'the PayPal sandbox']);
 });
 
 test('captureStatus reads the disputed capture', async () => {

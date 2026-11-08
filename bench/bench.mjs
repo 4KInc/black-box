@@ -15,10 +15,10 @@ export function runBench(root = join(import.meta.dirname, '..')) {
     const c = buildCase(def, load);
     const j = judge(c, { enrolment: enrolledFor, trustBenchKey: true });
     const got = {
-      verdict: j.verdict.verdict, rule: j.verdict.rule, action: j.plan.action, refundCents: j.plan.refundCents,
+      verdict: j.verdict.verdict, rule: j.verdict.rule, action: j.plan.action, refundCents: j.plan.refundCents, held: Boolean(j.plan.heldWithoutFlagger),
       broken: RECORD_CHECKS.filter((k) => !j.facts[k]).join(','),
     };
-    const want = { broken: [], ...def.expect };
+    const want = { broken: [], held: false, ...def.expect };
     want.broken = want.broken.join(',');
     const mismatches = Object.entries(want)
       .filter(([k, v]) => got[k] !== v)

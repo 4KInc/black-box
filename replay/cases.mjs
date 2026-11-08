@@ -7,6 +7,7 @@
 
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
+import { movesMoney } from '../engine/actions.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { recordHash } from '../recorder/recorder.mjs';
 import { enrolmentFrom, payerForKey } from '../mandate/server.mjs';
@@ -135,7 +136,11 @@ export function judge({ hash, record, paypal }, { root, enrolment, trustBenchKey
     : { customId: paypal.customId, payeeMerchantId: paypal.payeeMerchantId, createdAt: paypal.orderCreatedAt, capturedCents: paypal.captured.cents, payerId: paypal.payerId ?? null };
   const reason = paypal?.reason ?? DEFAULT_REASON;
   const flaggedPassages = paypal?.flagger?.passages ?? [];
-  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...evaluateCase({ record, order, reason, flaggedPassages, enrolment: enrolment ?? (root ? enrolmentFrom(root) : undefined), trustBenchKey }) };
+  const j = evaluateCase({ record, order, reason, flaggedPassages, enrolment: enrolment ?? (root ? enrolmentFrom(root) : undefined), trustBenchKey });
+  // A dispute where the flagger gave no answer (paypal.flaggerUnavailable): the executor keeps the
+  // verdict but sends nothing that moves money (executor/core.mjs), so the plan says it is held.
+  if (paypal?.flaggerUnavailable && !paypal.flagger && !paypal.executed && movesMoney(j.plan)) j.plan = { ...j.plan, heldWithoutFlagger: true };
+  return { preview, reason, order, flagger: paypal?.flagger ?? null, ...j };
 }
 
 // The most recent study for each setup (fixtures/study/study-<date>[-<setup>].json), jackets

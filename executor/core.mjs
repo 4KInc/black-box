@@ -15,9 +15,7 @@ import { join } from 'node:path';
 import { accessToken, API, paypal } from '../lib/paypal.mjs';
 import { loadRecord } from '../recorder/recorder.mjs';
 import { evaluateCase } from '../engine/case.mjs';
-import { toValue } from '../engine/actions.mjs';
-import { merchantHiddenTextRead } from '../engine/findings.mjs';
-import { VERDICT } from '../engine/verdict.mjs';
+import { HELD_WHY, movesMoney, toValue } from '../engine/actions.mjs';
 import { enrolmentFrom } from '../mandate/server.mjs';
 import { flagInjection } from '../flagger/flagger.mjs';
 import { evidenceFile, evidenceNote, statementsFor, templateNote } from '../evidence/evidence.mjs';
@@ -69,12 +67,13 @@ export function executionLog(root, disputeId) {
 //                    takes no evidence; it was escalated to a claim, and evidence follows once
 //                    PayPal offers it (try again later)
 //   'not-ours'       the disputed order carries no Black Box record
-//   'held'           the flagger gave no answer and the agent read the merchant's own hidden text
-//                    naming the item: NEEDS A HUMAN, nothing sent (try again once the flagger works)
+//   'held'           the flagger gave no answer and the plan moves money (an AGENT or MERCHANT
+//                    refund or offer): nothing sent, the code verdict kept, plan.heldWithoutFlagger
+//                    set (try again once the flagger works)
 // The flagger runs when an Anthropic key is set and FLAGGER is not "off". It is the only check for
-// agent-directed lies code cannot classify, so it fails closed: with no flagger answer, a case
-// where the agent read the merchant's hidden text about the item is left for a person. Without
-// such text, the verdict is the code-only one (no flagged passages).
+// agent-directed lies code cannot see, so it fails closed: with no flagger answer, no money moves.
+// A hiding method code does not list leaves no finding at all, so code alone would make the agent's
+// operator pay a merchant that lied. provide-evidence (USER) moves no money and still goes.
 const defaultFlag = (record) => (process.env.ANTHROPIC_API_KEY && process.env.FLAGGER !== 'off' ? flagInjection(record) : null);
 // The evidence note is worded by an AI when a key is set and NARRATOR is not "off"; otherwise, or
 // when the AI's note fails the check, it is the code-built statements themselves.
@@ -82,7 +81,13 @@ const defaultNarrate = (statements) => (process.env.ANTHROPIC_API_KEY && process
   ? evidenceNote(statements)
   : { text: templateNote(statements), source: 'template', model: null, rejected: null });
 
-export const HELD_WHY = 'flagger unavailable; merchant hidden text present';
+export { HELD_WHY };
+
+// The evidence upload is multipart, so it does not go through lib/paypal.mjs's JSON client.
+async function uploadEvidence(disputeId, form) {
+  const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form });
+  return { ok: r.ok, status: r.status, text: await r.text() };
+}
 
 export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag, narrate = defaultNarrate, client = { paypal } }) {
   const log = executionLog(root, disputeId);
@@ -134,14 +139,10 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
     reason: dispute.reason,
     enrolment: enrolmentFrom(root),
   });
-  const held = !flagger && result.findings.some(merchantHiddenTextRead);
+  const held = !flagger && movesMoney(result.plan);
   if (held) {
     log.write({ step: 'hold', source, why: HELD_WHY, codeVerdict: result.verdict, codePlan: result.plan });
-    result = {
-      ...result,
-      verdict: { ...result.verdict, verdict: VERDICT.HUMAN, rule: null, why: `Held for a person: ${HELD_WHY}. Code alone said ${result.verdict.verdict} (rule ${result.verdict.rule}), but without the flagger nothing checks this hidden text for a lie code cannot classify.` },
-      plan: { action: 'none', note: 'No automatic action while the flagger is unavailable. Left for a person.' },
-    };
+    result = { ...result, plan: { ...result.plan, heldWithoutFlagger: true } };
   }
   log.write({ step: 'verdict', source, verdict: result.verdict, plan: result.plan, facts: result.facts });
   const out = { ...base, record, txn, result, flagger };
@@ -191,8 +192,8 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
       form.append('input', new Blob([JSON.stringify({ evidences: [{ evidence_type: 'OTHER', notes: `${evidence.text}\n\n${note}`, documents: [{ name: 'blackbox-evidence.txt' }] }] })], { type: 'application/json' }));
       // PayPal accepts JPG, GIF, PNG, PDF or TXT evidence, so the note, statements and record go up as text.
       form.append('file1', new Blob([evidenceFile({ note: evidence, statements, record })], { type: 'text/plain' }), 'blackbox-evidence.txt');
-      const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form });
-      log.write({ step: 'provide-evidence', source, status: r.status, response: await r.text() });
+      const r = await (client.evidence ?? uploadEvidence)(disputeId, form);
+      log.write({ step: 'provide-evidence', source, status: r.status, response: r.text });
       if (!r.ok) throw Object.assign(new Error(`provide-evidence failed (${r.status})`), { refused: true });
     }
   }

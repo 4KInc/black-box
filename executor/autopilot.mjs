@@ -17,12 +17,12 @@ import { resolveDispute } from './core.mjs';
 // The delay before the n-th retry of a held dispute (n = 1, 2, ...).
 export const heldDelay = (n, baseMs, maxMs) => Math.min(maxMs, baseMs * 2 ** (n - 1));
 
-// Printed at startup: with no flagger, every case where the agent read the merchant's hidden text
-// about the item is held for a person, so MERCHANT outcomes never execute.
+// Printed at startup: with no flagger, every money-moving verdict (an AGENT or MERCHANT refund or
+// offer) is held for a person; only evidence for an honest purchase is sent.
 export function flaggerWarning(env = process.env) {
   if (env.AUTO_EXECUTE !== 'on') return null;
   const why = !env.ANTHROPIC_API_KEY ? 'ANTHROPIC_API_KEY is not set' : env.FLAGGER === 'off' ? 'FLAGGER=off' : null;
-  return why && `WARNING: ${why}, so the AI flagger cannot run. Disputes where the agent read the merchant's hidden text about the item (MERCHANT-type cases) will be HELD for a person, not refunded.`;
+  return why && `WARNING: ${why}, so the AI flagger cannot run. Every money-moving verdict (AGENT or MERCHANT refunds and offers) will be HELD for a person; only USER evidence is sent.`;
 }
 
 export function createAutopilot({

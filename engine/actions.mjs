@@ -14,6 +14,12 @@ export const toValue = (cents) => {
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
 };
 
+// Without the AI flagger's answer, no money moves. The flagger is the only check for a lie code
+// cannot see, so a refund (MERCHANT) or an offer the operator pays for (AGENT) waits for it; the
+// verdict itself stays code's. provide-evidence moves no money and may proceed.
+export const HELD_WHY = 'flagger unavailable; money-moving verdict held';
+export const movesMoney = (plan) => ['accept-claim', 'accept-claim-partial', 'make-offer'].includes(plan?.action);
+
 const none = (note) => ({ action: 'none', note });
 const evidence = (note) => ({ action: 'provide-evidence', note });
 

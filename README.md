@@ -207,9 +207,9 @@ approved with the buyer's passkey and handled by the autopilot with no one at th
    move a case to NEEDS A HUMAN. Code knows a list of hiding methods; the flagger is the net for
    the ones it does not know yet, such as a lie squeezed into a 1px screen-reader box (bench F03,
    F04).
-   If the flagger gives no answer (an error, no key, or turned off) and the agent read the
-   merchant's own hidden text about the item, the executor sends nothing and leaves the case for
-   a person.
+   Without a flagger answer (an error, no key, or turned off) no money moves: the executor keeps
+   code's verdict but holds every AGENT and MERCHANT refund or offer for a person. Evidence for an
+   honest purchase (USER) moves no money and still goes.
 7. **PayPal carries it out,** at most once: `accept-claim` (a refund), a partial refund or
    `make-offer` for the amount over budget, or `provide-evidence` to defend an honest purchase.
    PayPal takes evidence only on a claim, so an inquiry is escalated first. The evidence is a short note for the PayPal reviewer, the statements it was written from and
@@ -357,11 +357,13 @@ real case yourself.
   1px screen-reader-only box, is invisible to code: alone it would blame the agent (F03), so the
   flagger quotes it and the case goes to a person (F04). A new trick costs the cheater a review,
   never wins it money.
-- **The flagger fails closed.** It is the only check for lies code cannot classify, so with no
-  flagger answer, a dispute where the agent read the merchant's hidden text about the item is
-  held for a person and nothing executes. A failed run is not cached. The autopilot retries a held
-  dispute with backoff (1, 2, 4 ... minutes, capped at 30), and warns at startup when it is set to
-  act with no flagger.
+- **The flagger fails closed.** It is the only check for lies code cannot see, and a lie hidden
+  by a method code does not list leaves no finding at all, so code alone would have the agent's
+  operator pay a merchant that lied (F03). With no flagger answer, every money-moving verdict
+  (an AGENT or MERCHANT refund or offer) is held for a person and nothing is sent; the verdict
+  stays code's, marked as held (F01, F03). USER evidence moves no money and is still sent. A failed
+  run is not cached. The autopilot retries a held dispute with backoff (1, 2, 4 ... minutes,
+  capped at 30), and warns at startup when it is set to act with no flagger.
 - **The mandate must be passkey-approved once the buyer has a passkey** (`mandateSigned`, a
   record check). A record without an approval counts only if the paying account had no passkey
   enrolled when PayPal created the order. PayPal reports the payer and the order time, so
@@ -407,7 +409,7 @@ so those calls were not checked this way; they are covered by the live disputes 
 **Live smoke test.** [scripts/smoke-live.md](scripts/smoke-live.md) runs one full sandbox chain on
 the current code, from passkey mandate to a REFUNDED capture. It starts with
 `node scripts/live.mjs preflight`, which fails loudly if the Anthropic key or the PayPal sandbox
-token is missing or broken: without the flagger, a MERCHANT case is held, not refunded.
+token is missing or broken: without the flagger, every money-moving verdict is held, not paid.
 
 **Hosting.** The replay, bench, study and lab run as one Cloud Run service
 ([live](https://black-box-342881585799.us-central1.run.app/lab)), built from the `Dockerfile`

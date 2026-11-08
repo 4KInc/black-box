@@ -5,7 +5,7 @@ import { runBench } from './bench.mjs';
 const results = runBench();
 const money = (c) => (c === undefined ? '' : ` $${(c / 100).toFixed(2)}`);
 for (const { def, got, pass, mismatches } of results) {
-  console.log(`${pass ? 'PASS' : 'FAIL'}  ${def.id}  ${got.verdict.padEnd(13)} rule ${got.rule}  ${(got.action + money(got.refundCents)).padEnd(28)} ${def.title}`);
+  console.log(`${pass ? 'PASS' : 'FAIL'}  ${def.id}  ${got.verdict.padEnd(13)} rule ${got.rule}  ${(got.action + money(got.refundCents) + (got.held ? ' (held)' : '')).padEnd(28)} ${def.title}`);
   for (const m of mismatches) console.log(`        ${m}`);
 }
 const failed = results.filter((r) => !r.pass).length;

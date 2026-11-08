@@ -85,3 +85,15 @@ test('the bench page shows cards that filter by verdict, outcome and complaint, 
   assert.match(html, new RegExp(`href="/bench/R04" data-v="${r04.got.verdict}" data-a="refund" data-r="amount"`));
   assert.doesNotMatch(html, /<script/);
 });
+
+test('with no flagger answer the money-moving plan is held, the verdict kept (F01, F03); others are not held', async () => {
+  const results = runBench();
+  assert.deepEqual(results.filter((r) => r.got.held).map((r) => r.def.id), ['F01', 'F03']);
+  const f03 = results.find((r) => r.def.id === 'F03');
+  assert.deepEqual([f03.got.verdict, f03.got.rule, f03.got.action], ['AGENT', 5, 'make-offer']);
+  const { casePage, benchPage } = await import('../../replay/page.mjs');
+  assert.match(casePage(f03.c, f03.j), /Held: the AI check gave no answer, and without it no money moves, so the offer \$60\.00 back waits/);
+  assert.match(benchPage(results), /<span class="held">held: with no answer from the AI check, no money moves<\/span>/);
+  // With the flagger's answer, F04 is not held: the flag sends it to a person.
+  assert.equal(results.find((r) => r.def.id === 'F04').got.held, false);
+});

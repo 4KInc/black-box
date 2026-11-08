@@ -1,7 +1,7 @@
 // Checks for a live sandbox run (see scripts/smoke-live.md). Each exits non-zero, loudly, on failure.
 //   node scripts/live.mjs preflight             the flagger's Anthropic key answers one tiny call, the
 //                                               PayPal sandbox app gets a token, and nothing turns the
-//                                               flagger off (without it, MERCHANT cases are held)
+//                                               flagger off (without it, every money-moving verdict is held)
 //   node scripts/live.mjs capture <dispute_id>  the disputed capture's status; fails unless REFUNDED
 import { join } from 'node:path';
 import { parseArgs } from 'node:util';
@@ -13,11 +13,11 @@ import { accessToken, paypal } from '../lib/paypal.mjs';
 // Returns the problems found, [] when ready. The two calls are passed in so tests make none.
 export async function preflight({ env = process.env, askModel, paypalToken }) {
   const problems = [];
-  if (!env.ANTHROPIC_API_KEY) problems.push('ANTHROPIC_API_KEY is not set (black-box/.env). Without it the flagger cannot run and MERCHANT cases are HELD, not refunded.');
+  if (!env.ANTHROPIC_API_KEY) problems.push('ANTHROPIC_API_KEY is not set (black-box/.env). Without it the flagger cannot run and every money-moving verdict (AGENT or MERCHANT) is HELD, not paid.');
   else {
     try { await askModel(); } catch (e) { problems.push(`the Anthropic key does not work for the flagger model ${FLAGGER_MODEL}: ${e.message}`); }
   }
-  if (env.FLAGGER === 'off') problems.push('FLAGGER=off: MERCHANT cases would be HELD, not refunded. Unset it.');
+  if (env.FLAGGER === 'off') problems.push('FLAGGER=off: every money-moving verdict (AGENT or MERCHANT) would be HELD, not paid. Unset it.');
   if (!env.PAYPAL_CLIENT_ID || !env.PAYPAL_CLIENT_SECRET) problems.push('PAYPAL_CLIENT_ID / PAYPAL_CLIENT_SECRET are not set (killtest/.env).');
   else {
     try { await paypalToken(); } catch (e) { problems.push(`the PayPal sandbox app did not get a token: ${e.message}`); }

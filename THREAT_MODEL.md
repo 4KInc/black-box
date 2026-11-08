@@ -30,7 +30,7 @@ It ends with what Black Box has to trust, and what it does not cover.
 | Puts the lie on another product's JSON-LD node (a related item, another variant) so it does not "name" the item | A JSON-LD field names the purchased item only if it sits on that item's node (`sku` or `productID`); text on other nodes is about other products. Such a lie wins nothing for the item bought, and the case is judged as if it were not there | E10, E11 |
 | Hides a lie for people outside the agent channel, e.g. "$119 in our outlet stores" | "Outlet" and "in store" mark another sales channel and exempt only text not addressed to agents, so code does not count it. The AI flagger is the backstop: a quote naming the item sends the case to a person | extract tests; F04 |
 | Words a lie to slip past that definition without addressing agents | The contradiction check misses it, but the AI flagger quotes it and the case goes to a person, so the lie wins no automatic outcome | F04 |
-| Makes the flagger fail (a page that breaks it, or an outage), so only code judges | The executor fails closed: with no flagger answer and the merchant's hidden text about the item in what the agent read, nothing is sent to PayPal; the case is held as NEEDS A HUMAN with the reason logged once per retry, and the autopilot retries with backoff (capped at 30 minutes) until the flagger answers | executor tests "flagger throws, merchant hidden text read", "no flagger at all", "flagger throws on a clean page", "a failed flagger run is not cached"; autopilot tests "a held dispute is retried with growing intervals", "at startup, acting without a flagger prints a warning" |
+| Makes the flagger fail (a page that breaks it, or an outage), so only code judges | The executor fails closed: with no flagger answer, no money moves. Every AGENT or MERCHANT refund or offer is held (code's verdict kept, the plan marked held, the reason logged once per retry), and the autopilot retries with backoff (capped at 30 minutes) until the flagger answers. USER evidence moves no money and is still sent. A lie hidden by a method code does not list cannot make the operator pay | F01, F03; executor tests "no flagger answer + MERCHANT", "no flagger answer + AGENT", "no flagger answer + USER", "with a flagger answer, AGENT and MERCHANT execute as before", "a failed flagger run is not cached"; autopilot tests "a held dispute is retried with growing intervals", "at startup, acting without a flagger prints a warning" |
 | Plants the note in a third-party review to dodge blame | Third-party-signed content is attributed to its signer; code then cannot blame the merchant and sends the case to a person rather than to the agent | R06 |
 | Steers the agent but stays within budget | Within the mandate, steering is a judgment, not a check: NEEDS A HUMAN | R07 |
 | Takes payment to a different account than the page names | The signed merchant ID must equal the PayPal payee | A04 |
@@ -71,10 +71,10 @@ It ends with what Black Box has to trust, and what it does not cover.
   offers the planned action, and a logged success, or a lock, means it is never sent twice.
 - **Leaves a trail:** every PayPal call, request and response is appended to
   `records/executions/<dispute>.jsonl`.
-- **Fails closed without the flagger:** if the flagger errors, has no key or is turned off, and
-  the agent read the merchant's own hidden text about the item, nothing is sent to PayPal. The
-  case is held for a person (logged as `hold`), retried with backoff (1, 2, 4 ... minutes, capped
-  at 30), and the autopilot warns at startup when it is set to act with no flagger.
+- **Fails closed without the flagger:** if the flagger errors, has no key or is turned off, no
+  money moves: every AGENT or MERCHANT refund or offer is held for a person (logged as `hold`,
+  with code's verdict), retried with backoff (1, 2, 4 ... minutes, capped at 30), and the
+  autopilot warns at startup when it is set to act with no flagger. USER evidence is still sent.
 - **Code decides, AI does not:** the six rules are deterministic, and exactly one fires for every
   one of the 65,536 combinations of the 16 facts (property-tested). That proves the rules are
   consistent and complete, not that the policy is fair or that each fact was extracted correctly.
@@ -110,6 +110,18 @@ It ends with what Black Box has to trust, and what it does not cover.
    the review platform refuse to start with it, nothing publishes it, and a record whose key set
    carries it fails `keyOnShopDomain` everywhere except the bench, which says so explicitly
    (`trustBenchKey`). Tested in `bench/test/keys.test.mjs`.
+
+## Known limitations
+
+- **A contradicting price told to agents in plain, visible text is not hidden text.** If a shop
+  prints "AI agents pay $119" where every shopper can see it, nothing was concealed, so code does
+  not count it against the merchant: the five merchant conditions start with concealment. An
+  agent that believes it and overspends looks, to code alone, like an agent at fault (AGENT). The
+  AI flagger and a person are the backstop: a flag that quotes it, naming the item, sends the
+  case to a person (rule 4), and without a flagger answer no money moves.
+- **Hiding methods code does not list** (a 1px screen-reader box, for one) are caught only by the
+  flagger (F03, F04). The list grows as tricks are found; each one missed costs a review, not a
+  wrong payment.
 
 ## Not covered
 
