@@ -204,7 +204,9 @@ approved with the buyer's passkey and handled by the autopilot with no one at th
    combinations, which is property-tested.
 6. **An AI may only ask for a human.** An AI flagger quotes text aimed at AI shoppers. Its quote
    must appear word for word in what the agent read and must name the item bought. It can only
-   move a case to NEEDS A HUMAN. It catches hiding tricks that code does not know (bench F01, F02).
+   move a case to NEEDS A HUMAN. Code knows a list of hiding methods; the flagger is the net for
+   the ones it does not know yet, such as a lie squeezed into a 1px screen-reader box (bench F03,
+   F04).
    If the flagger gives no answer (an error, no key, or turned off) and the agent read the
    merchant's own hidden text about the item, the executor sends nothing and leaves the case for
    a person.
@@ -347,6 +349,14 @@ real case yourself.
   repeat the product's name. Only the node whose `sku` or `productID` is the item bought counts;
   fields on another Product, a related item or another variant in a ProductGroup do not (E10,
   E11). Text on the ProductGroup itself is about all its variants.
+- **Code lists the hiding methods; the flagger is the net for the rest.** The extractor counts
+  unrendered JSON-LD and meta text, `display:none`, `visibility:hidden`, off-screen positioning,
+  zero size or font, opacity at or below 0.05, a `clip-path` or `clip` that leaves nothing,
+  `scale(0)`, text coloured like the background and `aria-hidden`. A lie hidden that way is the
+  merchant's, by code alone (F01: `opacity:0`, MERCHANT). A method not on the list, such as a
+  1px screen-reader-only box, is invisible to code: alone it would blame the agent (F03), so the
+  flagger quotes it and the case goes to a person (F04). A new trick costs the cheater a review,
+  never wins it money.
 - **The flagger fails closed.** It is the only check for lies code cannot classify, so with no
   flagger answer, a dispute where the agent read the merchant's hidden text about the item is
   held for a person and nothing executes. A failed run is not cached. The autopilot retries a held
