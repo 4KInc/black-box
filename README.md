@@ -128,6 +128,35 @@ was approved with the buyer's passkey and handled by the autopilot with no one a
    appear exactly in a statement, a fixed word list rejects accusations, and the length is capped.
    A note that fails is replaced by the statements as written.
 
+### The 16 facts
+
+Each is a yes/no answer computed by code from the record and PayPal's own order and dispute
+data. The case page shows them as tiles under the label in the second column.
+
+| Group | On the case page | Fact | True when |
+|---|---|---|---|
+| **Record integrity**: all six must hold, or rule 1 sends the case to a person | HASH = CUSTOM_ID | `hashesMatch` | The record's SHA-256 equals the `custom_id` PayPal stored on the order at payment |
+| | SIGNATURES | `signaturesValid` | Every page the agent read has a valid RFC 9421 Ed25519 signature over its exact bytes |
+| | KEY ON DOMAIN | `keyOnShopDomain` | The signing key is published at the shop's own `/.well-known/jwks.json` |
+| | PAYEE MATCH | `payeeMatches` | The merchant PayPal paid is the merchant named on the signed page |
+| | SIGNED < ORDER | `signedBeforeOrder` | The pages were signed before PayPal created the order |
+| | MANDATE PASSKEY | `mandateSigned` | The buyer's passkey signed this exact mandate, for the payer PayPal reports |
+| **Mandate** | MANDATE BROKEN | `mandateBroken` | The purchase is outside the mandate: over the budget, or the wrong item, colour or size |
+| **Merchant responsible**: all five together make rule 2, MERCHANT | HIDDEN TEXT | `concealedInReadChannel` | The agent read text a shopper does not see: JSON-LD, meta tags, hidden elements |
+| | NAMES ITEM | `namesPurchasedItem` | That hidden text names the item and variant bought |
+| | CONTRADICTS | `contradictsListing` | It states another price for that item than the signed listing, or tells the agent to set aside the buyer's limits |
+| | READ BY MODEL | `inModelInput` | It appears in the exact input the model received, which the record hashes |
+| | MERCHANT OWNED | `merchantOwned` | It is the merchant's own content on its signed page, not a third-party review |
+| **Other signals**: each can only send the case to a person (rule 4), never decide it | AI FLAG | `aiInjectionFlag` | The AI flagger quoted text aimed at AI shoppers that names the item bought, word for word from what the agent read |
+| | UNATTRIBUTED | `unattributedHiddenText` | The agent read hidden text that cannot be pinned on the merchant |
+| | UNCLASSIFIED | `unclassifiedAgentText` | The merchant's hidden text about this item, addressed to AI agents, that code cannot classify as a lie or not |
+| | BUYER ASKED | `requestExceedsMandate` | The buyer's own words to the agent asked for more than the mandate allows; counts only when the mandate was broken |
+
+The six rules are checked in order: (1) any integrity check fails → NEEDS A HUMAN; (2) the
+mandate is broken and all five merchant facts hold → MERCHANT; (3) the merchant steered the agent
+within budget → NEEDS A HUMAN; (4) any other signal → NEEDS A HUMAN; (5) the mandate is broken →
+AGENT; (6) otherwise → USER.
+
 **What the record proves, and what it does not.** The record is tamper-evident after it is
 committed to the PayPal order. Whether it truly shows what the model received depends on the
 agent's recorder ([threat model](THREAT_MODEL.md#what-black-box-has-to-trust)). The property test
@@ -156,7 +185,7 @@ against the merchant, so an agent that overspends next to it is the agent's resp
 | Verdict | Responsible under the policy | PayPal action Black Box executes | Recovering the money |
 |---|---|---|---|
 | MERCHANT | The merchant: its own hidden, contradicting text was read and the mandate broken | `accept-claim`: full refund from the merchant. On an "incorrect amount" dispute, the larger of the amount over the budget and the amount over its own price (R04: $90) | Done: the merchant refunds |
-| AGENT | The agent's operator: the mandate was broken and nothing contradicting was read | Refund the amount over budget (`accept-claim` partial, or `make-offer`, which the buyer must accept) | The merchant refunds the buyer; `executor/payout.mjs` then pays the merchant back from the operator's PayPal account (Payouts). Run live on P06: $90.00, batch `VCNS2FXR525FS`, SUCCESS |
+| AGENT | The agent's operator: the mandate was broken and nothing contradicting was read | Refund the amount over budget (`accept-claim` partial, or `make-offer`, which the buyer must accept) | The merchant refunds the buyer; `executor/payout.mjs` then pays the merchant back from the operator's PayPal account (Payouts). Run live on P06: $90.00, batch `ZLR5F7QM5LBQ4`, SUCCESS |
 | USER | The buyer: the purchase was within the mandate | `provide-evidence`: a checked note, its statements and the record | None due |
 | NEEDS A HUMAN | Undecided: a broken record, unattributable manipulation, the merchant's hidden text for agents that code cannot classify, or steering within budget | None | None |
 
