@@ -25,6 +25,37 @@ test('each counted hiding method is found', () => {
   }
 });
 
+test('opacity, clip-path, clip and scale(0) hiding is found', () => {
+  const cases = [
+    ['opacity', 'opacity:0'], ['opacity', 'opacity:0.05'], ['opacity', 'opacity: .02 !important'], ['opacity', 'opacity:3%'],
+    ['clip-path', 'clip-path:inset(50%)'], ['clip-path', 'clip-path:inset(100%)'], ['clip-path', 'clip-path:inset(0 50% 0 50%)'],
+    ['clip-path', 'clip-path:circle(0)'], ['clip-path', 'clip-path:circle(0px at 50% 50%)'],
+    ['clipped to nothing', 'position:absolute;clip:rect(0,0,0,0)'], ['clipped to nothing', 'position:absolute;clip:rect(0px 0px 0px 0px)'],
+    ['scaled to zero', 'transform:scale(0)'], ['scaled to zero', 'transform:translateX(2px) scale(0, 0)'], ['scaled to zero', 'transform:scaleY(0)'],
+  ];
+  for (const [method, style] of cases) {
+    const found = findHidden(page(`<p>Visible copy.</p><p style="${style}">${SECRET}</p>`));
+    assert.equal(found.length, 1, style);
+    assert.equal(found[0].method, method, style);
+    assert.equal(found[0].text, SECRET);
+  }
+  // The same methods in the page's own stylesheet.
+  const [h] = findHidden(page(`<p class="ghost">${SECRET}</p>`, '<style>.ghost{opacity:0}</style>'));
+  assert.equal(h.method, 'opacity');
+});
+
+test('opacity, clip-path and transforms that leave text readable are not hiding', () => {
+  for (const style of ['opacity:0.9', 'opacity:0.06', 'opacity:1', 'opacity:60%', 'clip-path:inset(10%)', 'clip-path:inset(0 0 40% 0)',
+    'clip-path:circle(50%)', 'clip-path:polygon(0 0, 100% 0, 100% 100%)', 'clip:rect(0,200px,40px,0)', 'transform:scale(1)',
+    'transform:scale(0.5)', 'transform:rotate(0deg)']) {
+    assert.deepEqual(findHidden(page(`<p style="${style}">${SECRET}</p>`)), [], style);
+  }
+});
+
+test('a screen-reader-only 1px box is not a listed hiding method (the flagger\'s case, F03 and F04)', () => {
+  assert.deepEqual(findHidden(page(`<p style="position:absolute;width:1px;height:1px;overflow:hidden;white-space:nowrap">${SECRET}</p>`)), []);
+});
+
 test('a class hidden by the page\'s own stylesheet is found', () => {
   const [h] = findHidden(page(`<span class="tag sr-x">${SECRET}</span>`));
   assert.equal(h.method, 'display:none');

@@ -4,7 +4,9 @@
 // agent could not have read them.
 //
 // Counted: JSON-LD or meta text never rendered; display:none; visibility:hidden; off-screen
-// positioning; zero size or zero font; text coloured like its background; aria-hidden.
+// positioning; zero size or zero font; opacity at or below 0.05; a clip-path or clip that leaves
+// nothing; transform:scale(0); text coloured like its background; aria-hidden. Anything else (a
+// screen-reader-only 1px box, for one) is left to the AI flagger, which can only ask for a person.
 // Works on the self-contained pages Black Box requires (inline CSS, no scripts).
 
 import { createHash } from 'node:crypto';
@@ -18,10 +20,31 @@ const HIDING = [
   ['off-screen', /(?:left|top|right|text-indent)\s*:\s*-\d{3,}(?:px|em|rem)/i],
   ['zero size', /(?:^|;)\s*(?:width|height|max-width|max-height)\s*:\s*0(?:px)?\s*(?:;|$)/i],
   ['zero font', /font-size\s*:\s*0(?:px|em|rem)?\s*(?:;|$)/i],
+  ['clipped to nothing', /(?:^|;)\s*clip\s*:\s*rect\(\s*0(?:px)?\s*,?\s*0(?:px)?\s*,?\s*0(?:px)?\s*,?\s*0(?:px)?\s*\)/i],
+  ['scaled to zero', /(?:^|;)\s*transform\s*:[^;]*\bscale[XY]?\(\s*0(?:\.0+)?\s*[,)]/i],
 ];
+
+// opacity at or below 0.05 ("0", ".02", "3%"): there, but too faint for a person to read.
+function transparent(style) {
+  const m = style.match(/(?:^|;)\s*opacity\s*:\s*(\d*\.?\d+)(%?)\s*(?:!important\s*)?(?:;|$)/i);
+  return Boolean(m) && Number(m[1]) / (m[2] ? 100 : 1) <= 0.05;
+}
+
+// A clip-path that leaves nothing: circle(0), or an inset() whose opposite sides meet (inset(50%)).
+function clippedAway(style) {
+  const v = style.match(/(?:^|;)\s*clip-path\s*:\s*([^;]+)/i)?.[1]?.trim().toLowerCase();
+  if (!v) return false;
+  if (/^circle\(\s*0(?:px|%)?\s*(?:at\b[^)]*)?\)/.test(v)) return true;
+  const inset = v.match(/^inset\(([^)]*)\)/)?.[1].split(/\s+round\s+/)[0].trim().split(/\s+/);
+  if (!inset?.every((x) => /^(?:\d*\.?\d+%|0)$/.test(x))) return false;
+  const [t, r = t, b = t, l = r] = inset.map((x) => parseFloat(x));
+  return t + b >= 100 || l + r >= 100;
+}
 
 function hidingMethod(style, pageBg) {
   for (const [name, re] of HIDING) if (re.test(style)) return name;
+  if (transparent(style)) return 'opacity';
+  if (clippedAway(style)) return 'clip-path';
   const color = style.match(/(?:^|;)\s*color\s*:\s*([^;]+)/i)?.[1]?.trim().toLowerCase();
   const bg = style.match(/background(?:-color)?\s*:\s*([^;]+)/i)?.[1]?.trim().toLowerCase() ?? pageBg;
   if (color && bg && color === bg) return 'coloured like its background';

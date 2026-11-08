@@ -57,14 +57,13 @@ test('a run that bought nothing is a recording: its card, its filter, and a page
   } finally { demo.close(); if (sealed) rmSync(join(root, 'records', `${sealed.hash}.json`), { force: true }); }
 });
 
-test('a decline where code found no hidden text says how to see text hidden another way', async () => {
-  // The opacity:0 note is not a method code checks: 3.0 says so and points to the two channels.
+test('a decline shows the hidden note code found, and how it was hidden', async () => {
+  // opacity:0 is a method code checks: 3.0 quotes the note and says it was made transparent.
   const { recordHash } = await import('../../recorder/recorder.mjs');
   const page = async (fixture) => (await fetch(`${base}/case/${recordHash(JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', `${fixture}.json`), 'utf8')))}`)).text();
   const opacity = await page('haiku55-opacity-note');
-  assert.match(opacity, /The automatic check found nothing hidden\./);
-  assert.match(opacity, /Some tricks it cannot spot, such as making text fully transparent \(opacity:0\), and that text still reaches the AI\./);
-  assert.match(opacity, /any sentence in the AI’s view that you cannot see in the customer’s view was hidden from the customer/);
+  assert.doesNotMatch(opacity, /found nothing hidden/);
+  assert.match(opacity, /<p class="where">Where: in text made fully transparent \(opacity\)\.<\/p>/);
   // For support: what happened, what to tell the customer, what happens next; the hashes folded away.
   assert.match(opacity, /<h3>What to tell the customer<\/h3><p>Your shopping assistant [^<]*within your \$150\.00 limit\. You were not charged\.<\/p>/);
   assert.match(opacity, /<h3>What happens next<\/h3><p>Nothing to do\./);

@@ -763,6 +763,10 @@ const METHOD_PLAIN = {
   'zero font': 'in text shrunk to nothing',
   'coloured like its background': 'in text the same colour as the background',
   'aria-hidden': 'marked as hidden',
+  'opacity': 'in text made fully transparent (opacity)',
+  'clip-path': 'in text clipped away to nothing (clip-path)',
+  'clipped to nothing': 'in text clipped away to nothing (clip)',
+  'scaled to zero': 'in text scaled down to nothing (transform:scale(0))',
 };
 export const methodPlain = (m) => METHOD_PLAIN[m] ?? m;
 // The recording as a JSON file to download: /case/<hash>/record.json, or the bench case's. A page
@@ -1046,8 +1050,8 @@ ${techDetails([['Mandate fingerprint (SHA-256)', esc(r.mandate_hash)]])}</div>`)
     ? found.map((h) => `<div class="panel finding"><div class="eyebrow">Hidden from the customer</div><q>${esc(h.text)}</q>
 <p class="where">Where: ${esc(methodPlain(h.method))}.</p>
 <div class="chips">${chip(read(h.text) ? 'on' : '', read(h.text) ? 'The AI read it' : 'The AI did not get it')}</div></div>`).join('')
-    : `<div class="panel"><p class="empty">The automatic check found nothing hidden. It catches the common tricks: text kept in the page’s data but never shown, hidden with styling, moved off the screen, shrunk to nothing, coloured like the background, or marked as hidden.</p>
-<p class="empty">Some tricks it cannot spot, such as making text fully transparent (opacity:0), and that text still reaches the AI. To check for yourself, compare the two views above: any sentence in the AI’s view that you cannot see in the customer’s view was hidden from the customer. If this became a dispute, an AI check would look for such text, and could only pass the case to a person.</p></div>`);
+    : `<div class="panel"><p class="empty">The automatic check found nothing hidden. It catches the common tricks: text kept in the page’s data but never shown, hidden with styling, made transparent, clipped, moved off the screen, shrunk or scaled to nothing, coloured like the background, or marked as hidden.</p>
+<p class="empty">Some tricks it cannot spot, such as text squeezed into a one-pixel box for screen readers, and that text still reaches the AI. To check for yourself, compare the two views above: any sentence in the AI’s view that you cannot see in the customer’s view was hidden from the customer. If this became a dispute, an AI check would look for such text, and could only pass the case to a person.</p></div>`);
   const proof = section('4.0', 'About this recording', '', `<div class="panel"><p class="empty">Black Box kept every page the agent read, exactly as the shop sent it, with what the AI was given and what it decided.</p>
 ${techDetails([['Recording fingerprint', esc(c.hash)], ['Kept', `${r.fetches.length} pages byte for byte, ${r.model_inputs.length} model input${r.model_inputs.length === 1 ? '' : 's'}, ${r.decisions.length} decision${r.decisions.length === 1 ? '' : 's'}`]])}
 ${downloadButton(c)}</div>`);
