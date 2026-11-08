@@ -25,8 +25,8 @@ real AI agent shops at a hosted demo shop, and Black Box settles the buyer's Pay
 
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
-**Submission state:** tag `v1.0-submission`, 3 November 2026: 57 bench cases (six live disputes,
-10 attacks), 207 tests, 15 facts, 32,768 fact combinations checked.
+**Submission state:** tag `v1.0-submission`, 8 November 2026: 60 bench cases (nine live disputes,
+10 attacks), 229 tests, 16 facts, 65,536 fact combinations checked, 77 recordings.
 
 ## The problem
 
