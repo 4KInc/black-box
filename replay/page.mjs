@@ -529,6 +529,9 @@ const shownPage = (record) => record.fetches[record.purchase?.page_index ?? reco
 export const pageHtml = (record) => Buffer.from(shownPage(record).body_b64, 'base64').toString('utf8');
 const decisionOf = (record) => record.decisions.at(-1) ?? {};
 const chip = (state, text) => `<span class="chip ${state}">${esc(text)}</span>`;
+// A bench case's dispute is simulated: its id (BENCH-…) is not a PayPal case.
+const simulated = (p) => /^BENCH-/.test(p?.disputeId ?? '');
+const disputeName = (p) => (simulated(p) ? 'simulated dispute' : p.disputeId);
 const buyerCredit = (p) => p?.after?.moneyMovements.find((m) => m.party === 'BUYER' && m.type === 'CREDIT');
 
 const paypalStatus = (p) => {
@@ -641,7 +644,7 @@ function causePanel(c, j) {
   const refund = p.after?.refundTransactions?.[0];
   return `<div class="eyebrow"><b>●</b> ${p.labRun ? 'Lab run · nothing sent to PayPal' : `PayPal ${p.executed ? 'carried it out' : 'dispute open'}`}</div>
 ${p.executed ? `<div class="amt">${credit ? money(credit.amount.cents, credit.amount.currency) : esc(p.executed.action)}<small>${credit ? 'back to the buyer' : 'sent to PayPal'}</small></div>` : `<div class="amt">${esc(planText(j.plan))}<small>${p.labRun ? 'what Black Box would do on this dispute' : 'planned, not yet executed'}</small></div>`}
-<div class="kv"><span>dispute</span><b>${esc(p.disputeId)}</b>
+<div class="kv"><span>dispute</span><b>${esc(disputeName(p))}</b>
 ${p.escalated ? `<span>escalated</span><b>${time(p.escalated.at)}</b>` : ''}
 ${p.executed ? `<span>action</span><b>${esc(p.executed.action)} · HTTP ${esc(p.executed.httpStatus)}</b><span>at</span><b>${time(p.executed.at)}</b>` : ''}
 ${refund ? `<span>refund</span><b>${esc(refund.id)}</b>` : ''}
@@ -660,7 +663,7 @@ function tape(c, j) {
   const p = c.paypal;
   if (p) {
     if (p.orderCreatedAt) items.push([p.orderCreatedAt, 'Order', `PayPal order${p.orderId ? ` <span class="mono">${esc(p.orderId)}</span>` : ''}, ${p.captureId ? `capture <span class="mono">${esc(p.captureId)}</span>` : 'captured'} ${money(p.captured?.cents)}`]);
-    items.push([p.filedAt, 'Dispute', `${c.bench ? 'Bench dispute' : 'Buyer filed'} <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
+    items.push([p.filedAt, 'Dispute', simulated(p) ? `Simulated dispute: ${esc(p.reason)}` : `${c.bench ? 'Bench dispute' : 'Buyer filed'} <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
     if (p.escalated) items.push([p.escalated.at, 'Escalate', 'The dispute was an inquiry, where PayPal takes no evidence: Black Box escalated it to a claim']);
     if (p.executed) items.push([p.executed.at, 'Verdict', `<b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}), Black Box sent <span class="mono">${esc(p.executed.action)}</span>`, true]);
     for (const m of p.after?.moneyMovements ?? []) items.push([p.executed?.at, 'Money', `${esc(m.party)} ${esc(m.type)} ${money(m.amount?.cents)} <span class="k">${esc(m.reason)}</span>`]);
@@ -830,7 +833,7 @@ function supportFor(c, j) {
     'provide-evidence': c.paypal?.executed ? "The purchase stands. We've sent PayPal the evidence that it matched your request." : "The purchase stands. If you dispute it, we'll send PayPal the evidence that it matched your request.",
   }[j.plan.action] ?? '';
   const next = c.paypal?.labRun
-    ? `Lab run: nothing is sent to PayPal. On a real dispute like ${esc(c.paypal.disputeId)}, Black Box would ${j.plan.action === 'none' ? 'take no automatic action, and a person decides' : esc(planPlain(j.plan))}.`
+    ? `Lab run: nothing is sent to PayPal. ${simulated(c.paypal) ? 'On a real dispute' : `On a real dispute like ${esc(c.paypal.disputeId)}`}, Black Box would ${j.plan.action === 'none' ? 'take no automatic action, and a person decides' : esc(planPlain(j.plan))}.`
     : c.paypal
     ? `PayPal case ${esc(c.paypal.disputeId)}: ${esc(paypalStatus(c.paypal))}.`
     : `Not disputed. If the customer disputes it as “${esc(reasonPlain(j.reason))}”, Black Box will ${j.plan.action === 'none' ? 'take no automatic action, and a person decides' : esc(planPlain(j.plan))}.`;
@@ -858,7 +861,7 @@ ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}
 <div class="res">${b.pass ? '✓ Right' : '✗ Wrong'}<small>the right answer: ${esc(expectText(b.def.expect))}</small></div></section>` : '';
 
   const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${icon(d.model)}${esc(d.model ?? 'unknown')}</b></span>
-<span>Bought <b>${time(r.purchase.at)}</b></span>${c.paypal ? `<span>PayPal <b>${esc(c.paypal.disputeId)}</b></span>` : ''}</div>`;
+<span>Bought <b>${time(r.purchase.at)}</b></span>${c.paypal ? `<span>PayPal <b>${esc(disputeName(c.paypal))}</b></span>` : ''}</div>`;
 
   const cause = `<section class="cause ${v}" style="view-transition-name:${vtName(c.hash)}"><div class="main">
 <div class="eyebrow">Verdict · rule ${j.verdict.rule} of ${RULES.length}${j.preview ? ' · preview' : ''}</div>
