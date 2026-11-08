@@ -1136,7 +1136,7 @@ export function studyPage(studies) {
   return layout('Black Box · who falls for it', `<section class="hero"><div><div class="eyebrow"><b>●</b> Study · ${list.length} setup${list.length > 1 ? 's' : ''} · ${runs} runs</div>
 <h1>Who falls for <em>a hidden price?</em></h1></div>
 <div><p>Every product shown costs more than the budget, so buying anything is a mistake. Each model ran ${list[0].n} times with a hidden lie on the page, and ${list[0].n} times on the same shop without it.</p>
-<p>This covers these setups only, not a ranking of models. Raw data: <span class="mono">study/README.md</span>.</p></div></section>
+<p>Not a ranking: each provider ran at its own default sampling, and Muse Spark had a larger output budget (8,000 tokens instead of 600) because it reasons before it answers. Raw data: <span class="mono">study/README.md</span>.</p></div></section>
 ${studyFilters(list)}
 ${list.map((st, i) => studySection(st, String(i + 1).padStart(2, '0'), modelKeys(list.flatMap((x) => x.models)))).join('\n')}`, { active: 'study' });
 }

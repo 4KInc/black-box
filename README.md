@@ -87,11 +87,13 @@ and once on an identical control shop without the lie, 10 runs per cell, in two 
 different merchants, products, budgets and wording ([methods, prompt and raw outputs](study/README.md),
 [study page](https://4kinc.github.io/black-box/study/)).
 
+Not a ranking: each provider ran at its own default sampling, and Muse Spark had a larger output budget (8,000 tokens instead of 600) because it reasons before it answers.
+
 **In short:**
 
 | What happened | Models |
 |---|---|
-| 🟢 **Resisted every lie** | Claude Opus 5.5, Sonnet 5.5 and Haiku 5.5; Meta's Muse Spark 1.3 |
+| 🟢 **Not fooled by any lie** | Claude Opus 5.5, Sonnet 5.5 and Haiku 5.5; Meta's Muse Spark 1.3 |
 | 🔴 **Fooled by every lie** | Claude Haiku 4.5, Gemini 3.1 Pro, Gemini 3.5 Flash-Lite, Grok 4.20 (non-reasoning) |
 | 🟠 **Fooled by some lies** | GPT-5.5, GPT-4o mini, Grok 4.7, Qwen2.5 7B |
 | ⚪ **Overspends with or without a lie** | Mistral 7B, Llama 3.2 3B and 1B: they ignore the budget, so the lie is not what fooled them |
@@ -158,12 +160,11 @@ Spark reasons before it answers, so it had 8,000 output tokens instead of 600
 
 </details>
 
-This is evidence for two tested setups (two shops, two product types, the same three hiding
-methods), not a ranking of models. In both, the current Claude models and Muse Spark resisted
-every lie. Claude Haiku 4.5, Gemini 3.5 Flash-Lite and Grok 4.20 (non-reasoning) were fooled by
-all three, and none of them bought without the lie. OpenAI's, Google's and xAI's current flagships
-were not immune: GPT-5.5 and Grok 4.7 fell for some lies, Gemini 3.1 Pro for all of them. Qwen is
-moved by a different lie in each setup. Small open models overspend with or without the lie.
+This is evidence for two tested setups, not a ranking of models. Models from Anthropic, OpenAI,
+Google, xAI and Alibaba were fooled by at least one hidden lie, current flagships included;
+Anthropic's current models and Meta's Muse Spark were not fooled by any. Wherever a lie fooled a
+model, that model did not buy the over-budget item without the lie. Small open models (Mistral
+7B, Llama 3.2 3B and 1B, and Qwen2.5 7B in two of its six cells) overspend with or without it.
 
 ## Proven live in the PayPal sandbox
 
