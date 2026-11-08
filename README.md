@@ -273,7 +273,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 207 tests
+npm test                    # 229 tests
 npm run bench               # 60 cases: every verdict and rule, nine live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
@@ -288,6 +288,10 @@ node executor/payout.mjs <dispute_id> [--execute | --refresh] [--fixture <name>]
 npm run webhook -- --register https://…/paypal/webhook && AUTO_EXECUTE=on npm run webhook -- --watch 30
 node study/run.mjs [--setup headphones]               # re-run the study (see study/README.md)
 ```
+
+**Postman.** [postman/](postman/README.md) has every PayPal sandbox call Black Box makes as a
+Postman collection, with the code's own paths and bodies, to replay the payment and dispute flow
+by hand.
 
 **Live smoke test.** [scripts/smoke-live.md](scripts/smoke-live.md) runs one full sandbox chain on
 the current code, from passkey mandate to a REFUNDED capture. It starts with
@@ -341,6 +345,7 @@ run, is [scripts/deploy-live.md](scripts/deploy-live.md).
 | `site/` | static export for GitHub Pages |
 | `fixtures/` | recorded runs, live PayPal outcomes, the study |
 | `killtest/` | the first feasibility checks against the PayPal Disputes API |
+| `postman/` | a Postman collection of every PayPal sandbox call the code makes, checked against the code by a test |
 | `scripts/` | the live smoke test and its checks (preflight, capture status), and the live demo's deploy runbook |
 
 ## Design

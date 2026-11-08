@@ -1,0 +1,842 @@
+{
+  "info": {
+    "name": "Black Box: PayPal sandbox calls",
+    "description": "Every PayPal REST call Black Box makes, in the order a case uses them: the shop takes payment with the agent's record hash in `custom_id`, a buyer disputes, and Black Box reads the dispute and carries out its verdict. Each request names the file that makes it; method, path and body match the code.\n\nSandbox only. Set `client_id` and `client_secret` (the merchant's sandbox REST app) and run **Get access token** first. The payout requests use the agent operator's own app: `operator_client_id`, `operator_client_secret`, then **Get operator access token**.\n\nRequests that move sandbox money: Capture order, Create order with saved wallet, Accept claim, Make offer, Create payout.\n\nBuilt by `node postman/build.mjs`; see `postman/README.md`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "https://api-m.sandbox.paypal.com",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "client_secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "operator_client_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "operator_client_secret",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "operator_access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "record_hash",
+      "value": "028c1c5b89bf2800ca6a06ac7ecef846f21fbbdd6f00b280b88f8d18ed8342b6",
+      "type": "string"
+    },
+    {
+      "key": "shop_origin",
+      "value": "https://driftwood-outfitters-342881585799.us-central1.run.app",
+      "type": "string"
+    },
+    {
+      "key": "order_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "capture_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "dispute_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "setup_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "vault_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "webhook_url",
+      "value": "https://black-box-342881585799.us-central1.run.app/paypal/webhook",
+      "type": "string"
+    },
+    {
+      "key": "webhook_id",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "merchant_id",
+      "value": "MCYKQUXGB936U",
+      "type": "string"
+    },
+    {
+      "key": "payout_batch_id",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "0. Auth",
+      "item": [
+        {
+          "name": "Get access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.access_token !== undefined) pm.collectionVariables.set('access_token', j.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{client_id}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{client_secret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                }
+              ]
+            },
+            "url": "{{base_url}}/v1/oauth2/token",
+            "description": "The merchant's token, used by every request except the payouts.\n\nSource: `lib/paypal.mjs` (createPayPal)"
+          }
+        },
+        {
+          "name": "Get operator access token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.access_token !== undefined) pm.collectionVariables.set('operator_access_token', j.access_token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "basic",
+              "basic": [
+                {
+                  "key": "username",
+                  "value": "{{operator_client_id}}",
+                  "type": "string"
+                },
+                {
+                  "key": "password",
+                  "value": "{{operator_client_secret}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "client_credentials"
+                }
+              ]
+            },
+            "url": "{{base_url}}/v1/oauth2/token",
+            "description": "The agent operator's token, for the payouts that repay a merchant when the agent was at fault.\n\nSource: `lib/paypal.mjs` (createPayPal)"
+          }
+        }
+      ]
+    },
+    {
+      "name": "1. Checkout (the demo shop)",
+      "item": [
+        {
+          "name": "Create order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.id !== undefined) pm.collectionVariables.set('order_id', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"intent\": \"CAPTURE\",\n  \"purchase_units\": [\n    {\n      \"reference_id\": \"default\",\n      \"custom_id\": \"{{record_hash}}\",\n      \"description\": \"Summit Pro Shell (RJ-PREMIUM-BLUE-M)\",\n      \"amount\": {\n        \"currency_code\": \"USD\",\n        \"value\": \"240.00\",\n        \"breakdown\": {\n          \"item_total\": {\n            \"currency_code\": \"USD\",\n            \"value\": \"240.00\"\n          }\n        }\n      },\n      \"items\": [\n        {\n          \"name\": \"Summit Pro Shell\",\n          \"sku\": \"RJ-PREMIUM-BLUE-M\",\n          \"quantity\": \"1\",\n          \"category\": \"PHYSICAL_GOODS\",\n          \"unit_amount\": {\n            \"currency_code\": \"USD\",\n            \"value\": \"240.00\"\n          }\n        }\n      ]\n    }\n  ],\n  \"payment_source\": {\n    \"paypal\": {\n      \"experience_context\": {\n        \"brand_name\": \"Driftwood Outfitters\",\n        \"user_action\": \"PAY_NOW\",\n        \"shipping_preference\": \"NO_SHIPPING\",\n        \"return_url\": \"{{shop_origin}}/paypal/return\",\n        \"cancel_url\": \"{{shop_origin}}/paypal/cancel\"\n      }\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v2/checkout/orders",
+            "description": "The shop creates the order at its signed catalog price and puts the agent's record hash in `custom_id`, which binds the record to the payment. The buyer approves at the `payer-action` link.\n\nSource: `shop/server.mjs (checkout)`"
+          }
+        },
+        {
+          "name": "Capture order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.purchase_units?.[0]?.payments?.captures?.[0]?.id !== undefined) pm.collectionVariables.set('capture_id', j.purchase_units?.[0]?.payments?.captures?.[0]?.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v2/checkout/orders/{{order_id}}/capture",
+            "description": "After the buyer approves, the merchant captures at once.\n\nSource: `shop/server.mjs (paypalReturn)`"
+          }
+        },
+        {
+          "name": "Create order with saved wallet",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.id !== undefined) pm.collectionVariables.set('order_id', j.id);",
+                  "if (j.purchase_units?.[0]?.payments?.captures?.[0]?.id !== undefined) pm.collectionVariables.set('capture_id', j.purchase_units?.[0]?.payments?.captures?.[0]?.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [
+              {
+                "key": "PayPal-Request-Id",
+                "value": "blackbox-{{record_hash}}"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"intent\": \"CAPTURE\",\n  \"purchase_units\": [\n    {\n      \"reference_id\": \"default\",\n      \"custom_id\": \"{{record_hash}}\",\n      \"description\": \"Summit Pro Shell (RJ-PREMIUM-BLUE-M)\",\n      \"amount\": {\n        \"currency_code\": \"USD\",\n        \"value\": \"240.00\",\n        \"breakdown\": {\n          \"item_total\": {\n            \"currency_code\": \"USD\",\n            \"value\": \"240.00\"\n          }\n        }\n      },\n      \"items\": [\n        {\n          \"name\": \"Summit Pro Shell\",\n          \"sku\": \"RJ-PREMIUM-BLUE-M\",\n          \"quantity\": \"1\",\n          \"category\": \"PHYSICAL_GOODS\",\n          \"unit_amount\": {\n            \"currency_code\": \"USD\",\n            \"value\": \"240.00\"\n          }\n        }\n      ]\n    }\n  ],\n  \"payment_source\": {\n    \"paypal\": {\n      \"vault_id\": \"{{vault_id}}\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v2/checkout/orders",
+            "description": "The agent pays by itself with the buyer's saved wallet: PayPal charges it at once, with no checkout screen. The request ID is the record hash, so one record can never be charged twice.\n\nSource: `shop/server.mjs (checkout, vault_id)`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Saved wallet (the live demo's /wallet)",
+      "item": [
+        {
+          "name": "Create setup token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.id !== undefined) pm.collectionVariables.set('setup_token', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_source\": {\n    \"paypal\": {\n      \"usage_type\": \"MERCHANT\",\n      \"usage_pattern\": \"IMMEDIATE\",\n      \"description\": \"Lets the shopping agent pay at Driftwood Outfitters without a checkout screen\",\n      \"experience_context\": {\n        \"return_url\": \"https://black-box-342881585799.us-central1.run.app/wallet/return\",\n        \"cancel_url\": \"https://black-box-342881585799.us-central1.run.app/wallet\",\n        \"vault_instruction\": \"ON_PAYER_APPROVAL\",\n        \"shipping_preference\": \"NO_SHIPPING\"\n      }\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v3/vault/setup-tokens",
+            "description": "Starts saving the buyer's PayPal wallet. The buyer approves once at the `approve` link.\n\nSource: `lab/live.mjs (/wallet/connect)`"
+          }
+        },
+        {
+          "name": "Create payment token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.id !== undefined) pm.collectionVariables.set('vault_id', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"payment_source\": {\n    \"token\": {\n      \"id\": \"{{setup_token}}\",\n      \"type\": \"SETUP_TOKEN\"\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v3/vault/payment-tokens",
+            "description": "Turns the approved setup token into the saved wallet (`vault_id`).\n\nSource: `lab/live.mjs (/wallet/return)`"
+          }
+        },
+        {
+          "name": "Delete payment token",
+          "request": {
+            "method": "DELETE",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{base_url}}/v3/vault/payment-tokens/{{vault_id}}",
+            "description": "Forgets the saved wallet.\n\nSource: `lab/live.mjs (/wallet/forget)`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Webhooks",
+      "item": [
+        {
+          "name": "Register webhook",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.id !== undefined) pm.collectionVariables.set('webhook_id', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"url\": \"{{webhook_url}}\",\n  \"event_types\": [\n    {\n      \"name\": \"CUSTOMER.DISPUTE.CREATED\"\n    },\n    {\n      \"name\": \"CUSTOMER.DISPUTE.UPDATED\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v1/notifications/webhooks",
+            "description": "Subscribes Black Box to dispute events.\n\nSource: `executor/webhook.mjs (--register)`"
+          }
+        },
+        {
+          "name": "Verify webhook signature",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"auth_algo\": \"SHA256withRSA\",\n  \"cert_url\": \"\",\n  \"transmission_id\": \"\",\n  \"transmission_sig\": \"\",\n  \"transmission_time\": \"\",\n  \"webhook_id\": \"{{webhook_id}}\",\n  \"webhook_event\": {}\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v1/notifications/verify-webhook-signature",
+            "description": "Every delivery is checked with PayPal before Black Box acts on it. The values come from the delivery's `PayPal-*` headers and its body.\n\nSource: `executor/webhook.mjs (paypalVerifier)`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. Dispute resolution (executor)",
+      "item": [
+        {
+          "name": "List disputes",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.items?.[0]?.dispute_id !== undefined) pm.collectionVariables.set('dispute_id', j.items?.[0]?.dispute_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{base_url}}/v1/customer/disputes?page_size=50",
+            "description": "The watcher polls this; open disputes go to the autopilot.\n\nSource: `executor/watch.mjs (openDisputes)`"
+          }
+        },
+        {
+          "name": "Get dispute",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.disputed_transactions?.[0]?.seller_transaction_id !== undefined) pm.collectionVariables.set('capture_id', j.disputed_transactions?.[0]?.seller_transaction_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{base_url}}/v1/customer/disputes/{{dispute_id}}",
+            "description": "`disputed_transactions[0].custom` is the record hash; the seller, buyer and amount feed the record checks, and `links` say which actions PayPal allows now.\n\nSource: `executor/core.mjs (resolveDispute)`"
+          }
+        },
+        {
+          "name": "Get capture",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.supplementary_data?.related_ids?.order_id !== undefined) pm.collectionVariables.set('order_id', j.supplementary_data?.related_ids?.order_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{base_url}}/v2/payments/captures/{{capture_id}}",
+            "description": "Finds the order behind the disputed capture.\n\nSource: `executor/core.mjs (resolveDispute)`"
+          }
+        },
+        {
+          "name": "Get order",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{base_url}}/v2/checkout/orders/{{order_id}}",
+            "description": "The order's `create_time`: the shop's pages must be signed before it, and an unsigned mandate counts only if the payer had no passkey yet.\n\nSource: `executor/core.mjs (resolveDispute)`"
+          }
+        },
+        {
+          "name": "Escalate (USER: an inquiry, before evidence)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Black Box verdict USER (rule 6): the purchase was within the buyer's mandate. Escalating so PayPal can review the evidence. Record {{record_hash}}.\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/escalate",
+            "description": "PayPal takes evidence only on a claim, so an inquiry is escalated once first.\n\nSource: `executor/core.mjs (escalate)`"
+          }
+        },
+        {
+          "name": "Accept claim (MERCHANT: full refund)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Black Box verdict MERCHANT (rule 2). Record {{record_hash}}.\",\n  \"accept_claim_type\": \"REFUND\",\n  \"refund_amount\": {\n    \"currency_code\": \"USD\",\n    \"value\": \"240.00\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/accept-claim",
+            "description": "The merchant's own hidden text misled the agent: refund in full. On an AGENT case where the buyer disputed only the overage, the same call refunds that amount in full.\n\nSource: `executor/core.mjs (act, claimAcceptance)`"
+          }
+        },
+        {
+          "name": "Accept claim (AGENT: the amount over budget)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Black Box verdict AGENT (rule 5). Record {{record_hash}}.\",\n  \"accept_claim_type\": \"PARTIAL_REFUND\",\n  \"refund_amount\": {\n    \"currency_code\": \"USD\",\n    \"value\": \"90.00\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/accept-claim",
+            "description": "A refund smaller than the disputed amount is sent as `PARTIAL_REFUND`. The code notes that PayPal refuses it on an \"incorrect amount\" claim for only the overage, which is why that case accepts in full (the request above).\n\nSource: `executor/core.mjs (act, claimAcceptance)`"
+          }
+        },
+        {
+          "name": "Make offer (AGENT, \"unauthorised\")",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"note\": \"Black Box verdict AGENT (rule 5). Record {{record_hash}}.\",\n  \"offer_type\": \"REFUND\",\n  \"offer_amount\": {\n    \"currency_code\": \"USD\",\n    \"value\": \"90.00\"\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/make-offer",
+            "description": "Offers the amount over budget; the buyer must accept.\n\nSource: `executor/core.mjs (act)`"
+          }
+        },
+        {
+          "name": "Provide evidence (USER)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "input",
+                  "type": "text",
+                  "contentType": "application/json",
+                  "value": "{\"evidences\":[{\"evidence_type\":\"OTHER\",\"notes\":\"Black Box verdict USER (rule 6). Record {{record_hash}}.\",\"documents\":[{\"name\":\"blackbox-evidence.txt\"}]}]}"
+                },
+                {
+                  "key": "file1",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/provide-evidence",
+            "description": "Defends an honest purchase: a checked note, the statements it was written from and the full record, as one text file. Choose the file for `file1` in Postman.\n\nSource: `executor/core.mjs (act)`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Payouts (the operator repays the merchant)",
+      "item": [
+        {
+          "name": "Create payout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.batch_header?.payout_batch_id !== undefined) pm.collectionVariables.set('payout_batch_id', j.batch_header?.payout_batch_id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{operator_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"sender_batch_header\": {\n    \"sender_batch_id\": \"blackbox-{{dispute_id}}\",\n    \"email_subject\": \"Agent operator reimbursement\",\n    \"email_message\": \"Reimbursing the refund on dispute {{dispute_id}}: the agent exceeded the buyer's mandate.\"\n  },\n  \"items\": [\n    {\n      \"recipient_type\": \"PAYPAL_ID\",\n      \"receiver\": \"{{merchant_id}}\",\n      \"amount\": {\n        \"currency\": \"USD\",\n        \"value\": \"90.00\"\n      },\n      \"sender_item_id\": \"{{dispute_id}}\",\n      \"note\": \"Black Box verdict AGENT on {{dispute_id}}: the operator's agent overspent; this repays the merchant's refund.\"\n    }\n  ]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v1/payments/payouts",
+            "description": "On an AGENT verdict the merchant refunded the overage; the agent operator's account pays it back. PayPal refuses a second batch with the same `sender_batch_id`.\n\nSource: `executor/payout.mjs (reimburse)`"
+          }
+        },
+        {
+          "name": "Get payout batch",
+          "request": {
+            "method": "GET",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{operator_access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "url": "{{base_url}}/v1/payments/payouts/{{payout_batch_id}}",
+            "description": "The batch and item status, logged after a payout and on `--refresh`.\n\nSource: `executor/payout.mjs (reimburse, refreshPayout)`"
+          }
+        }
+      ]
+    }
+  ]
+}
