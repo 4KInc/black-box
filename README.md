@@ -384,6 +384,16 @@ node study/run.mjs [--setup headphones]               # re-run the study (see st
 Postman collection, with the code's own paths and bodies, to replay the payment and dispute flow
 by hand.
 
+**Checked against PayPal's SDK.** Black Box calls PayPal's REST API directly rather than through
+an SDK. Its Orders, Payments and Vault requests were checked field by field against the PayPal
+Server SDK's models with the APIMatic Context Plugin, an MCP server used from Claude Code while
+developing (it is not part of Black Box). Everything matched except one field: the wallet save sent
+`experience_context.vault_instruction`, which the SDK marks deprecated. It now sends
+`user_action: SETUP_NOW`, which PayPal's v3 reference describes as saving on the buyer's approval,
+as the old value did, and a test checks it. On 8 November 2026 a wallet was saved this way in the
+sandbox and the agent paid $240 from it. The plugin does not cover Disputes, Payouts or Webhooks,
+so those calls were not checked this way; they are covered by the live disputes above.
+
 **Live smoke test.** [scripts/smoke-live.md](scripts/smoke-live.md) runs one full sandbox chain on
 the current code, from passkey mandate to a REFUNDED capture. It starts with
 `node scripts/live.mjs preflight`, which fails loudly if the Anthropic key or the PayPal sandbox
