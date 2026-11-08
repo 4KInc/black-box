@@ -49,8 +49,28 @@ test("claiming the buyer asked for the overspend: caught by the custom_id, and a
 });
 
 test('the lab opens on the newest live case', () => {
-  assert.match(labPage(), /<option value="P08" selected>P08 · The agent pays by itself/);
-  assert.equal(runLab(ROOT, new URLSearchParams()).base.id, 'P08');
+  assert.match(labPage(), /<option value="P09" selected>P09 · The buyer says what they want[^<]*→ MERCHANT<\/option>/);
+  assert.equal(runLab(ROOT, new URLSearchParams()).base.id, 'P09');
+});
+
+test('the case list is grouped, live disputes first, and every case is in exactly one group', () => {
+  const html = labPage();
+  const groups = [...html.matchAll(/<optgroup label="([^"]+)">([\s\S]*?)<\/optgroup>/g)];
+  assert.equal(groups[0][1], 'Live disputes in the PayPal sandbox');
+  assert.deepEqual([...groups[0][2].matchAll(/value="(\w+)"/g)].map((m) => m[1]), ['R03', 'R11', 'P03', 'P04', 'P05', 'P06', 'P07', 'P08', 'P09']);
+  const ids = groups.flatMap((g) => [...g[2].matchAll(/value="(\w+)"/g)].map((m) => m[1]));
+  assert.equal(ids.length, new Set(ids).size);
+  assert.equal(ids.length, (html.match(/<option value="[A-Z]\d+"/g) ?? []).length);
+  assert.ok(groups.every((g) => g[2].includes('<option')), 'no empty group');
+});
+
+test('the start cards pick a case: one per verdict, the picked one marked and selected', () => {
+  const html = labPage(new URLSearchParams('case=R01'));
+  assert.deepEqual([...html.matchAll(/<a class="pick (\w+)" href="\/lab\?case=(\w+)"/g)].map((m) => [m[2], m[1]]),
+    [['P09', 'MERCHANT'], ['P06', 'AGENT'], ['R01', 'USER'], ['R06', 'NEEDS_A_HUMAN']]);
+  assert.match(html, /href="\/lab\?case=R01" aria-current="true"/);
+  assert.match(html, /<option value="R01" selected>/);
+  assert.match(labPage(new URLSearchParams('case=nope')), /<option value="P09" selected>/);
 });
 
 test('the dispute reason changes the action, not the verdict', () => {

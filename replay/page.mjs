@@ -269,6 +269,14 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 /* ---- decision ladder ---- */
 /* ---- lab ---- */
 form.lab{display:grid;gap:14px;margin:0 0 18px}
+.picks{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin:12px 0 18px}
+.pick{display:flex;flex-direction:column;gap:6px;text-decoration:none;padding:14px 16px;border:1px solid var(--rule);border-top:3px solid var(--c);border-radius:4px;background:var(--bg-1);color:var(--ink-2);font:400 13px/1.45 var(--sans);transition:border-color .18s,background .18s}
+.pick:hover,.pick:focus-visible{border-color:var(--rule-2);border-top-color:var(--c);background:var(--bg-2)}
+.pick[aria-current]{border-color:var(--c);background:var(--bg-2)}
+.pick .top{display:flex;align-items:center;gap:8px;font:700 12px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--c)}
+.pick .top i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.pick .top small{margin-left:auto;font:400 11px/1 var(--mono);letter-spacing:.04em;color:var(--ink-3)}
+.pick b{font:600 18px/1.2 var(--display);letter-spacing:.02em;color:var(--ink)}
 form.lab label{display:grid;gap:6px;font:400 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
 form.lab select,form.lab textarea{font:400 14px/1.4 var(--sans);color:var(--ink);background:var(--bg-2);border:1px solid var(--rule-2);border-radius:3px;padding:9px 10px;max-width:100%}
 form.lab textarea{resize:vertical;min-height:4.5em;letter-spacing:0;text-transform:none}

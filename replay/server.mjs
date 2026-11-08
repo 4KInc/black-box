@@ -69,7 +69,7 @@ export function createReplay({ root = ROOT, intro = '', live = false } = {}) {
         return res.end(readFileSync(join(FONTS, font[1])));
       }
       if (pathname === '/') return send(200, indexPage(cases().map((c) => ({ c, j: judge(c, { root }) })), { intro }));
-      if (pathname === '/lab') return send(200, labPage());
+      if (pathname === '/lab') return send(200, labPage(searchParams));
       if (pathname === '/lab/run') return send(200, labResult(root, searchParams));
       if (pathname === '/lab/page') { res.writeHead(200, RECORDED); return res.end(pageHtml(runLab(root, searchParams).c.record)); }
       if (pathname === '/lab/facts') return send(200, factsPage(searchParams));

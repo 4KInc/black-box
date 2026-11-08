@@ -19,7 +19,25 @@ const money = (c) => `$${(c / 100).toFixed(2)}`;
 
 export const BASES = CASES.filter((d) => d.kind !== 'attack');
 // The lab opens on the newest live case: the agent paid by itself, and Black Box refunded the buyer.
-const DEFAULT_CASE = BASES.find((d) => d.id === 'P08') ?? BASES[0];
+const DEFAULT_CASE = BASES.find((d) => d.id === 'P09') ?? BASES[0];
+
+// The case list, grouped so a first-time visitor can find a case: the live PayPal disputes first.
+const CASE_GROUPS = [
+  ['Live disputes in the PayPal sandbox', (d) => Boolean(d.paypal)],
+  ['Recorded agent runs', (d) => d.kind === 'recorded'],
+  ['Approved with the buyer’s passkey', (d) => d.kind === 'passkey'],
+  ['Honest price data the shop is not blamed for', (d) => d.kind === 'honest-data'],
+  ['The lie reworded to slip past the checks', (d) => d.kind === 'evasion'],
+  ['The AI flagger', (d) => d.kind === 'flagger'],
+];
+const groupOf = (d) => CASE_GROUPS.find(([, has]) => has(d))[0];
+// One case for each verdict, to start from.
+const PICKS = [
+  ['P09', 'The shop hid a lie', 'Live: the agent paid $240 on a $150 budget, refunded'],
+  ['P06', 'The agent overspent by itself', 'Live: nothing misled it, the buyer got the $90 back'],
+  ['R01', 'An honest purchase', 'The buyer disputes anyway; the shop keeps the money'],
+  ['R06', 'A lie in someone else’s review', 'Not the shop’s own words, so a person decides'],
+].map(([id, head, sub]) => ({ d: BASES.find((b) => b.id === id), head, sub })).filter((p) => p.d);
 
 export const REASONS = [
   ['MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED', 'Not as described'],
@@ -99,20 +117,27 @@ export function labForm(query = new URLSearchParams()) {
   const picked = query.get('case') ?? DEFAULT_CASE.id;
   const t = new Set(query.getAll('t'));
   return `<form class="panel lab" method="get" action="/lab/run">
-<label>Case<select name="case">${BASES.map((d) => option(d.id, `${d.id} · ${d.title}`, d.id === picked)).join('')}</select></label>
+<label>Case<select name="case">${CASE_GROUPS.map(([name]) => `<optgroup label="${esc(name)}">${BASES.filter((d) => groupOf(d) === name)
+    .map((d) => option(d.id, `${d.id} · ${d.title} → ${label(d.expect.verdict)}`, d.id === picked)).join('')}</optgroup>`).join('')}</select></label>
 <label>The buyer disputes it as<select name="reason">${option('', 'the case’s own reason', !query.get('reason'))}${REASONS.map(([r, text]) => option(r, text, r === query.get('reason'))).join('')}</select></label>
 <fieldset><legend>Tamper with it</legend>${TAMPERS.map((x) => `<label class="chk"><input type="checkbox" name="t" value="${x.id}"${t.has(x.id) ? ' checked' : ''}><span><b>${esc(x.who)}</b> ${esc(x.what)}</span></label>`).join('')}
 <label class="chk"><input type="checkbox" name="before" value="1"${query.get('before') === '1' ? ' checked' : ''}><span><b>Stronger attacker</b> The record was changed before payment, so PayPal’s custom_id matches the changed record</span></label></fieldset>
 <button type="submit">Run the engine</button></form>`;
 }
 
-export function labPage() {
+function picks(picked) {
+  return `<nav class="picks" aria-label="Start from a case">${PICKS.map(({ d, head, sub }) => `<a class="pick ${d.expect.verdict}" href="/lab?case=${d.id}"${d.id === picked ? ' aria-current="true"' : ''}>
+<span class="top"><i></i>${esc(label(d.expect.verdict))}<small>${d.id}</small></span><b>${esc(head)}</b><span>${esc(sub)}</span></a>`).join('')}</nav>`;
+}
+
+export function labPage(query = new URLSearchParams()) {
+  const picked = BASES.some((d) => d.id === query.get('case')) ? query.get('case') : DEFAULT_CASE.id;
   return layout('Black Box · lab', `<section class="hero"><div><div class="eyebrow"><b>●</b> Lab · live engine</div>
 <h1>Try to <em>cheat it.</em></h1></div>
 <div><p>Pick a real case, choose how the buyer disputes it, and tamper with it the way a shop, buyer or agent operator might.
 The server re-runs the real engine on your request. Like an attacker, it has no signing keys. It never calls PayPal.</p>
 <p>Or <a href="/lab/facts">set the facts by hand</a> and see which rule applies.</p></div></section>
-<section class="sec">${labForm()}</section>`, { active: 'lab' });
+<section class="sec"><div class="eyebrow">Start from one of these, or pick any of the ${BASES.length} cases below</div>${picks(picked)}${labForm(new URLSearchParams({ case: picked }))}</section>`, { active: 'lab' });
 }
 
 export function labResult(root, query) {
