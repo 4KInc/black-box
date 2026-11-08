@@ -639,8 +639,8 @@ function causePanel(c, j) {
   }
   const credit = buyerCredit(p);
   const refund = p.after?.refundTransactions?.[0];
-  return `<div class="eyebrow"><b>●</b> PayPal ${p.executed ? 'carried it out' : 'dispute open'}</div>
-${p.executed ? `<div class="amt">${credit ? money(credit.amount.cents, credit.amount.currency) : esc(p.executed.action)}<small>${credit ? 'back to the buyer' : 'sent to PayPal'}</small></div>` : `<div class="amt">${esc(planText(j.plan))}<small>planned, not yet executed</small></div>`}
+  return `<div class="eyebrow"><b>●</b> ${p.labRun ? 'Lab run · nothing sent to PayPal' : `PayPal ${p.executed ? 'carried it out' : 'dispute open'}`}</div>
+${p.executed ? `<div class="amt">${credit ? money(credit.amount.cents, credit.amount.currency) : esc(p.executed.action)}<small>${credit ? 'back to the buyer' : 'sent to PayPal'}</small></div>` : `<div class="amt">${esc(planText(j.plan))}<small>${p.labRun ? 'what Black Box would do on this dispute' : 'planned, not yet executed'}</small></div>`}
 <div class="kv"><span>dispute</span><b>${esc(p.disputeId)}</b>
 ${p.escalated ? `<span>escalated</span><b>${time(p.escalated.at)}</b>` : ''}
 ${p.executed ? `<span>action</span><b>${esc(p.executed.action)} · HTTP ${esc(p.executed.httpStatus)}</b><span>at</span><b>${time(p.executed.at)}</b>` : ''}
@@ -829,7 +829,9 @@ function supportFor(c, j) {
     'make-offer': c.paypal?.executed ? `PayPal has offered you ${refund} back.` : `If you dispute it with PayPal, you are offered ${refund} back.`,
     'provide-evidence': c.paypal?.executed ? "The purchase stands. We've sent PayPal the evidence that it matched your request." : "The purchase stands. If you dispute it, we'll send PayPal the evidence that it matched your request.",
   }[j.plan.action] ?? '';
-  const next = c.paypal
+  const next = c.paypal?.labRun
+    ? `Lab run: nothing is sent to PayPal. On a real dispute like ${esc(c.paypal.disputeId)}, Black Box would ${j.plan.action === 'none' ? 'take no automatic action, and a person decides' : esc(planPlain(j.plan))}.`
+    : c.paypal
     ? `PayPal case ${esc(c.paypal.disputeId)}: ${esc(paypalStatus(c.paypal))}.`
     : `Not disputed. If the customer disputes it as “${esc(reasonPlain(j.reason))}”, Black Box will ${j.plan.action === 'none' ? 'take no automatic action, and a person decides' : esc(planPlain(j.plan))}.`;
   return supportBox(null, esc(`${explain} ${outcome}`), `${next}${v === VERDICT.HUMAN ? ' Escalate it to a dispute specialist.' : ''}`);

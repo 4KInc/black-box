@@ -113,3 +113,10 @@ test('a lab run reads true: its own page preview, re-checked signatures, the cau
     assert.match(await r.text(), /<h1>[XY]oastline Rain Jacket/);
   } finally { s.close(); }
 });
+
+test('a changed case says it is a lab run, not that the real PayPal dispute is open', () => {
+  const html = labResult(ROOT, new URLSearchParams('case=P09&t=edit-page'));
+  assert.match(html, /Lab run · nothing sent to PayPal/);
+  assert.match(html, /Lab run: nothing is sent to PayPal\. On a real dispute like PP-R-XXC-10197051, Black Box would take no automatic action/);
+  assert.doesNotMatch(html, /dispute open|still open|planned, not yet executed|AUTO_EXECUTE/);
+});

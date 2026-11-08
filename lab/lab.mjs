@@ -102,7 +102,7 @@ export function runLab(root, query) {
   const noEffect = chosen.filter((t) => t.applies && !t.applies(original.record));
   const changed = buildCase(def, load(root));
   // What PayPal did belongs to the real case; a changed case has not been through PayPal.
-  if (chosen.length) { delete changed.paypal.executed; delete changed.paypal.after; }
+  if (chosen.length) { delete changed.paypal.executed; delete changed.paypal.after; delete changed.paypal.trigger; changed.paypal.labRun = true; }
   return {
     base, reason, chosen, before, noEffect,
     was: judge(original, { enrolment, trustBenchKey: true }),
