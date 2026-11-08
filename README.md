@@ -5,6 +5,18 @@ decided to the PayPal payment. When the buyer disputes, it checks that record ag
 the buyer approved with a passkey, applies an explicit responsibility policy, and carries out the
 PayPal dispute action that follows.
 
+**What happens when the buyer disputes,** with no one at the keyboard:
+
+- **The shop hid a lie that the agent read →** Black Box refunds the buyer from the merchant
+  through PayPal (`accept-claim`), automatically. Live on PP-R-XXC-10197051, it took 10 seconds
+  from PayPal's webhook to the $240 refund.
+- **The agent overspent on its own →** the buyer gets back the amount over budget, and the
+  agent's operator pays the merchant back through PayPal Payouts (live on P06: $90).
+- **The purchase matched what the buyer approved →** Black Box defends the sale with
+  `provide-evidence`: a checked note and the sealed record.
+- **Anything it cannot prove,** such as a tampered record or a lie in someone else's review →
+  no money moves and a person decides.
+
 **Try it, no keys needed:** [4kinc.github.io/black-box](https://4kinc.github.io/black-box/) shows
 every recorded run replayed (purchases, and runs where the agent bought nothing), the study and the case bench. **[The lab](https://black-box-342881585799.us-central1.run.app/lab)**
 adds the live part: tamper with a real case and the engine runs again on the server. **[The live
