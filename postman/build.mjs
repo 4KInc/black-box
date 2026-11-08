@@ -118,7 +118,7 @@ export const COLLECTION = {
         body: json({ payment_source: { paypal: {
           usage_type: 'MERCHANT', usage_pattern: 'IMMEDIATE',
           description: 'Lets the shopping agent pay at Driftwood Outfitters without a checkout screen',
-          experience_context: { return_url: 'https://black-box-342881585799.us-central1.run.app/wallet/return', cancel_url: 'https://black-box-342881585799.us-central1.run.app/wallet', vault_instruction: 'ON_PAYER_APPROVAL', shipping_preference: 'NO_SHIPPING' },
+          experience_context: { return_url: 'https://black-box-342881585799.us-central1.run.app/wallet/return', cancel_url: 'https://black-box-342881585799.us-central1.run.app/wallet', user_action: 'SETUP_NOW', shipping_preference: 'NO_SHIPPING' },
         } } }),
         events: save({ setup_token: 'j.id' }),
       }),

@@ -154,6 +154,9 @@ test('the buyer saves their PayPal wallet once, and the agent then pays with no 
   assert.equal(start.status, 303);
   assert.equal(start.headers.get('location'), 'https://sandbox.example/vault-approve');
   assert.equal(vaultCalls[0].json.payment_source.paypal.experience_context.return_url, `${ORIGIN}/wallet/return`);
+  // user_action, not the deprecated vault_instruction: SETUP_NOW saves the wallet on the buyer's approval.
+  assert.equal(vaultCalls[0].json.payment_source.paypal.experience_context.user_action, 'SETUP_NOW');
+  assert.equal('vault_instruction' in vaultCalls[0].json.payment_source.paypal.experience_context, false);
   assert.equal((await fetch(base + '/wallet/return?approval_token_id=SOMEONEELSE', { headers: auth() })).status, 400);
   const back = await fetch(base + '/wallet/return?approval_token_id=SETUP1&approval_session_id=S', { headers: auth(), redirect: 'manual' });
   assert.equal(back.status, 303);

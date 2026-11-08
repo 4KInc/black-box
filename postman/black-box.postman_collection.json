@@ -365,7 +365,7 @@
             "header": [],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"payment_source\": {\n    \"paypal\": {\n      \"usage_type\": \"MERCHANT\",\n      \"usage_pattern\": \"IMMEDIATE\",\n      \"description\": \"Lets the shopping agent pay at Driftwood Outfitters without a checkout screen\",\n      \"experience_context\": {\n        \"return_url\": \"https://black-box-342881585799.us-central1.run.app/wallet/return\",\n        \"cancel_url\": \"https://black-box-342881585799.us-central1.run.app/wallet\",\n        \"vault_instruction\": \"ON_PAYER_APPROVAL\",\n        \"shipping_preference\": \"NO_SHIPPING\"\n      }\n    }\n  }\n}",
+              "raw": "{\n  \"payment_source\": {\n    \"paypal\": {\n      \"usage_type\": \"MERCHANT\",\n      \"usage_pattern\": \"IMMEDIATE\",\n      \"description\": \"Lets the shopping agent pay at Driftwood Outfitters without a checkout screen\",\n      \"experience_context\": {\n        \"return_url\": \"https://black-box-342881585799.us-central1.run.app/wallet/return\",\n        \"cancel_url\": \"https://black-box-342881585799.us-central1.run.app/wallet\",\n        \"user_action\": \"SETUP_NOW\",\n        \"shipping_preference\": \"NO_SHIPPING\"\n      }\n    }\n  }\n}",
               "options": {
                 "raw": {
                   "language": "json"

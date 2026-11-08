@@ -250,7 +250,7 @@ export function createLive({
         const r = await pay('POST', '/v3/vault/setup-tokens', { payment_source: { paypal: {
           usage_type: 'MERCHANT', usage_pattern: 'IMMEDIATE',
           description: 'Lets the shopping agent pay at Driftwood Outfitters without a checkout screen',
-          experience_context: { return_url: `${origin}/wallet/return`, cancel_url: `${origin}/wallet`, vault_instruction: 'ON_PAYER_APPROVAL', shipping_preference: 'NO_SHIPPING' },
+          experience_context: { return_url: `${origin}/wallet/return`, cancel_url: `${origin}/wallet`, user_action: 'SETUP_NOW', shipping_preference: 'NO_SHIPPING' },
         } } });
         const approve = r.data?.links?.find((l) => l.rel === 'approve')?.href;
         if (!r.ok || !approve) return send(502, walletPage(root, { note: `<p>PayPal did not start the wallet save (HTTP ${r.status}, debug ${esc(r.debugId)}).</p>` }));
