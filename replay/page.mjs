@@ -622,14 +622,13 @@ function mandateSentence(m) {
 
 // ---------------------------------------------------------------- recordings
 
-// The public front page's introduction. live: served by a server with the lab, or a static copy.
-export function siteIntro({ live }) {
+// The public front page's introduction.
+export function siteIntro() {
   return `<section class="hero front"><div><div class="eyebrow"><b>●</b> PayPal sandbox · no keys needed</div>
 <h1><span><i>Who pays when</i></span> <span><i>an AI agent</i></span> <span><em>buys wrong?</em></span></h1>
 <p>Black Box records what a shopping agent saw and ties it to the PayPal payment. If the buyer disputes,
 it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or the <b>buyer</b>, and tells PayPal what to do.</p>
-<p>Every recording below is a real run. The ones marked PayPal went through a sandbox dispute.
-<a href="/bench">Dispute scenarios</a>${live ? ' · <a href="/lab">Lab</a>' : ''}${demoHref ? ` · <a href="${esc(demoHref)}">Live demo</a>` : ''} · <a href="https://github.com/4KInc/black-box">Source</a></p></div>
+<p>Every recording below is a real run. The ones marked PayPal went through a sandbox dispute.</p></div>
 ${heroTape()}</section>`;
 }
 

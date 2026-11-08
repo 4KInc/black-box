@@ -32,7 +32,7 @@ if (LIVE_DIR) { mkdirSync(LIVE_DIR, { recursive: true }); symlinkSync(LIVE_DIR, 
 mergeEnrolment(root, JSON.parse(readFileSync(join(root, 'fixtures', 'recorded', 'passkey-enrolment.json'), 'utf8')));
 
 if (LIVE_DIR) setDemoHref('/demo');
-const replay = createReplay({ root, intro: siteIntro({ live: true }), live: Boolean(LIVE_DIR) });
+const replay = createReplay({ root, intro: siteIntro(), live: Boolean(LIVE_DIR) });
 if (!LIVE_DIR) {
   replay.listen(PORT, HOST, () => console.log(`black box  http://${HOST}:${PORT}  (fixtures only)`));
 } else {

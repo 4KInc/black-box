@@ -47,7 +47,7 @@ function write(path, html, depth, csp = PAGE_CSP) {
   writeFileSync(file, withCsp(relativise(html, depth), csp));
 }
 
-const INTRO = siteIntro({ live: false });
+const INTRO = siteIntro();
 // Where the site is published, for the case report's "check it yourself" line.
 const SITE_URL = process.env.SITE_URL ?? 'https://4kinc.github.io/black-box';
 
