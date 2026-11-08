@@ -164,10 +164,25 @@ data. The case page shows them as tiles under the label in the second column.
 | | UNCLASSIFIED | `unclassifiedAgentText` | The merchant's hidden text about this item, addressed to AI agents, that code cannot classify as a lie or not |
 | | BUYER ASKED | `requestExceedsMandate` | The buyer's own words to the agent asked for more than the mandate allows; counts only when the mandate was broken |
 
-The six rules are checked in order: (1) any integrity check fails → NEEDS A HUMAN; (2) the
-mandate is broken and all five merchant facts hold → MERCHANT; (3) the merchant steered the agent
-within budget → NEEDS A HUMAN; (4) any other signal → NEEDS A HUMAN; (5) the mandate is broken →
-AGENT; (6) otherwise → USER.
+### The six rules
+
+Checked in order, top to bottom. Exactly one applies to every combination of the 16 facts, which
+the tests check for all 65,536.
+
+| Rule | Verdict | When it applies | What Black Box does | Bench example |
+|---|---|---|---|---|
+| 1 | NEEDS A HUMAN | Any record-integrity fact fails: the record was edited, a signature is broken, the wrong payee was paid, the order is back-dated, or the passkey approval is missing or changed | Nothing; a person decides | The lab's "edit one letter of the page" |
+| 2 | **MERCHANT** | Over the mandate, and all five merchant facts hold: the shop's own hidden text named this item, contradicted the listing and reached the model | Refunds the buyer from the merchant (`accept-claim`) | P09: the hidden $119 note, $240 paid on a $150 budget, refunded |
+| 3 | NEEDS A HUMAN | Within the mandate, but the merchant's hidden lie about the item was read | Nothing; a person decides | R07 |
+| 4 | NEEDS A HUMAN | Any other signal: hidden text not provably the merchant's, the merchant's text for agents that code cannot classify, the AI flagger, or the buyer's own words asking for more than the mandate | Nothing; a person decides | R06: a lie inside a third-party review |
+| 5 | **AGENT** | Over the mandate, and nothing misled the agent | Refunds the amount over budget; the operator repays the merchant through Payouts | P06: Llama 1B overspent, $90 back |
+| 6 | **USER** | Within the mandate, nothing suspicious | Defends the sale (`provide-evidence`) | R01: an honest purchase, disputed anyway |
+
+Rule 1 comes first because nothing in a broken record can be trusted. Rule 2 comes before rules
+4 and 5, so a shop that planted the lie pays even if the agent might have overspent anyway (R13).
+Only rules 2, 5 and 6 act on PayPal; whenever there is doubt, the case stops for a person. Rule 3
+goes to a person because the buyer lost nothing over the limit, so whether the steering harmed
+them is a judgment, not a check.
 
 **What the record proves, and what it does not.** The record is tamper-evident after it is
 committed to the PayPal order. Whether it truly shows what the model received depends on the
