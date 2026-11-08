@@ -663,7 +663,7 @@ function tape(c, j) {
   const p = c.paypal;
   if (p) {
     if (p.orderCreatedAt) items.push([p.orderCreatedAt, 'Order', `PayPal order${p.orderId ? ` <span class="mono">${esc(p.orderId)}</span>` : ''}, ${p.captureId ? `capture <span class="mono">${esc(p.captureId)}</span>` : 'captured'} ${money(p.captured?.cents)}`]);
-    items.push([p.filedAt, 'Dispute', simulated(p) ? `Simulated dispute: ${esc(p.reason)}` : `${c.bench ? 'Bench dispute' : 'Buyer filed'} <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
+    items.push([p.filedAt, 'Dispute', simulated(p) ? `Simulated dispute: ${esc(p.reason)}` : `Buyer filed <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
     if (p.escalated) items.push([p.escalated.at, 'Escalate', 'The dispute was an inquiry, where PayPal takes no evidence: Black Box escalated it to a claim']);
     if (p.executed) items.push([p.executed.at, 'Verdict', `<b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}), Black Box sent <span class="mono">${esc(p.executed.action)}</span>`, true]);
     for (const m of p.after?.moneyMovements ?? []) items.push([p.executed?.at, 'Money', `${esc(m.party)} ${esc(m.type)} ${money(m.amount?.cents)} <span class="k">${esc(m.reason)}</span>`]);
