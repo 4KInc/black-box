@@ -119,4 +119,7 @@ test('a changed case says it is a lab run, not that the real PayPal dispute is o
   assert.match(html, /Lab run · nothing sent to PayPal/);
   assert.match(html, /Lab run: nothing is sent to PayPal\. On a real dispute like PP-R-XXC-10197051, Black Box would take no automatic action/);
   assert.doesNotMatch(html, /dispute open|still open|planned, not yet executed|AUTO_EXECUTE/);
+  const p06 = labResult(ROOT, new URLSearchParams('case=P06&t=raise-cap'));
+  assert.match(p06, /Lab run · nothing sent to PayPal/);
+  assert.doesNotMatch(p06, /ZLR5F7QM5LBQ4|operator → merchant|Payout/, 'the real case\'s payout is not shown on a lab run');
 });
