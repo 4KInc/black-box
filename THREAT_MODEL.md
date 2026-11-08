@@ -104,7 +104,7 @@ It ends with what Black Box has to trust, and what it does not cover.
    a passkey has unsigned mandates, which are taken as recorded.
 5. **Pages are self-contained.** Pages that depend on unsigned scripts or files cannot be
    attributed to the merchant, so hidden text on them sends the case to a person.
-6. **The bench key is never a shop's key.** The case bench re-signs the pages it rewrites (E01-E13)
+6. **The bench key is never a shop's key.** The case bench re-signs the pages it rewrites (E01-E13, F03, F04)
    with a TEST-ONLY key whose private half is committed
    (`bench/keys/TEST-ONLY-bench-signing-key.jwk.json`), so anyone can sign with it. The shop and
    the review platform refuse to start with it, nothing publishes it, and a record whose key set
