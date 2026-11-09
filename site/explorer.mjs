@@ -160,15 +160,21 @@ const jsonBlock = (data) => JSON.stringify(data).replace(/</g, '\\u003c');
 const STYLE = `<style>
 .xp-hero{padding-bottom:8px}.xp-hero h1{font-size:clamp(40px,5.4vw,68px)}
 .xp-tabs{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 14px}
-.xp-tabs button,.xp-chips button{font:600 15px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);background:var(--bg-1);border:1px solid var(--rule);border-radius:2px;padding:9px 14px;cursor:pointer}
+.xp-tabs button,.xp-facet button{font:600 15px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2);background:var(--bg-1);border:1px solid var(--rule);border-radius:2px;padding:9px 14px;cursor:pointer}
 .xp-tabs button small{font:400 11px/1 var(--mono);letter-spacing:0;color:var(--ink-3);margin-left:8px}
 .xp-tabs button[aria-selected=true]{color:var(--ink);border-color:var(--orange);background:var(--bg-2)}
 .xp-tools{display:flex;flex-wrap:wrap;align-items:center;gap:10px;margin:0 0 12px}
 .xp-tools input{flex:1 1 220px;min-width:0;font:400 13px/1 var(--mono);color:var(--ink);background:var(--bg-1);border:1px solid var(--rule);border-radius:2px;padding:9px 12px}
-.xp-chips{display:flex;flex-wrap:wrap;gap:6px}
-.xp-chips button{font-size:13px;padding:7px 10px;display:inline-flex;align-items:center;gap:7px}
-.xp-chips button i{width:8px;height:8px;border-radius:50%;background:var(--c,var(--ink-3))}
-.xp-chips button[aria-pressed=true]{color:var(--ink);border-color:var(--c,var(--orange));background:var(--bg-2)}
+.xp-facets{display:flex;flex-wrap:wrap;gap:10px 22px;margin:0 0 14px;padding:12px 14px;border:1px solid var(--rule);background:var(--bg-1)}
+.xp-facet{display:flex;flex-wrap:wrap;align-items:center;gap:6px;min-width:0}
+.xp-facet .lab{font:400 10.5px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3);margin-right:2px}
+.xp-facet button{font-size:13px;padding:6px 9px;display:inline-flex;align-items:center;gap:7px;background:var(--bg)}
+.xp-facet button i{width:8px;height:8px;border-radius:50%;background:var(--c,var(--ink-3))}
+.xp-facet button small{font:400 11px/1 var(--mono);letter-spacing:0;color:var(--ink-3)}
+.xp-facet button:hover{color:var(--ink);border-color:var(--rule-2)}
+.xp-facet button[aria-pressed=true]{color:var(--ink);border-color:var(--c,var(--orange));background:var(--bg-2)}
+.xp-facet button[aria-pressed=true] small{color:var(--ink-2)}
+.xp-facet button.zero{opacity:.4}
 .xp-count{font:400 12px/1 var(--mono);color:var(--ink-3)}
 .xp-acts{display:flex;gap:6px;margin-left:auto}
 .xp-acts button{font:400 12px/1 var(--mono);color:var(--ink-2);background:transparent;border:1px solid var(--rule);border-radius:2px;padding:8px 10px;cursor:pointer}
@@ -196,7 +202,6 @@ const STYLE = `<style>
 
 export function explorerPage(data) {
   const n = (x) => x.toLocaleString('en-US');
-  const verdicts = [['MERCHANT', 'Shop at fault'], ['AGENT', 'Agent at fault'], ['USER', 'Purchase stands'], ['NEEDS_A_HUMAN', 'Needs a human']];
   const body = `${STYLE}<section class="hero top xp-hero"><div><div class="eyebrow"><b>●</b> Explorer · AG Grid</div>
 <h1>Every case,<br>every run</h1></div>
 <div><p>The dispute scenarios, the money in the ${n(new Set(data.ledger.map((r) => r.disputeId)).size)} live PayPal disputes, all ${n(data.decisions.rules.length)} combinations of the 16 facts, and every agent run from the study. Sort, filter, and pick a row for its details.</p>
@@ -209,9 +214,9 @@ export function explorerPage(data) {
 <button role="tab" data-tab="cells" aria-selected="false">Study results<small>${n(data.cells.length)}</small></button>
 <button role="tab" data-tab="runs" aria-selected="false">Agent runs<small>${n(data.runs.length)}</small></button></div>
 <div class="xp-tools"><input id="xp-q" type="search" placeholder="Search: a model, a dispute ID, a hash, a word from the agent’s reason" aria-label="Search the table">
-<div class="xp-chips" id="xp-chips" role="group" aria-label="Verdict">${verdicts.map(([v, t]) => `<button class="${v}" data-v="${v}" aria-pressed="false"><i></i>${t}</button>`).join('')}</div>
 <span class="xp-count" id="xp-count" aria-live="polite"></span>
 <span class="xp-acts"><button id="xp-csv" type="button">Download CSV</button><button id="xp-link" type="button">Copy link to this view</button></span></div>
+<div class="xp-facets" id="xp-facets"></div>
 <p class="xp-lead" id="xp-lead"></p>
 <div id="xp-grid" class="xp-grid"><noscript><p style="padding:16px">The explorer needs JavaScript. Every case is also on the <a href="/bench">Scenarios</a> page and every run on the <a href="/study">Study</a> page, with no scripts.</p></noscript></div>
 <div id="xp-detail" class="xp-detail" aria-live="polite"><p class="hint">Pick a row to see its details.</p></div>

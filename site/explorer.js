@@ -1,6 +1,6 @@
 // The explorer's browser script (site/explorer.mjs builds the page). It reads the page's JSON
 // block and shows it in AG Grid Community. Every value AG Grid shows comes from a function here,
-// never a string expression, so the page needs no 'unsafe-eval'. The view (tab, search, verdicts,
+// never a string expression, so the page needs no 'unsafe-eval'. The view (tab, search, facets,
 // column filters, picked row) lives in the URL's #, so a link opens the same view.
 (() => {
   const data = JSON.parse(document.getElementById('xp-data').textContent);
@@ -11,6 +11,8 @@
   const n = (x) => x.toLocaleString('en-US');
   const LABEL = { MERCHANT: 'MERCHANT', AGENT: 'AGENT', USER: 'USER', NEEDS_A_HUMAN: 'NEEDS A HUMAN' };
   const PICK = '<p class="hint">Pick a row to see its details.</p>';
+  const VERDICT_TEXT = { MERCHANT: 'Shop at fault', AGENT: 'Agent at fault', USER: 'Purchase stands', NEEDS_A_HUMAN: 'Needs a human' };
+  const FAMILY = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini', grok: 'Grok', muse: 'Muse', open: 'Open models' };
 
   if (!window.agGrid) {
     $('xp-grid').innerHTML = '<p style="padding:16px">AG Grid did not load. Every case is also on the <a href="../bench/">Scenarios</a> page and every run on the <a href="../study/">Study</a> page.</p>';
@@ -68,11 +70,22 @@
     return [t];
   };
 
+  // ---- facets: each view's chips, one group per facet. Within a group the chips are OR, across
+  // groups AND. A chip's count is how many rows it would give, with every other filter as it is.
+  const facet = (key, label, get, opts = {}) => ({ key, label, get, ...opts });
+  const verdictFacet = (get) => facet('verdict', 'Verdict', get, { order: Object.keys(VERDICT_TEXT), text: (v) => VERDICT_TEXT[v] ?? v, colour: true });
+  const RECORD_MASK = D.facts.filter((f) => f.group === 'The record').reduce((m, f) => m | (1 << f.bit), 0);
+
   const VIEWS = {
     scenarios: {
       rows: () => data.scenarios,
       key: (r) => r.id,
-      verdicts: true,
+      facets: [
+        verdictFacet((r) => r.verdict),
+        facet('group', 'Group', (r) => r.group),
+        facet('agent', 'Agent', (r) => FAMILY[r.family] ?? r.family),
+        facet('paypal', 'PayPal', (r) => (r.live ? 'Live sandbox' : 'Simulated')),
+      ],
       lead: 'Each scenario’s right answer is written down before the engine sees it. Pick one for its PayPal IDs, signatures and facts.',
       columns: [
         { field: 'id', headerName: 'Case', width: 90, pinned: 'left' },
@@ -116,7 +129,12 @@ ${caseLink(r.id)}`,
     ledger: {
       rows: () => data.ledger,
       key: (r) => String(r.seq),
-      verdicts: true,
+      facets: [
+        verdictFacet((r) => r.verdict),
+        facet('case', 'Dispute', (r) => r.caseId),
+        facet('by', 'Done by', (r) => r.by),
+        facet('money', 'Money', (r) => (r.buyerCents || r.shopCents || r.appCents ? 'Moves money' : 'No money moves')),
+      ],
       totals: ledgerTotals,
       lead: 'Every step of the live sandbox disputes and what it did to each side’s money. The payment, the refunds, the fees and the payout are PayPal’s own figures. Filter to one dispute to see its net.',
       columns: [
@@ -138,7 +156,12 @@ ${caseLink(r.caseId)}`,
     decisions: {
       rows: decisions,
       key: (r) => String(r.bits),
-      verdicts: true,
+      facets: [
+        verdictFacet((r) => verdictOfRule(r.rule)),
+        facet('rule', 'Rule', (r) => `Rule ${r.rule}`, { order: [1, 2, 3, 4, 5, 6].map((k) => `Rule ${k}`) }),
+        facet('record', 'The record', (r) => ((r.bits & RECORD_MASK) === RECORD_MASK ? 'Intact' : 'Broken'), { order: ['Intact', 'Broken'] }),
+        facet('bench', 'Bench', (r) => (r.bench ? 'A bench case lands here' : 'No bench case')),
+      ],
       lead: `All ${n(D.rules.length)} ways the 16 facts can come out, each judged by the engine itself, as the property test does. ${n(ruleCount(1))} have a broken record, and those all go to a person (rule 1). Type “no” under a fact to see what happens without it.`,
       columns: [
         { field: 'rule', headerName: 'Rule', width: 80, pinned: 'left', filter: 'agNumberColumnFilter' },
@@ -154,6 +177,12 @@ ${r.bench ? `<p class="xp-note">Bench cases with exactly these facts: ${r.bench.
     cells: {
       rows: () => data.cells,
       key: (r) => `${r.setup}|${r.model}|${r.lie}`,
+      facets: [
+        facet('agent', 'Agent', (r) => FAMILY[r.family] ?? r.family),
+        facet('setup', 'Setup', (r) => r.setup),
+        facet('who', 'Lie hidden by', (r) => r.who),
+        facet('reading', 'Reading', (r) => r.kind || 'no runs'),
+      ],
       lead: 'Each model against each hidden lie: how often it bought over budget with the lie on the page, and without it. Not a ranking: each provider ran at its own default settings.',
       columns: [
         { field: 'model', headerName: 'Model', width: 220, pinned: 'left' },
@@ -176,6 +205,12 @@ ${r.bench ? `<p class="xp-note">Bench cases with exactly these facts: ${r.bench.
     runs: {
       rows: () => data.runs,
       key: (r) => `${r.setup}|${r.model}|${r.at}|${r.lie}|${r.condition}`,
+      facets: [
+        facet('agent', 'Agent', (r) => FAMILY[r.family] ?? r.family),
+        facet('setup', 'Setup', (r) => r.setup),
+        facet('page', 'Page', (r) => r.condition),
+        facet('result', 'Result', (r) => (r.bought === null ? 'error' : r.bought ? 'Bought over budget' : 'Stayed within')),
+      ],
       lead: 'Every run of the study, with the agent’s own reason. Search a phrase, such as “agent-channel”, to find every run that believed the hidden note.',
       columns: [
         { field: 'model', headerName: 'Model', width: 220, pinned: 'left' },
@@ -195,10 +230,14 @@ ${r.bench ? `<p class="xp-note">Bench cases with exactly these facts: ${r.bench.
     },
   };
 
-  const pressed = new Set();
+  let picked = {}; // facet key -> Set of chosen values
   let view = 'scenarios';
   let restoring = false;
   let grid = null;
+  const chosen = () => Object.entries(picked).filter(([, set]) => set.size);
+  const facetsOf = () => VIEWS[view].facets ?? [];
+  // The facets a row fails, of those with chips chosen.
+  const fails = (data) => facetsOf().filter((f) => picked[f.key]?.size && !picked[f.key].has(f.get(data)));
   grid = createGrid($('xp-grid'), {
     theme,
     rowData: [],
@@ -206,14 +245,15 @@ ${r.bench ? `<p class="xp-note">Bench cases with exactly these facts: ${r.bench.
     defaultColDef: { sortable: true, filter: true, floatingFilter: true, resizable: true },
     rowSelection: { mode: 'singleRow', checkboxes: false, enableClickSelection: true },
     tooltipShowDelay: 300,
-    isExternalFilterPresent: () => VIEWS[view].verdicts === true && pressed.size > 0,
-    doesExternalFilterPass: (node) => pressed.has(node.data.verdict ?? verdictOfRule(node.data.rule)),
+    isExternalFilterPresent: () => chosen().length > 0,
+    doesExternalFilterPass: (node) => fails(node.data).length === 0,
     onSelectionChanged: (e) => {
       const [row] = e.api.getSelectedRows();
       $('xp-detail').innerHTML = row ? VIEWS[view].detail(row) : PICK;
       saveView();
     },
     onFilterChanged: (e) => {
+      countFacets(e.api);
       if (VIEWS[view].totals) e.api.setGridOption('pinnedBottomRowData', VIEWS[view].totals(e.api));
       saveView();
     },
@@ -222,16 +262,77 @@ ${r.bench ? `<p class="xp-note">Bench cases with exactly these facts: ${r.bench.
     },
   });
 
+  // Counts each chip: the rows that pass the search, the column filters and every other facet
+  // group. The grid filters asynchronously, so the counts test those filters here, the way the
+  // grid does: search words must all appear in a row's values, and each column filter's model holds.
+  const textPass = (val, c) => {
+    const v = val === null || val === undefined ? '' : String(val).toLowerCase();
+    const f = String(c.filter ?? '').toLowerCase();
+    return ({ contains: () => v.includes(f), notContains: () => !v.includes(f), equals: () => v === f, notEqual: () => v !== f,
+      startsWith: () => v.startsWith(f), endsWith: () => v.endsWith(f), blank: () => v === '', notBlank: () => v !== '' })[c.type]?.() ?? true;
+  };
+  const numberPass = (v, c) => {
+    if (c.type === 'blank') return v === null || v === undefined;
+    if (c.type === 'notBlank') return v !== null && v !== undefined;
+    if (v === null || v === undefined) return false;
+    return ({ equals: () => v === c.filter, notEqual: () => v !== c.filter, lessThan: () => v < c.filter, lessThanOrEqual: () => v <= c.filter,
+      greaterThan: () => v > c.filter, greaterThanOrEqual: () => v >= c.filter, inRange: () => v > c.filter && v < c.filterTo })[c.type]?.() ?? true;
+  };
+  const modelPass = (val, m) => {
+    const one = (c) => (m.filterType === 'number' ? numberPass(val, c) : textPass(val, c));
+    const conditions = m.conditions ?? [m];
+    return m.operator === 'OR' ? conditions.some(one) : conditions.every(one);
+  };
+  function countFacets(api) {
+    const model = Object.entries(api.getFilterModel() ?? {});
+    const words = $('xp-q').value.toLowerCase().split(' ').filter(Boolean);
+    const columns = words.length ? api.getColumns() : [];
+    const counts = Object.fromEntries(facetsOf().map((f) => [f.key, new Map()]));
+    api.forEachNode((node) => {
+      if (model.some(([colKey, m]) => !modelPass(api.getCellValue({ rowNode: node, colKey }), m))) return;
+      if (words.length) {
+        const text = columns.map((col) => api.getCellValue({ rowNode: node, colKey: col })).join('\n').toLowerCase();
+        if (!words.every((w) => text.includes(w))) return;
+      }
+      const failed = fails(node.data);
+      if (failed.length > 1) return;
+      for (const f of failed.length ? failed : facetsOf()) {
+        const v = f.get(node.data);
+        counts[f.key].set(v, (counts[f.key].get(v) ?? 0) + 1);
+      }
+    });
+    renderFacets(counts);
+  }
+
+  // Every value a facet can take in this view, in a fixed order, so chips don't jump about.
+  const allValues = new Map();
+  function valuesOf(f) {
+    const id = `${view}:${f.key}`;
+    if (!allValues.has(id)) {
+      const total = new Map();
+      for (const r of VIEWS[view].rows()) total.set(f.get(r), (total.get(f.get(r)) ?? 0) + 1);
+      const order = f.order ?? [...total.keys()].sort((a, b) => total.get(b) - total.get(a) || String(a).localeCompare(String(b)));
+      allValues.set(id, order.filter((v) => total.has(v)));
+    }
+    return allValues.get(id);
+  }
+
+  function renderFacets(counts) {
+    $('xp-facets').innerHTML = facetsOf().map((f) => `<div class="xp-facet" role="group" aria-label="${esc(f.label)}"><span class="lab">${esc(f.label)}</span>${valuesOf(f).map((v) => {
+      const on = picked[f.key]?.has(v) ?? false;
+      const c = counts[f.key].get(v) ?? 0;
+      return `<button type="button" class="${f.colour ? esc(v) : ''}${c || on ? '' : ' zero'}" data-f="${esc(f.key)}" data-v="${esc(v)}" aria-pressed="${on}">${f.colour ? '<i></i>' : ''}${esc(f.text ? f.text(v) : v)}<small>${n(c)}</small></button>`;
+    }).join('')}</div>`).join('');
+  }
+
   function show(next, state = {}) {
     view = VIEWS[next] ? next : 'scenarios';
     const V = VIEWS[view];
     restoring = true;
     for (const b of document.querySelectorAll('.xp-tabs button')) b.setAttribute('aria-selected', String(b.dataset.tab === view));
-    $('xp-chips').hidden = !V.verdicts;
     $('xp-lead').textContent = V.lead;
-    pressed.clear();
-    for (const v of state.verdicts ?? []) pressed.add(v);
-    for (const b of document.querySelectorAll('#xp-chips button')) b.setAttribute('aria-pressed', String(pressed.has(b.dataset.v)));
+    picked = {};
+    for (const [k, vs] of Object.entries(state.facets ?? {})) if (V.facets?.some((f) => f.key === k)) picked[k] = new Set([].concat(vs).map(String));
     $('xp-q').value = state.q ?? '';
     grid.setGridOption('pinnedBottomRowData', []);
     grid.setGridOption('columnDefs', V.columns);
@@ -251,13 +352,14 @@ ${r.bench ? `<p class="xp-note">Bench cases with exactly these facts: ${r.bench.
     saveView();
   }
 
-  // The view in the URL's #: v (tab), q (search), vd (verdicts), f (column filters), id (picked row).
+  // The view in the URL's #: v (tab), q (search), fc (facet chips), f (column filters), id (picked row).
   function saveView() {
     if (restoring || !grid) return;
     const p = new URLSearchParams({ v: view });
     const q = $('xp-q').value;
     if (q) p.set('q', q);
-    if (pressed.size) p.set('vd', [...pressed].join(','));
+    const fc = Object.fromEntries(chosen().map(([k, set]) => [k, [...set]]));
+    if (Object.keys(fc).length) p.set('fc', JSON.stringify(fc));
     const f = grid.getFilterModel();
     if (f && Object.keys(f).length) p.set('f', JSON.stringify(f));
     const [row] = grid.getSelectedRows();
@@ -266,20 +368,20 @@ ${r.bench ? `<p class="xp-note">Bench cases with exactly these facts: ${r.bench.
   }
   function readView() {
     const p = new URLSearchParams(location.hash.slice(1));
-    let f = null;
-    try { f = p.get('f') ? JSON.parse(p.get('f')) : null; } catch { f = null; }
-    return { v: p.get('v') ?? 'scenarios', q: p.get('q') ?? '', verdicts: (p.get('vd') ?? '').split(',').filter((v) => LABEL[v]), f, id: p.get('id') ?? undefined };
+    const json = (k) => { try { return p.get(k) ? JSON.parse(p.get(k)) : null; } catch { return null; } };
+    const facets = json('fc') ?? {};
+    if (p.get('vd')) facets.verdict = p.get('vd').split(','); // links made before the facet bar
+    return { v: p.get('v') ?? 'scenarios', q: p.get('q') ?? '', facets, f: json('f'), id: p.get('id') ?? undefined };
   }
 
   for (const b of document.querySelectorAll('.xp-tabs button')) b.addEventListener('click', () => show(b.dataset.tab));
-  for (const b of document.querySelectorAll('#xp-chips button')) {
-    b.addEventListener('click', () => {
-      const v = b.dataset.v;
-      if (pressed.has(v)) pressed.delete(v); else pressed.add(v);
-      b.setAttribute('aria-pressed', String(pressed.has(v)));
-      grid.onFilterChanged();
-    });
-  }
+  $('xp-facets').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-f]');
+    if (!b) return;
+    const set = (picked[b.dataset.f] ??= new Set());
+    if (set.has(b.dataset.v)) set.delete(b.dataset.v); else set.add(b.dataset.v);
+    grid.onFilterChanged();
+  });
   $('xp-q').addEventListener('input', (e) => { grid.setGridOption('quickFilterText', e.target.value); saveView(); });
   $('xp-csv').addEventListener('click', () => grid.exportDataAsCsv({ fileName: `black-box-${view}.csv` }));
   $('xp-link').addEventListener('click', async (e) => {

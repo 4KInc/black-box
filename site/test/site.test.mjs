@@ -53,6 +53,9 @@ test('the explorer: only AG Grid (pinned, with SRI) and its own script run, with
   assert.match(AG_GRID.src, /@\d+\.\d+\.\d+\//); // an exact version
   assert.ok(statSync(join(out, 'explorer', 'app.js')).size > 0);
   assert.match(html, /aria-current="page">Explorer</);
+  assert.match(html, /<div class="xp-facets" id="xp-facets"><\/div>/); // the facet bar, filled by app.js
+  const app = readFileSync(join(out, 'explorer', 'app.js'), 'utf8');
+  for (const view of ['scenarios', 'ledger', 'decisions', 'cells', 'runs']) assert.match(app, new RegExp(`\\b${view}: \\{[\\s\\S]*?facets: \\[`), view);
   assert.match(readFileSync(join(out, 'bench', 'index.html'), 'utf8'), /href="\.\.\/explorer\/">Explorer</);
   assert.match(readFileSync(join(out, 'bench', 'P09', 'index.html'), 'utf8'), /href="\.\.\/\.\.\/explorer\/#v=scenarios&amp;id=P09">Open in the explorer/);
   assert.match(readFileSync(join(out, 'study', 'index.html'), 'utf8'), /class="xr" href="\.\.\/explorer\/#v=runs&amp;f=/);

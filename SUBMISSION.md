@@ -138,7 +138,7 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
   - **all 65,536 fact combinations**, judged by the engine
   - the 62 scenarios, the 90 study results and the 1,800 agent runs
 
-  Each table has search, verdict and column filters, CSV download, and links that reopen a view.
+  Each table has search, column filters, a facet bar with live counts, CSV download, and links that reopen a view.
   AG Grid 36.2.0 is pinned with a Subresource Integrity hash. It is the only page that loads a
   library, and the engine stays dependency-free.
 - **Postman:** [postman/](https://github.com/4KInc/black-box/blob/main/postman/README.md) has every PayPal sandbox call Black Box makes as a

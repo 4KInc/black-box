@@ -416,7 +416,8 @@ in five AG Grid Community tables:
 
 Picking a scenario shows its PayPal IDs, the action sent and its HTTP status, `custom_id` next to
 the record hash, and the signed page's RFC 9421 `Signature-Input`, `Signature` and
-`Content-Digest`. Each table has search, column filters, verdict filters and CSV download. Every
+`Content-Digest`. Each table has search, column filters, CSV download and a facet bar (verdict, rule,
+agent, setup, live or simulated…) whose chips show live counts as other filters change. Every
 view, including the filters and the picked row, lives in the URL, so a link reopens it. Case pages
 and the study link into it.
 
