@@ -1,4 +1,5 @@
-// Builds the read-only Black Box site: the replay of every committed case, and the case bench.
+// Builds the read-only Black Box site: the replay of every committed case, the case bench, and
+// the AG Grid explorer of both.
 //   node site/build.mjs [outDir]       (default _site/)
 // It uses only fixtures/recorded/ (no local records, no keys), so anyone can rebuild it and get
 // the same pages. GitHub Pages cannot send headers, so every page carries its Content Security
@@ -9,14 +10,17 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { runBench } from '../bench/bench.mjs';
 import { judge, latestStudies, loadCases } from '../replay/cases.mjs';
-import { benchPage, casePage, indexPage, pageHtml, recordJson, setDemoHref, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
+import { benchPage, casePage, indexPage, pageHtml, recordJson, setDemoHref, setExplorerHref, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
 import { caseReport } from '../replay/report.mjs';
+import { EXPLORER_CSP, explorerData, explorerPage } from './explorer.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 // The lab needs a server; the static site links to the hosted one, or leaves the link out.
 setLabHref(process.env.LAB_URL || null);
 // The hosted app that serves the lab also serves the live demo.
 setDemoHref(process.env.LAB_URL ? new URL('/demo', process.env.LAB_URL).href : null);
+// The AG Grid explorer is built only here: the replay server sends script-src 'none'.
+setExplorerHref('/explorer');
 const OUT = process.argv[2] ?? join(ROOT, '_site');
 
 const PAGE_CSP = "default-src 'none'; style-src 'unsafe-inline'; img-src data:; font-src 'self'; frame-src 'self'; base-uri 'none'; form-action 'none'";
@@ -85,6 +89,8 @@ try {
     writeFileSync(join(OUT, 'bench', r.def.id, 'record.json'), recordJson(r.c.record));
     if (r.j) writeFileSync(join(OUT, 'bench', r.def.id, 'report.pdf'), caseReport(r.c, r.j, { caseUrl: `${SITE_URL}/bench/${r.def.id}/` }));
   }
+  write('explorer', explorerPage(explorerData(bench, studies)), 1, EXPLORER_CSP);
+  cpSync(join(ROOT, 'site', 'explorer.js'), join(OUT, 'explorer', 'app.js'));
   const failed = bench.filter((r) => !r.pass).length;
   console.log(`site     ${OUT}\ncases    ${cases.length} replays, ${bench.length} bench cases (${bench.length - failed} pass)`);
   if (failed) process.exit(1);

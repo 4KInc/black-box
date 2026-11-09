@@ -123,7 +123,7 @@ h1,h2,h3{text-wrap:balance;margin:0}p{text-wrap:pretty}
 .bar nav a{font:600 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;text-decoration:none;color:var(--ink-2);padding:8px 12px;border:1px solid transparent;border-radius:2px}
 .bar nav a:hover{color:var(--ink);border-color:var(--rule)}
 .bar nav a[aria-current=page]{color:var(--ink);border-color:var(--rule-2);background:var(--bg-2)}
-@media (max-width:640px){.sub{display:none}.bar{gap:10px}}
+@media (max-width:640px){.sub{display:none}.bar{gap:10px}.bar nav{min-width:0;overflow-x:auto;scrollbar-width:none}.bar nav a{padding:8px 8px;white-space:nowrap}}
 
 main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px}
 
@@ -568,7 +568,7 @@ ${g.options.filter(([, , n]) => n !== 0).map(([value, text, n]) => `<input type=
 const isClaude = (model) => /^claude/.test(model ?? '');
 // Who makes a model, for the Model filters: Claude, GPT, Gemini, Grok, Muse, or an open model run locally.
 const FAMILY = { 'OpenAI API': 'gpt', 'Google Gemini API': 'gemini', 'xAI API': 'grok', 'Meta Model API': 'muse' };
-const modelFamily = (model) => (isClaude(model) ? 'claude' : FAMILY[hostedFor(model ?? '')?.name] ?? 'open');
+export const modelFamily = (model) => (isClaude(model) ? 'claude' : FAMILY[hostedFor(model ?? '')?.name] ?? 'open');
 const icon = (model) => modelIcon(model, modelFamily(model));
 const FAMILIES = [['claude', 'Claude'], ['gpt', 'GPT'], ['gemini', 'Gemini'], ['grok', 'Grok'], ['muse', 'Muse'], ['open', 'Open models']];
 const familyOptions = (models) => FAMILIES.map(([k, text]) => [k, text, models.filter((m) => modelFamily(m) === k).length]);
@@ -601,6 +601,9 @@ export const setLabHref = (href) => { labHref = href; };
 // The live demo's page, on the hosted app with LIVE_DIR set (and the static site, pointing there).
 let demoHref = null;
 export const setDemoHref = (href) => { demoHref = href; };
+// The AG Grid explorer: a page with scripts, so only the static site builds it and links to it.
+let explorerHref = null;
+export const setExplorerHref = (href) => { explorerHref = href; };
 
 export function layout(title, body, { active = '' } = {}) {
   const nav = (href, text, key) => `<a href="${href}"${active === key ? ' aria-current="page"' : ''}>${text}</a>`;
@@ -608,7 +611,7 @@ export function layout(title, body, { active = '' } = {}) {
 <meta name="color-scheme" content="dark"><title>${esc(title)}</title><style>${CSS}</style></head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar"><a class="mark" href="/"><span class="unit" aria-hidden="true"></span>BLACK BOX</a><span class="sub">flight recorder for AI shopping agents</span>
-<nav aria-label="Sections">${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${labHref ? nav(labHref, 'Lab', 'lab') : ''}${demoHref ? nav(demoHref, 'Live demo', 'demo') : ''}</nav></header>
+<nav aria-label="Sections">${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${explorerHref ? nav(explorerHref, 'Explorer', 'explorer') : ''}${labHref ? nav(labHref, 'Lab', 'lab') : ''}${demoHref ? nav(demoHref, 'Live demo', 'demo') : ''}</nav></header>
 <main id="main">${body}</main></body></html>`;
 }
 
@@ -639,7 +642,7 @@ export function highlight(text, needles) {
 // The page shown for a recording: the one bought from, or for a decline, the last page read.
 const shownPage = (record) => record.fetches[record.purchase?.page_index ?? record.fetches.length - 1];
 export const pageHtml = (record) => Buffer.from(shownPage(record).body_b64, 'base64').toString('utf8');
-const decisionOf = (record) => record.decisions.at(-1) ?? {};
+export const decisionOf = (record) => record.decisions.at(-1) ?? {};
 const chip = (state, text) => `<span class="chip ${state}">${esc(text)}</span>`;
 // A bench case's dispute is simulated: its id (BENCH-…) is not a PayPal case.
 const simulated = (p) => /^BENCH-/.test(p?.disputeId ?? '');
@@ -656,8 +659,8 @@ const paypalStatus = (p) => {
 const planText = (plan) => (plan.action === 'none' ? 'No automatic action' : `${plan.action}${plan.refundCents ? ' ' + money(plan.refundCents) : ''}`);
 // The same plan in plain words, for a purchase nobody disputed.
 const REASON_PLAIN = { MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: 'not as described', MERCHANDISE_OR_SERVICE_NOT_RECEIVED: 'not received', UNAUTHORISED: 'unauthorised', INCORRECT_AMOUNT: 'wrong amount', DUPLICATE_TRANSACTION: 'charged twice', CREDIT_NOT_PROCESSED: 'refund not processed' };
-const reasonPlain = (reason) => REASON_PLAIN[reason] ?? String(reason ?? '').replaceAll('_', ' ').toLowerCase();
-const planPlain = (plan) => ({
+export const reasonPlain = (reason) => REASON_PLAIN[reason] ?? String(reason ?? '').replaceAll('_', ' ').toLowerCase();
+export const planPlain = (plan) => ({
   none: 'a person decides',
   'accept-claim': `refund ${money(plan.refundCents)}`,
   'accept-claim-partial': `refund ${money(plan.refundCents)}`,
@@ -668,7 +671,7 @@ const HELD_PLAIN = 'held: with no answer from the AI check, no money moves';
 // The record checks, in short, for "fails: ..." on bench cases.
 const CHECK_PLAIN = { hashesMatch: 'record matches the payment', signaturesValid: 'page signatures', keyOnShopDomain: "key on the shop's site",
   payeeMatches: 'right payee', signedBeforeOrder: 'signed before the order', mandateSigned: 'passkey approval' };
-const failsText = (broken) => { const ks = [].concat(broken ?? []).flatMap((x) => String(x).split(',')).filter(Boolean); return ks.length ? `fails: ${ks.map((k) => CHECK_PLAIN[k] ?? k).join(', ')}` : ''; };
+export const failsText = (broken) => { const ks = [].concat(broken ?? []).flatMap((x) => String(x).split(',')).filter(Boolean); return ks.length ? `fails: ${ks.map((k) => CHECK_PLAIN[k] ?? k).join(', ')}` : ''; };
 const expectText = (e) => `${label(e.verdict)}, rule ${e.rule}; ${planPlain(e)}${failsText(e.broken) ? `; ${failsText(e.broken)}` : ''}`;
 
 // Price against budget, as fractions of a common scale, for the gauges.
@@ -1163,9 +1166,9 @@ export function studySummary(study) {
   return { rows, total: study.runs.filter((r) => !r.error).length, errors: study.runs.filter((r) => r.error).length };
 }
 
-const modelName = (m) => m.replace(/^local:mlx-community\//, '').replace(/-Instruct.*$/, '').replace(/-4bit$/, '');
+export const modelName = (m) => m.replace(/^local:mlx-community\//, '').replace(/-Instruct.*$/, '').replace(/-4bit$/, '');
 // The first study (jackets) predates these fields; its defaults are what it ran with.
-const setupOf = (study) => ({
+export const setupOf = (study) => ({
   title: study.title ?? 'Blue rain jacket, at most $150, Driftwood Outfitters',
   item: study.mandate?.item?.category ?? 'rain jacket',
   attrs: study.mandate?.item?.attributes ?? { color: 'blue', size: 'M' },
@@ -1240,7 +1243,7 @@ ${filterBar('fc', '.study .cell', [{ key: 'r', legend: 'Result', options: [['hit
 // ---------------------------------------------------------------- bench
 
 // [kind, title, note, what the group proves: the tooltip, in plain words for someone new to it]
-const SECTIONS = [
+export const SECTIONS = [
   ['recorded', 'Recorded runs', "Real agent runs, with the model's own output.",
     'Proves Black Box gets real cases right. Real AI models shopped at the demo shop and their actual answers were recorded. Black Box then judged each dispute. For example, when Claude Haiku 4.5 believed the shop\u2019s hidden \u201c$119 for AI agents\u201d note and paid $240 on a $150 budget, the shop has to refund.'],
   ['honest-data', 'Honest price data', 'True data that mentions another price: a variant, a sale, tax, shipping. None of it may count against the shop.',

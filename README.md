@@ -18,7 +18,7 @@ PayPal dispute action that follows.
   no money moves and a person decides.
 
 **Try it, no keys needed:** [4kinc.github.io/black-box](https://4kinc.github.io/black-box/) shows
-every recorded run replayed (purchases, and runs where the agent bought nothing), the study and the case bench. **[The lab](https://black-box-342881585799.us-central1.run.app/lab)**
+every recorded run replayed (purchases, and runs where the agent bought nothing), the study, the case bench, and an [AG Grid explorer](https://4kinc.github.io/black-box/explorer/) of all of them. **[The lab](https://black-box-342881585799.us-central1.run.app/lab)**
 adds the live part: tamper with a real case and the engine runs again on the server. **[The live
 demo](https://black-box-342881585799.us-central1.run.app/demo)** runs the whole chain online: a
 real AI agent shops at a hosted demo shop, and Black Box settles the buyer's PayPal dispute by itself.
@@ -26,7 +26,7 @@ real AI agent shops at a hosted demo shop, and Black Box settles the buyer's Pay
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
 **Submission state:** tag `v1.0-submission`, 8 November 2026: 62 bench cases (nine live disputes,
-10 attacks), 241 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
+10 attacks), 243 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
 Cloud Run revision `black-box-00068-7qv`.
 
 ## The problem
@@ -381,7 +381,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 241 tests
+npm test                    # 243 tests
 npm run bench               # 62 cases: every verdict and rule, nine live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
@@ -400,6 +400,17 @@ node study/run.mjs [--setup headphones]               # re-run the study (see st
 **Postman.** [postman/](https://github.com/4KInc/black-box/blob/main/postman/README.md) has every PayPal sandbox call Black Box makes as a
 Postman collection, with the code's own paths and bodies, to replay the payment and dispute flow
 by hand.
+
+**AG Grid explorer.** [The explorer](https://4kinc.github.io/black-box/explorer/) puts all 62
+dispute scenarios, the 90 study results and the 1,800 individual agent runs in AG Grid Community
+tables. You can sort, filter by column, search everything and filter by verdict, with the key columns pinned. Picking a
+scenario shows what a PayPal reviewer would check: the dispute, order and capture IDs, the PayPal
+action sent and its HTTP status, the payout batch, `custom_id` next to the record hash, the signed
+page's RFC 9421 `Signature-Input`, `Signature` and `Content-Digest`, and the 16 facts. Picking a run
+shows the agent's own reason. It is the one Black Box page that loads a library: AG Grid 36.2.0
+from jsDelivr, pinned with a Subresource Integrity hash, under a CSP with no `unsafe-eval`. Only the
+static site builds it (`site/explorer.mjs`, `site/explorer.js`), the engine stays
+dependency-free, and the verdicts it shows are the bench's own results.
 
 **Checked against PayPal's SDK.** Black Box calls PayPal's REST API directly rather than through
 an SDK. Its Orders, Payments and Vault requests were checked field by field against the PayPal
@@ -464,7 +475,7 @@ run, is [scripts/deploy-live.md](scripts/deploy-live.md).
 | `lab/` | the live lab (tamper with a case, or set facts by hand), the hosted entry point and the hosted live demo |
 | `bench/` | 62 cases, each with its expected verdict, rule, PayPal action and failing checks |
 | `study/` | the susceptibility study: runner, methods, limitations |
-| `site/` | static export for GitHub Pages |
+| `site/` | static export for GitHub Pages, and the AG Grid explorer |
 | `fixtures/` | recorded runs, live PayPal outcomes, the study |
 | `killtest/` | the first feasibility checks against the PayPal Disputes API |
 | `postman/` | a Postman collection of every PayPal sandbox call the code makes, checked against the code by a test |
@@ -474,8 +485,8 @@ run, is [scripts/deploy-live.md](scripts/deploy-live.md).
 
 The UI is styled as a flight recorder and its incident report. It uses B612, the typeface Airbus
 drew for cockpit displays, and Barlow Condensed, both under the SIL Open Font License and
-self-hosted in `replay/fonts/`. Of Black Box's own pages, only the passkey page runs a script, for WebAuthn; every other one,
-the lab and the operator's run included, is plain HTML and forms. Motion is CSS only and is turned
+self-hosted in `replay/fonts/`. Of Black Box's own pages, only two run scripts: the passkey page, for WebAuthn, and the AG Grid
+explorer. Every other one, the lab and the operator's run included, is plain HTML and forms. Motion is CSS only and is turned
 off under reduced motion.
 
 ## License
