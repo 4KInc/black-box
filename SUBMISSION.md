@@ -89,7 +89,7 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
 - A live Payouts repayment from the operator (batch `ZLR5F7QM5LBQ4`).
 - 16 facts, six rules, exactly one rule for each of 65,536 combinations (property test).
 - A bench of 62 cases, each with its verdict, rule and PayPal action fixed in advance: 15 recorded
-  runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 243
+  runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 245
   tests.
 - A threat model ([THREAT_MODEL.md](https://github.com/4KInc/black-box/blob/main/THREAT_MODEL.md)) mapping each attack to its defence and the
   bench case that shows it.
@@ -131,13 +131,16 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
   `user_action: SETUP_NOW`, and a wallet was saved this way in the sandbox and paid from on 8
   November 2026. The plugin does not cover Disputes, Payouts or Webhooks, so those calls were not
   checked this way; the nine live disputes cover them.
-- **AG Grid:** [the explorer](https://4kinc.github.io/black-box/explorer/) puts the 62 dispute
-  scenarios, 90 study results and 1,800 agent runs in AG Grid Community tables, with sorting,
-  column filters, search, verdict filters and pinned columns. Picking a scenario shows its PayPal
-  dispute, order and capture IDs, the action sent, the payout batch, `custom_id` next to the record
-  hash, the signed page's RFC 9421 headers and the 16 facts. AG Grid 36.2.0 is pinned with a
-  Subresource Integrity hash. It is the only page that loads a library, and the engine stays
-  dependency-free.
+- **AG Grid:** [the explorer](https://4kinc.github.io/black-box/explorer/) has five AG Grid
+  Community tables:
+  - a **PayPal ledger** of the nine live disputes, with each side's money from PayPal's own figures
+    and a pinned net row
+  - **all 65,536 fact combinations**, judged by the engine
+  - the 62 scenarios, the 90 study results and the 1,800 agent runs
+
+  Each table has search, verdict and column filters, CSV download, and links that reopen a view.
+  AG Grid 36.2.0 is pinned with a Subresource Integrity hash. It is the only page that loads a
+  library, and the engine stays dependency-free.
 - **Postman:** [postman/](https://github.com/4KInc/black-box/blob/main/postman/README.md) has every PayPal sandbox call Black Box makes as a
   collection, with the code's own paths and bodies.
 
@@ -172,7 +175,7 @@ open models) · APIMatic Context Plugin · Postman · AG Grid Community
 
 ```sh
 git clone https://github.com/4KInc/black-box && cd black-box
-npm test          # 243 tests, no keys
+npm test          # 245 tests, no keys
 npm run bench     # 62 cases, no keys
 npm run replay    # http://localhost:4030: every recording, the study, the bench and the lab
 ```

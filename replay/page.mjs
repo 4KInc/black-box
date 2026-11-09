@@ -433,6 +433,7 @@ ol.tape li.hot .ev{color:var(--orange)}
 .sm{display:flex;flex-direction:column;justify-content:center;padding:12px 14px;border:1px solid var(--rule);border-radius:4px;background:var(--bg-1)}
 .sm b{font:600 17px/1.15 var(--display);letter-spacing:.02em;overflow-wrap:anywhere}
 .sm small{font:400 10.5px/1.4 var(--mono);color:var(--ink-3);letter-spacing:.06em;text-transform:uppercase}
+.sm .xr{font:400 11px/1.4 var(--mono);color:var(--ink-2);margin-top:4px}
 .cell{padding:12px 14px;border:1px solid var(--rule);border-radius:4px;background:var(--bg-1);display:grid;gap:7px}
 .cell.hit{border-color:oklch(.66 .21 27 / .6);background:linear-gradient(180deg,oklch(.66 .21 27 / .10),transparent),var(--bg-1)}
 .cell .eff{font:700 26px/1 var(--display);letter-spacing:.02em}
@@ -604,6 +605,9 @@ export const setDemoHref = (href) => { demoHref = href; };
 // The AG Grid explorer: a page with scripts, so only the static site builds it and links to it.
 let explorerHref = null;
 export const setExplorerHref = (href) => { explorerHref = href; };
+// A link into the explorer at one view (its # holds the tab, column filters and picked row).
+const explorerAt = (params) => (explorerHref ? `${explorerHref}#${new URLSearchParams(params)}` : null);
+const exactly = (equals) => JSON.stringify(Object.fromEntries(Object.entries(equals).map(([k, v]) => [k, { filterType: 'text', type: 'equals', filter: v }])));
 
 export function layout(title, body, { active = '' } = {}) {
   const nav = (href, text, key) => `<a href="${href}"${active === key ? ' aria-current="page"' : ''}>${text}</a>`;
@@ -872,7 +876,8 @@ const downloadButton = (c) => {
   if (!href) return '';
   const json = `<a class="dl" href="${esc(href)}" download="black-box-${c.hash.slice(0, 12)}.json">↓ Download the recording (JSON)</a>`;
   const pdf = !c.record.purchase ? '' : ` <a class="dl" href="${esc(href.replace(/record\.json$/, 'report.pdf'))}" download="black-box-${esc(c.paypal?.disputeId ?? c.hash.slice(0, 12))}.pdf">↓ Download the case report (PDF)</a>`;
-  return json + pdf;
+  const xp = c.bench ? explorerAt({ v: 'scenarios', id: c.bench.id }) : null;
+  return json + pdf + (xp ? ` <a class="dl" href="${esc(xp)}">Open in the explorer →</a>` : '');
 };
 const VIEW_CUSTOMER = "<i>Customer's view</i>The shop's page, as a person sees it";
 const VIEW_AI = "<i>AI's view</i>Exactly what the AI was given";
@@ -1205,7 +1210,7 @@ function studySection(study, num, keys) {
   const st = setupOf(study);
   const pct = (a, n) => (n ? `${Math.round((a / n) * 100)}%` : '–');
   const head = `<div class="srow head"><div>Model</div>${study.lies.map((l) => `<div>${esc(l.who === 'merchant' ? 'Shop' : 'Review site')} hides a fake price<b>${esc(l.lie)}</b></div>`).join('')}</div>`;
-  const body = rows.map((r) => `<div class="srow" data-m="${modelFamily(r.model)}" data-mm="${keys.get(r.model)}"><div class="sm"><b>${icon(r.model)}${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
+  const body = rows.map((r) => `<div class="srow" data-m="${modelFamily(r.model)}" data-mm="${keys.get(r.model)}"><div class="sm"><b>${icon(r.model)}${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small>${explorerAt({}) ? `<a class="xr" href="${esc(explorerAt({ v: 'runs', f: exactly({ model: modelName(r.model), setup: st.title }) }))}">See its ${study.n * study.lies.length * 2} runs →</a>` : ''}</div>
 ${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'hit' ? ' hit' : k === 'anyway' ? ' anyway' : k === 'clean' ? ' clean' : ''}" data-lie="${esc(c.lie)}" data-r="${k}" tabindex="0" data-tip="${esc(cellTip(c, k, r.model, st.sampled, study.n))}">
 <div class="eff">${c.effect === null ? '–' : `${c.effect > 0 ? '+' : ''}${Math.round(c.effect * 100)}`}<small>${c.effect === null ? '' : CELL_LABEL[k]}</small></div>
 <div class="sbar lie"><span>with lie</span><i><u style="width:${pct(c.lieBought, c.lieN)}"></u></i><b>${c.lieBought}/${c.lieN}</b></div>

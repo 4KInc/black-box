@@ -26,7 +26,7 @@ real AI agent shops at a hosted demo shop, and Black Box settles the buyer's Pay
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
 **Submission state:** tag `v1.0-submission`, 8 November 2026: 62 bench cases (nine live disputes,
-10 attacks), 243 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
+10 attacks), 245 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
 Cloud Run revision `black-box-00069-f4r`.
 
 ## The problem
@@ -381,7 +381,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 243 tests
+npm test                    # 245 tests
 npm run bench               # 62 cases: every verdict and rule, nine live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
@@ -401,16 +401,29 @@ node study/run.mjs [--setup headphones]               # re-run the study (see st
 Postman collection, with the code's own paths and bodies, to replay the payment and dispute flow
 by hand.
 
-**AG Grid explorer.** [The explorer](https://4kinc.github.io/black-box/explorer/) puts all 62
-dispute scenarios, the 90 study results and the 1,800 individual agent runs in AG Grid Community
-tables. You can sort, filter by column, search everything and filter by verdict, with the key columns pinned. Picking a
-scenario shows what a PayPal reviewer would check: the dispute, order and capture IDs, the PayPal
-action sent and its HTTP status, the payout batch, `custom_id` next to the record hash, the signed
-page's RFC 9421 `Signature-Input`, `Signature` and `Content-Digest`, and the 16 facts. Picking a run
-shows the agent's own reason. It is the one Black Box page that loads a library: AG Grid 36.2.0
-from jsDelivr, pinned with a Subresource Integrity hash, under a CSP with no `unsafe-eval`. Only the
-static site builds it (`site/explorer.mjs`, `site/explorer.js`), the engine stays
-dependency-free, and the verdicts it shows are the bench's own results.
+**AG Grid explorer.** [The explorer](https://4kinc.github.io/black-box/explorer/) shows Black Box
+in five AG Grid Community tables:
+- **PayPal ledger:** every step of the nine live sandbox disputes and what it did to the buyer's,
+  the shop's and the shopping app's money. The figures come from PayPal: the captured payment, the
+  refunds and dispute fees in the dispute's money movements, and the payout. A pinned total row
+  nets whatever the filters leave. For example, P06 nets to −$150.00 for the buyer, exactly their
+  budget, because the shopping app repaid the $90 overspend through Payouts.
+- **Every fact combination:** all 65,536 ways the 16 facts can come out, each judged by the engine
+  at build time as the property test does, with the facts in grouped yes/no columns and the bench
+  cases that land on each.
+- **Dispute scenarios, study results and agent runs:** the 62 cases, the 90 study results and the
+  1,800 agent runs.
+
+Picking a scenario shows its PayPal IDs, the action sent and its HTTP status, `custom_id` next to
+the record hash, and the signed page's RFC 9421 `Signature-Input`, `Signature` and
+`Content-Digest`. Each table has search, column filters, verdict filters and CSV download. Every
+view, including the filters and the picked row, lives in the URL, so a link reopens it. Case pages
+and the study link into it.
+
+It is the one Black Box page that loads a library: AG Grid 36.2.0 from jsDelivr, pinned with a
+Subresource Integrity hash, under a CSP with no `unsafe-eval`. Only the static site builds it
+(`site/explorer.mjs`, `site/explorer.js`), the engine stays dependency-free, and every verdict in
+it comes from the engine.
 
 **Checked against PayPal's SDK.** Black Box calls PayPal's REST API directly rather than through
 an SDK. Its Orders, Payments and Vault requests were checked field by field against the PayPal

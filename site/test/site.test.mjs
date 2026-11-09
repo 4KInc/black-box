@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { relativise, withCsp } from '../build.mjs';
 import { AG_GRID, explorerData } from '../explorer.mjs';
+import { decide, FACT_KEYS } from '../../engine/verdict.mjs';
 import { runBench } from '../../bench/bench.mjs';
 import { latestStudies } from '../../replay/cases.mjs';
 
@@ -53,6 +54,37 @@ test('the explorer: only AG Grid (pinned, with SRI) and its own script run, with
   assert.ok(statSync(join(out, 'explorer', 'app.js')).size > 0);
   assert.match(html, /aria-current="page">Explorer</);
   assert.match(readFileSync(join(out, 'bench', 'index.html'), 'utf8'), /href="\.\.\/explorer\/">Explorer</);
+  assert.match(readFileSync(join(out, 'bench', 'P09', 'index.html'), 'utf8'), /href="\.\.\/\.\.\/explorer\/#v=scenarios&amp;id=P09">Open in the explorer/);
+  assert.match(readFileSync(join(out, 'study', 'index.html'), 'utf8'), /class="xr" href="\.\.\/explorer\/#v=runs&amp;f=/);
+});
+
+test('explorer ledger: the live disputes, netted from PayPal’s own figures', () => {
+  const { ledger, scenarios } = explorerData(runBench(), []);
+  const live = scenarios.filter((s) => s.live);
+  assert.equal(new Set(ledger.map((r) => r.disputeId)).size, live.length);
+  const net = (id) => ledger.filter((r) => r.caseId === id).reduce((t, r) => ({ buyer: t.buyer + (r.buyerCents ?? 0), shop: t.shop + (r.shopCents ?? 0), app: t.app + (r.appCents ?? 0) }), { buyer: 0, shop: 0, app: 0 });
+  // AGENT: the buyer ends at the budget, the shop pays PayPal's fee, the app repays the overage.
+  assert.deepEqual(net('P06'), { buyer: -15000, shop: 24000 - 9000 - 887 + 9000, app: -9000 });
+  // MERCHANT: the buyer is made whole; the shop is out PayPal's dispute fee.
+  assert.deepEqual(net('P09'), { buyer: 0, shop: -887, app: 0 });
+  // USER: the sale stands. Held for a person: nothing moves.
+  assert.deepEqual(net('P04'), { buyer: -12900, shop: 12900, app: 0 });
+  assert.deepEqual(net('P05'), { buyer: -24000, shop: 24000, app: 0 });
+  for (const s of live) assert.ok(ledger.some((r) => r.caseId === s.id && r.ref === s.captureId), s.id);
+});
+
+test('explorer decision table: every fact combination, and each bench case lands on its own rule', () => {
+  const { decisions, scenarios } = explorerData(runBench(), []);
+  assert.equal(decisions.rules.length, 1 << FACT_KEYS.length);
+  for (const bits of [0, 63, 8191, 65535, 12345]) {
+    const f = Object.fromEntries(FACT_KEYS.map((k, i) => [k, Boolean(bits & (1 << i))]));
+    assert.equal(Number(decisions.rules[bits]), decide(f).rule, String(bits));
+  }
+  assert.deepEqual(decisions.facts.map((f) => f.key), FACT_KEYS);
+  for (const s of scenarios) {
+    assert.equal(Number(decisions.rules[s.bits]), s.rule, s.id);
+    assert.ok(decisions.benchAt[s.bits].includes(s.id));
+  }
 });
 
 test('explorer data: every bench case with its own verdict, and every study run', () => {
