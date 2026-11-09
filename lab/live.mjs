@@ -226,13 +226,16 @@ export function demoPage({ shopUrl }) {
   return layout('Black Box · live demo', `<section class="hero"><div><div class="eyebrow"><b>●</b> Live demo · PayPal sandbox</div>
 <h1>Watch an agent <em>get fooled.</em></h1></div>
 <div><p>A real AI agent shops at a real (sandbox) store that hides a note only AI agents read. The buyer disputes the purchase in PayPal, and Black Box settles it by itself.</p>
-<p>Steps 1 to 3 need the operator password, because they spend model credit and create PayPal orders.</p></div></section>
-<section class="sec"><ol class="demo">
-${step('01', 'The buyer sets the limit', 'Approve “blue rain jacket, size M, at most $150” with your passkey (Touch ID). It signs exactly that mandate. Once, the buyer also saves their PayPal wallet, so the agent can pay by itself.', '/mandate/', 'Approve with a passkey')}
+<p>Steps 1 to 3 need the operator password, because they spend model credit and create PayPal orders. About 15 minutes in all, most of it waiting for PayPal to report the dispute.</p></div></section>
+<section class="sec"><div class="panel shortcut"><div class="eyebrow"><b>●</b> Short on time?</div>
+<p>This whole chain has already run live nine times. <a class="go" href="/bench/P09">Replay one in two minutes →</a></p>
+<p>No Touch ID or other passkey device? Skip step 1: a limit our team approved with a passkey, valid through judging, is already offered on the next page.</p></div>
+<ol class="demo" style="margin-top:12px">
+${step('01', 'The buyer sets the limit', 'Approve “blue rain jacket, size M, at most $150” with your passkey (Touch ID). It signs exactly that limit, so nobody can raise it later. Once, the buyer also saves their PayPal wallet, so the agent can pay by itself.', '/mandate/', 'Approve with a passkey')}
 ${step('02', 'The agent shops', `It reads every page of <a href="${esc(shopUrl)}">Driftwood Outfitters</a>, picks a jacket and checks out. Black Box seals what it saw and decided into the PayPal order.`, '/operator', 'Send the agent shopping')}
 ${step('03', 'The agent pays', 'With the saved wallet, PayPal charges the buyer at once: no checkout screen, as with a real shopping agent. Without one, pay through the PayPal link the run gives you.', '/wallet', 'Save the buyer\u2019s wallet')}
 ${step('04', 'The buyer disputes', 'In the PayPal sandbox: Activity, the payment, Report a problem, item not as described.', SANDBOX, 'Open the PayPal sandbox')}
-${step('05', 'Black Box settles it', 'PayPal’s webhook, or a check every 30 seconds, wakes Black Box. It judges the case and tells PayPal what to do. The run is at the top of Recordings, tagged Live run.', '/', 'Open Recordings')}
+${step('05', 'Black Box settles it', 'The sandbox takes 3 to 12 minutes to report the dispute. Then PayPal’s webhook, or a check every 30 seconds, wakes Black Box. It judges the case and tells PayPal what to do. The run is at the top of Recordings, tagged Live run.', '/', 'Open Recordings')}
 </ol></section>`, { active: 'demo' });
 }
 

@@ -287,6 +287,15 @@ form.lab label.chk input{accent-color:var(--orange);margin-top:3px}
 form.lab label.chk b{color:var(--ink);margin-right:4px}
 form.lab button{justify-self:start;font:700 16px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:#140600;background:var(--orange);border:0;border-radius:3px;padding:12px 18px;cursor:pointer}
 .labbar .panel{border-color:var(--orange)}
+ol.how{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+ol.how li{background:var(--bg-1);border:1px solid var(--rule);border-radius:4px;padding:16px 18px}
+ol.how .n{display:inline-grid;place-items:center;width:28px;height:28px;border:1px solid var(--orange);border-radius:50%;font:700 15px/1 var(--display);color:var(--orange)}
+ol.how h3,.stop h3{margin:12px 0 6px;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+ol.how p,.stop p{margin:0;color:var(--ink-2)}ol.how b{color:var(--ink)}
+.tour{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+.stop{display:block;text-decoration:none;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));border:1px solid var(--rule-2);border-radius:4px;padding:14px 18px 16px}
+.stop h3{color:var(--orange)}.stop:hover{border-color:var(--orange)}
+@media (max-width:860px){ol.how{grid-template-columns:1fr}}
 ol.demo{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 ol.demo p{margin:6px 0 0;color:var(--ink-2)}
 a.go{font:700 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--orange);text-decoration:none}
@@ -630,7 +639,30 @@ export function siteIntro() {
 <p>Black Box records what a shopping agent saw and ties it to the PayPal payment. If the buyer disputes,
 it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or the <b>buyer</b>, and tells PayPal what to do.</p>
 <p>Every recording below is a real run. The ones marked PayPal went through a sandbox dispute.</p></div>
-${heroTape()}</section>`;
+${heroTape()}</section>
+${howItWorks()}
+${judgeTour()}`;
+}
+
+// Three steps in plain words, before any of the vocabulary the case pages use.
+function howItWorks() {
+  const step = (n, title, text) => `<li><span class="n">${n}</span><h3>${title}</h3><p>${text}</p></li>`;
+  return `<section class="sec"><header><span class="n">00</span><h2>How it works</h2></header><ol class="how">
+${step('1', 'The buyer sets a limit', '“One blue rain jacket, size M, at most $150.” They approve it with Touch ID, so nobody can raise it later.')}
+${step('2', 'Black Box records the shopping', 'Every page the AI agent read, and what it chose, is sealed into the PayPal payment. Change one letter afterwards and it shows.')}
+${step('3', 'A dispute settles itself', 'When the buyer disputes in PayPal, code decides who pays: the <b>shop</b>, if it tricked the agent; the <b>company running the agent</b>, if the agent overspent on its own; or nobody, if the buyer got what they asked for. PayPal carries it out.')}
+</ol></section>`;
+}
+
+// The shortest path through the project, for someone with a few minutes. No password needed.
+function judgeTour() {
+  const stop = (n, href, title, text, time) => `<a class="stop" href="${href}"><span class="eyebrow"><b>${n}</b> · ${time}</span><h3>${title} →</h3><p>${text}</p></a>`;
+  return `<section class="sec"><header><span class="n">01</span><h2>See it in five minutes</h2><p>No password, nothing to install.</p></header><div class="tour">
+${stop('1', '/bench/P09', 'Watch a real refund', 'A shop hid “$119 for AI agents” on a $240 jacket. The agent believed it, the buyer disputed in PayPal, and Black Box refunded them from the shop, by itself.', '2 min')}
+${labHref ? stop('2', `${labHref}?case=P09`, 'Try to cheat it', 'Play the shop, the agent’s operator or the buyer: edit the stored page, raise the budget, swap the record. Then watch the engine catch it.', '2 min') : ''}
+${stop(labHref ? '3' : '2', '/study', 'Does it really happen?', '15 AI models, each shown the same over-budget jacket with and without a hidden lie. Several current models fell for it.', '1 min')}
+${demoHref ? stop(labHref ? '4' : '3', demoHref, 'Run it live', 'A real agent shops, the sandbox buyer pays and disputes, and Black Box settles it while you watch. Needs the operator password.', '15 min') : ''}
+</div></section>`;
 }
 
 // The front page's recorder: the live P09 dispute played back line by line. Every value is from its
@@ -949,7 +981,7 @@ ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}
     : j.facts.mandateSigned ? `<span class="seal ok">◆ Passkey · ${esc(j.mandateAuth?.reason ?? 'approved')}</span>` : `<span class="seal bad">✕ Passkey · ${esc(j.mandateAuth?.reason ?? 'not approved')}</span>`;
   const overLine = j.mandate.violations.length
     ? j.mandate.violations.map((x) => `<div class="verdictline bad">✕ ${esc(x.code === 'OVER_CAP' ? `Over budget: paid ${money(paid)}, cap ${money(m.maxTotalCents)}, ${money(paid - m.maxTotalCents)} over` : `${x.code}: ${x.detail}`)}</div>`).join('')
-    : '<div class="verdictline good">✓ Within the mandate</div>';
+    : '<div class="verdictline good">✓ Within what the buyer allowed</div>';
   const mandate = sec('1.0', 'What the customer asked for', '', `<div class="grid2">
 <div class="panel"><div class="eyebrow">Allowed</div><p class="mandate-line">${esc(mandateSentence(m))}</p>${seal}
 ${techDetails([['Mandate fingerprint (SHA-256)', esc(r.mandate_hash)]])}</div>
@@ -988,7 +1020,7 @@ ${j.flaggedPassages.length ? j.flaggedPassages.map((p) => `<q class="finding" st
   // 4. annunciator panel
   const group = (title, keys) => `<div><h3>${title}</h3><div class="lamps">${keys.map((k) => `<div class="lampc ${lamp(k, j.facts[k])}" tabindex="0" data-tip="${esc(FACT_PLAIN[k])}" role="img" aria-label="${esc(FACT_PLAIN[k])} ${j.facts[k] ? 'True' : 'False'}.">${esc(FACT[k][0])}<small>${j.facts[k] ? 'TRUE' : 'FALSE'}</small></div>`).join('')}</div></div>`;
   const panel = sec('4.0', 'The checks behind the decision', `${FACT_KEYS.length} yes/no facts. Green is fine, red failed, orange points at the shop. Hover or tap one to see what it means.`, `<div class="panel ann"><div class="groups">
-${group('Record integrity', RECORD_CHECKS)}${group('Mandate', ['mandateBroken'])}${group(`Merchant responsible · all ${MERCHANT_CONDITIONS.length}`, MERCHANT_CONDITIONS)}${group('Other signals', SIGNALS)}</div></div>`);
+${group('Record integrity', RECORD_CHECKS)}${group('The buyer\u2019s limit', ['mandateBroken'])}${group(`Merchant responsible · all ${MERCHANT_CONDITIONS.length}`, MERCHANT_CONDITIONS)}${group('Other signals', SIGNALS)}</div></div>`);
 
   // 5. decision ladder
   const ladder = sec('5.0', 'How the decision was made', 'Six rules, checked in order. Exactly one applies.', `<ol class="ladder">

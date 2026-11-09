@@ -5,7 +5,7 @@ import assert from 'node:assert/strict';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { agentModels, authorised, createLive, DEFAULT_LIVE_MODELS, maxRunsPerDay, mergeEnrolment, runsToday, takeRun } from '../live.mjs';
+import { agentModels, authorised, createLive, demoPage, DEFAULT_LIVE_MODELS, maxRunsPerDay, mergeEnrolment, runsToday, takeRun } from '../live.mjs';
 import { createReplay } from '../../replay/server.mjs';
 import { createMandateServer } from '../../mandate/server.mjs';
 import { createWebhookReceiver } from '../../executor/webhook.mjs';
@@ -297,4 +297,11 @@ test('only mandates in force are offered, and an expired one is refused', async 
     assert.equal(r.status, 400);
     assert.match(await r.text(), /mandate in force/);
   } finally { expired.close(); }
+});
+
+test('the demo page offers a two-minute replay and a way through without a passkey device', () => {
+  const html = demoPage({ shopUrl: 'https://shop.example' });
+  assert.ok(html.includes('href="/bench/P09"'));
+  assert.match(html, /No Touch ID or other passkey device\? Skip step 1/);
+  assert.match(html, /3 to 12 minutes/);
 });

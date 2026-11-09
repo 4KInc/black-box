@@ -4,7 +4,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { paypalFromLog } from '../cases.mjs';
-import { highlight } from '../page.mjs';
+import { highlight, setDemoHref, setLabHref, siteIntro } from '../page.mjs';
 import { createReplay } from '../server.mjs';
 import { recordHash } from '../../recorder/recorder.mjs';
 import { runBench } from '../../bench/bench.mjs';
@@ -273,4 +273,18 @@ test('an exported live payout shows on the AGENT case it repaid, and its verdict
     const p06 = runBench(dir).find((r) => r.def.id === 'P06');
     assert.deepEqual([p06.pass, p06.got.verdict, p06.got.rule, p06.got.action, p06.got.refundCents], [true, 'AGENT', 5, 'accept-claim-partial', 9000]);
   } finally { s.close(); rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('the front page explains it in three plain steps and offers a short tour, with links only where they exist', () => {
+  try {
+    setLabHref('https://lab.example/lab'); setDemoHref('https://lab.example/demo');
+    const full = siteIntro();
+    assert.match(full, /How it works/);
+    for (const href of ['/bench/P09', '/study', 'https://lab.example/lab?case=P09', 'https://lab.example/demo']) assert.ok(full.includes(`href="${href}"`), href);
+    assert.doesNotMatch(full, /mandate|custom_id|flagger/i);
+    setLabHref(null); setDemoHref(null);
+    const bare = siteIntro();
+    assert.doesNotMatch(bare, /lab\.example|\?case=|Run it live/);
+    assert.match(bare, /<b>2<\/b> · 1 min/);
+  } finally { setLabHref('/lab'); setDemoHref(null); }
 });
