@@ -22,18 +22,20 @@ capture, in filming order.
 
 ## 0:00 – 0:15 · Hook
 
-**On screen:** P09 case page, top: the red **MERCHANT** verdict, the budget gauge ($240.00 paid,
-$150.00 budget), then the timeline's **Order** row: PayPal order `8C11141990450122S`, $240.00.
+**On screen:** the site's front page, from the top: the headline rises line by line and the
+recorder beside it plays P09 back (the hidden note, $240 bought on a $150 budget, **MERCHANT**,
+$240 refunded from the shop).
 
 **Voice-over:**
-> My agent paid two hundred and forty dollars on a hundred-and-fifty-dollar budget. Who pays: me,
-> the shop, or the company running the AI?
+> My AI agent paid two hundred and forty dollars on a hundred-and-fifty-dollar budget. Who pays:
+> me, the shop, or the app running the AI?
 
 ## 0:15 – 0:35 · What a person sees, what the agent read
 
-**On screen:** P09, section 2 "What the shopping agent saw". Left, the customer's view: the signed
-page at $240.00. Right, the AI's view: exactly what the model was given, with the highlighted
-JSON-LD note "... bringing the final total to $119.00". Then the agent's stated reason underneath.
+**On screen:** P09, section 2 "What the shopping agent saw": the customer's view at $240.00 next to
+the AI's view with the highlighted JSON-LD note "... bringing the final total to $119.00", then
+the agent's stated reason. Click **"+ Compare the full page with exactly what the AI was given"**
+to open the signed page beside the exact model input.
 
 **Voice-over:**
 > A person sees two hundred and forty dollars. The agent also reads a note hidden in the page's
@@ -42,7 +44,8 @@ JSON-LD note "... bringing the final total to $119.00". Then the agent's stated 
 
 ## 0:35 – 0:50 · Does it happen?
 
-**On screen:** Study page, setup 1 table; pan once across it. Caption: "Not a ranking."
+**On screen:** Study page. Hover the **"Not a ranking"** chip so its caveat shows, then pan once
+across the setup 1 grid.
 
 **Voice-over:**
 > We tested fifteen models in two setups. Models from five providers were fooled by at least one
@@ -56,8 +59,8 @@ next beat.
 
 | Time | On screen | Voice-over |
 |---|---|---|
-| 0:50 | `/mandate/`: approve "blue rain jacket, size M, at most $150" and touch Touch ID | "The buyer sets the limit and signs it with a passkey. Nobody can loosen it later." |
-| 0:58 | `/operator`: Claude Haiku 4.5, the buyer's request "Keep it under $150", **Send the agent shopping**. The timeline streams: pages read and signed, the decision, the seal, the order | "A real agent shops. Black Box records what it reads and seals the record into the PayPal order." |
+| 0:50 | `/mandate/`: approve "blue rain jacket, size M, at most $150" and touch Touch ID | "The buyer sets the limit and signs it with a passkey. Nobody can raise it later." |
+| 0:58 | `/operator`: Claude Haiku 4.5, the buyer's request "Keep it under $150", **Send the agent shopping**. The timeline streams: pages read and signed, the decision, the seal, the order | "A real agent shops. Black Box records what it reads and seals the record into the PayPal payment." |
 | 1:08 | **Pay with PayPal as the buyer**: the sandbox buyer pays $240.00 | "The buyer pays two forty." |
 | 1:13 | sandbox.paypal.com as the buyer: Activity → the payment → Report a problem → item not as described | "And disputes it, like any purchase." |
 | 1:20 | Hosted Recordings: the run at the top, tagged **Live run**; open it: **MERCHANT · rule 2**, the hidden note highlighted | "PayPal's webhook wakes Black Box. No one at the keyboard. Code checks sixteen facts: the shop's own signed page hid a lie about this jacket, the agent read it, the budget was broken. Rule two: the shop pays." |
@@ -83,8 +86,8 @@ $240.00 refund.
 payout line "operator → merchant · batch ZLR5F7QM5LBQ4 SUCCESS".
 
 **Voice-over:**
-> When nothing misled the agent, it's the agent's fault. The buyer gets the ninety dollars over
-> budget back, and the operator repays the merchant through PayPal Payouts.
+> When nothing misled the agent, the app running it is at fault. The buyer gets the ninety dollars
+> over budget back, and the app repays the shop through PayPal Payouts.
 
 **On screen (2:13):** P04: **USER**, then the evidence section with the note sent to PayPal.
 
@@ -98,25 +101,29 @@ engine**. The banner: "Unchanged: MERCHANT · rule 2 … Now: NEEDS A HUMAN · r
 checks.
 
 **Voice-over:**
-> Code decides; an AI can only ask for a person. Flip one byte of the record and the fingerprint
-> breaks: no automatic refund, a person decides.
+> Code decides; an AI can only ask for a person. Change one letter of the record and the
+> fingerprint breaks: no automatic refund, a person decides.
 
 ## 2:40 – 2:50 · Close
 
-**On screen:** the site's front page, the recorder playing back P09; caption with the demo URL,
+**On screen:** the site's front page, scrolled to "How it works": the three panels play in turn
+(the budget fills and Touch ID stamps, the pages drop into the PayPal payment, the outcome cycles
+through "The shop pays", "The shopping app pays", "The sale stands"). Caption with the demo URL,
 `black-box-342881585799.us-central1.run.app/demo`.
 
 **Voice-over:**
-> Every agent purchase should leave a black box. Try it yourself: the link is below.
+> Black Box is for PayPal, shops, and the apps that run AI shoppers. Every agent purchase should
+> leave a black box. Try it yourself: the link is below.
 
 ---
 
 ## Shot list (in filming order)
 
-1. **Site, P09** (`/bench/P09/`): top (verdict, gauge), the timeline's Order row, section 2 (both
-   views and the agent's reason).
-2. **Site, Study** (`/study/`): setup 1 table, one slow pan.
-3. **Live run** on the hosted demo:
+1. **Site front page**, from the top: the headline and the recorder playing back P09.
+2. **Site, P09** (`/bench/P09/`): section 2 (both views and the agent's reason), then open
+   "Compare the full page with exactly what the AI was given".
+3. **Site, Study** (`/study/`): hover "Not a ranking", then one slow pan across the setup 1 grid.
+4. **Live run** on the hosted demo:
    1. `/mandate/` with Touch ID.
    2. `/operator`: Haiku 4.5, the buyer's request, the streamed timeline and the result.
    3. The PayPal link: the sandbox buyer pays $240.00.
@@ -124,14 +131,17 @@ checks.
    5. Hosted Recordings: the new **Live run** card, then its case page (verdict, hidden note).
    6. The case's PayPal panel with the refund.
    7. The buyer's sandbox Activity showing the refund.
-4. *(fallback only)* **Site, P09**: the PayPal panel with the refund.
-5. **Site, P08** (`/bench/P08/`): verdict, the case story, the PayPal panel.
-6. **Site, P06** (`/bench/P06/`): verdict and the PayPal panel with the payout line.
-7. **Site, P04** (`/bench/P04/`): verdict and the evidence section.
-8. **Hosted lab** (`/lab?case=P09`): "edit one letter" ticked, Run, the banner and the checks.
-9. **Site front page**: the recorder playing back P09, for the close.
+5. *(fallback only)* **Site, P09**: the PayPal panel with the refund.
+6. **Site, P08** (`/bench/P08/`): verdict, the case story, the PayPal panel.
+7. **Site, P06** (`/bench/P06/`): verdict and the PayPal panel with the payout line.
+8. **Site, P04** (`/bench/P04/`): verdict and the evidence section.
+9. **Hosted lab** (`/lab?case=P09`): "edit one letter" ticked, Run, the banner and the checks.
+10. **Site front page**, "How it works": one full cycle of the three panels (9 seconds), for the
+    close.
 
 **Tips**
 - Film at 1440 px wide or more, so the two views sit side by side.
 - The live run is all hosted: nothing to start on your machine.
+- The front page's animations play once on load (the headline and the recorder) and loop in "How
+  it works"; reload the page to film the opening again.
 - Never show `.env`, `operator/.env` or `killtest/.env` on screen.

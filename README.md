@@ -214,6 +214,9 @@ approved with the buyer's passkey and handled by the autopilot with no one at th
    honest purchase (USER) moves no money and still goes.
 7. **PayPal carries it out,** at most once: `accept-claim` (a refund), a partial refund or
    `make-offer` for the amount over budget, or `provide-evidence` to defend an honest purchase.
+   Before acting, Black Box checks that PayPal currently offers that action on the dispute; a lock
+   per dispute and its log mean a repeated webhook or check never sends it twice, and every PayPal
+   request and response is appended to `records/executions/<dispute>.jsonl`.
    PayPal takes evidence only on a claim, so an inquiry is escalated first. The evidence is a short note for the PayPal reviewer, the statements it was written from and
    the full record. Code writes the statements and an AI may reword them into the note. The check
    on that wording is code, not a model: every number, amount, date, SKU and hash in the note must
