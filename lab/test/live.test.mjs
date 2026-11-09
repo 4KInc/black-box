@@ -128,7 +128,7 @@ test('a passkey mandate made on this site, an agent run, and the run shown live'
   const card = index.match(new RegExp(`<a class="rec [A-Z_]+" href="/case/${hash}"[\\s\\S]*?</a>`))[0];
   assert.match(card, /<span class="lv">Live run<\/span>/);
   assert.equal((index.match(/class="lv"/g) ?? []).length, 1);
-  assert.match(await (await fetch(`${base}/case/${hash}`)).text(), /<span><b>Live run<\/b><\/span>/);
+  assert.match(await (await fetch(`${base}/case/${hash}`)).text(), /<div class="live"><dt>Source<\/dt><dd>Live run<\/dd><\/div>/);
 });
 
 test('the buyer saves their PayPal wallet once, and the agent then pays with no approval screen', async () => {

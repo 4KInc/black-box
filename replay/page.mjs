@@ -175,8 +175,20 @@ main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font:400 11.5px/1.5 var(--mono);color:var(--ink-3);margin-top:8px}
 .kv b{color:var(--ink-2);font-weight:400;overflow-wrap:anywhere}
 @media (max-width:860px){.cause{grid-template-columns:1fr}.cause .pp{border-left:0;border-top:1px solid var(--rule)}}
-.crumbs{display:flex;gap:10px 18px;flex-wrap:wrap;margin-bottom:14px;font:400 11px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
-.crumbs span b{color:var(--ink-2);font-weight:400}
+/* the data plate above the verdict: label over value, cells divided like an instrument strip */
+.plate{display:flex;flex-wrap:wrap;margin:0 0 14px;border:1px solid var(--rule-2);border-radius:6px;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));overflow:hidden}
+.plate>div{display:grid;align-content:center;gap:6px;padding:11px 18px;border-right:1px solid var(--rule);min-width:0}
+.plate>div:last-child,.plate>div:has(+.end){border-right:0}
+.plate .end{margin-left:auto;border-left:1px solid var(--rule)}
+.plate dt{font:400 10px/1 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
+.plate dd{margin:0;display:flex;align-items:baseline;gap:8px;font:600 18px/1.1 var(--display);letter-spacing:.03em;color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plate dd small{font:400 11.5px/1 var(--mono);letter-spacing:.06em;color:var(--ink-3)}
+.plate dd .mono{font-size:13px;letter-spacing:.04em;color:var(--ink-2)}
+.plate dd .mi{width:20px;height:20px;align-self:center}
+.plate .live{background:linear-gradient(90deg,oklch(.66 .21 27 / .22),transparent)}
+.plate .live dd{align-items:center;color:var(--red);font-size:16px;letter-spacing:.14em;text-transform:uppercase}
+.plate .live dd::before{content:"";width:8px;height:8px;border-radius:50%;background:var(--red);box-shadow:0 0 10px var(--red)}
+@media (max-width:640px){.plate>div{flex:1 1 50%;border-right:0;border-bottom:1px solid var(--rule)}.plate .end{margin-left:0;border-left:0}}
 
 /* ---- budget gauge ---- */
 .mandate-line{font:600 clamp(20px,2.6vw,28px)/1.15 var(--display);letter-spacing:.02em;margin:8px 0 12px}
@@ -239,7 +251,6 @@ mark{background:oklch(.71 .19 45 / .22);color:var(--ink);box-shadow:inset 0 -2px
 .tech dd{margin:0;font:400 12px/1.5 var(--mono);color:var(--ink-2);overflow-wrap:anywhere}
 .mi{flex:none;width:30px;height:30px;vertical-align:-8px;margin-right:9px}
 .sm .mi{width:28px;height:28px;vertical-align:-8px}
-.crumbs .mi{width:18px;height:18px;vertical-align:-4px;margin-right:5px}
 .where{margin:10px 0 0;color:var(--ink-2);font:400 14px/1.5 var(--sans)}
 .dl{display:inline-block;margin-top:14px;padding:9px 16px;border:1px solid var(--rule-2);border-radius:999px;background:var(--bg-2);color:var(--ink);font:600 13px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;text-decoration:none}
 .dl:hover{border-color:var(--ink-2);background:var(--bg-3)}
@@ -492,7 +503,7 @@ footer.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;co
   .hero.front>div>p{animation:fade .8s .5s ease-out both}
   .fdr{animation:fade .6s .3s ease-out both}
   @keyframes fade{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
-  .fdr-head .fdr-rec::before{animation:blink 1.2s steps(1) infinite}
+  .fdr-head .fdr-rec::before,.plate .live dd::before{animation:blink 1.2s steps(1) infinite}
   @keyframes blink{50%{opacity:.15}}
   .fdr li{animation:tape .45s calc(.7s + var(--n) * .55s) ease-out both}
   @keyframes tape{from{opacity:0;transform:translateX(-8px);background:oklch(.71 .19 45 / .18)}60%{opacity:1;background:oklch(.71 .19 45 / .12)}to{opacity:1;transform:none;background:transparent}}
@@ -977,6 +988,15 @@ function supportFor(c, j) {
   return supportBox(null, esc(`${explain} ${outcome}`), `${next}${held}${v === VERDICT.HUMAN ? ' Escalate it to a dispute specialist.' : ''}`);
 }
 
+// The recording's data plate, above the verdict: where it came from, the agent, when, the PayPal
+// case and the recording's fingerprint, each a small label over its value.
+function plate(c, d, [when, at]) {
+  const cell = (dt, dd, cls = '') => `<div${cls ? ` class="${cls}"` : ''}><dt>${dt}</dt><dd>${dd}</dd></div>`;
+  return `<dl class="plate">${c.live ? cell('Source', 'Live run', 'live') : ''}${cell('Agent', `${icon(d.model)}${esc(d.model ?? 'unknown')}`)}
+${cell(when, at ? `${day(at)}<small>${clock(at).slice(0, 5)} UTC</small>` : '–')}${c.paypal ? cell('PayPal case', `<span class="mono">${esc(disputeName(c.paypal))}</span>`) : ''}
+${cell('Recording', `<span class="mono">${short(c.hash, 10)}</span>`, 'end')}</dl>`;
+}
+
 export function casePage(c, j) {
   if (!j) return declinePage(c);
   const P = plainWords(c, j);
@@ -997,8 +1017,7 @@ export function casePage(c, j) {
 ${b.mismatches.map((x) => `<p style="color:var(--red)">${esc(x)}</p>`).join('')}</div>
 <div class="res">${b.pass ? '✓ Right' : '✗ Wrong'}<small>the right answer: ${esc(expectText(b.def.expect))}</small></div></section>` : '';
 
-  const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${icon(d.model)}${esc(d.model ?? 'unknown')}</b></span>
-<span>Bought <b>${time(r.purchase.at)}</b></span>${c.paypal ? `<span>PayPal <b>${esc(disputeName(c.paypal))}</b></span>` : ''}</div>`;
+  const crumbs = plate(c, d, ['Bought', r.purchase.at]);
 
   const cause = `<section class="cause ${v}" style="view-transition-name:${vtName(c.hash)}"><div class="main">
 <div class="eyebrow">Verdict · rule ${j.verdict.rule} of ${RULES.length}${j.preview ? ' · preview' : ''}</div>
@@ -1096,8 +1115,7 @@ function declinePage(c) {
   const needles = pages.flatMap((p) => p.hidden.map((h) => h.text)).filter(read);
   const shown = highlight(input, needles);
   const pageSrc = `/case/${c.hash}/page`;
-  const crumbs = `<div class="crumbs">${c.live ? '<span><b>Live run</b></span>' : ''}<span>Recording <b>${short(c.hash, 16)}</b></span><span>Agent <b>${icon(d.model)}${esc(d.model ?? 'unknown')}</b></span>
-<span>Declined <b>${time(d.at)}</b></span></div>`;
+  const crumbs = plate(c, d, ['Declined', d.at]);
   const head = `<section class="cause DECLINED" style="view-transition-name:${vtName(c.hash)}"><div class="main">
 <div class="eyebrow">No purchase · no payment · nothing to dispute</div>
 <h1 class="v">Bought nothing</h1><p class="who">The agent declined, so there is no PayPal payment and no verdict.</p>

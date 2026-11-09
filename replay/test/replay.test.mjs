@@ -135,7 +135,7 @@ test('each model has its own small face, coloured by its provider, on cards, cas
   assert.match(modelIcon('muse-spark-1.3', 'muse'), /^<svg class="mi" viewBox="0 0 32 32"[^>]*aria-hidden="true"/);
   const index = await (await fetch(base + '/')).text();
   assert.match(index, /<div class="model"><svg class="mi"[\s\S]*?<\/svg>claude-opus-5-5<\/div>/);
-  assert.match(await (await fetch(`${base}/case/${LIVE}`)).text(), /<span>Agent <b><svg class="mi"/);
+  assert.match(await (await fetch(`${base}/case/${LIVE}`)).text(), /<dt>Agent<\/dt><dd><svg class="mi"/);
   assert.match(await (await fetch(`${base}/study`)).text(), /<div class="sm"><b><svg class="mi"/);
 });
 
