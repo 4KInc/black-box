@@ -269,7 +269,7 @@ them is a judgment, not a check.
 
 **What the record proves, and what it does not.** The record is tamper-evident after it is
 committed to the PayPal order. Whether it truly shows what the model received depends on the
-agent's recorder ([threat model](THREAT_MODEL.md#what-black-box-has-to-trust)). The property test
+agent's recorder ([threat model](https://github.com/4KInc/black-box/blob/main/THREAT_MODEL.md#what-black-box-has-to-trust)). The property test
 proves the rules are consistent and complete. It does not prove that the policy is fair.
 
 ## The responsibility policy
@@ -307,7 +307,7 @@ same answer.
 
 ## Can it be cheated?
 
-[THREAT_MODEL.md](THREAT_MODEL.md) goes through what a dishonest merchant, buyer, agent operator
+[THREAT_MODEL.md](https://github.com/4KInc/black-box/blob/main/THREAT_MODEL.md) goes through what a dishonest merchant, buyer, agent operator
 or network attacker could try, what stops each attempt, and which bench case shows it. It also
 lists what Black Box has to trust. On the hosted version, the lab lets you try these attacks on a
 real case yourself.
@@ -397,7 +397,7 @@ npm run webhook -- --register https://…/paypal/webhook && AUTO_EXECUTE=on npm 
 node study/run.mjs [--setup headphones]               # re-run the study (see study/README.md)
 ```
 
-**Postman.** [postman/](postman/README.md) has every PayPal sandbox call Black Box makes as a
+**Postman.** [postman/](https://github.com/4KInc/black-box/blob/main/postman/README.md) has every PayPal sandbox call Black Box makes as a
 Postman collection, with the code's own paths and bodies, to replay the payment and dispute flow
 by hand.
 

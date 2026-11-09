@@ -63,7 +63,7 @@ next beat.
 | 0:58 | `/operator`: Claude Haiku 4.5, the buyer's request "Keep it under $150", **Send the agent shopping**. The timeline streams: pages read and signed, the decision, the seal, the order | "A real agent shops. Black Box records what it reads and seals the record into the PayPal payment." |
 | 1:08 | **Pay with PayPal as the buyer**: the sandbox buyer pays $240.00 | "The buyer pays two forty." |
 | 1:13 | sandbox.paypal.com as the buyer: Activity → the payment → Report a problem → item not as described | "And disputes it, like any purchase." |
-| 1:20 | Hosted Recordings: the run at the top, tagged **Live run**; open it: **MERCHANT · rule 2**, the hidden note highlighted | "PayPal's webhook wakes Black Box. No one at the keyboard. Code checks sixteen facts: the shop's own signed page hid a lie about this jacket, the agent read it, the budget was broken. Rule two: the shop pays." |
+| 1:20 | Hosted Recordings: the run at the top, tagged **Live run**; open it: the plate at the top shows a blinking red **● Live run** cell, then **MERCHANT · rule 2** and the hidden note highlighted | "PayPal's webhook wakes Black Box. No one at the keyboard. Code checks sixteen facts: the shop's own signed page hid a lie about this jacket, the agent read it, the budget was broken. Rule two: the shop pays." |
 | 1:32 | The case's PayPal panel: `accept-claim` REFUND, HTTP 200, the refund ID; then the buyer's sandbox Activity showing the refund | "Black Box accepts the claim, and the buyer has the money back, in PayPal's own activity page." |
 
 Cut the 3 to 12 minutes the sandbox takes to report the dispute. If the sandbox misbehaves on the
@@ -128,7 +128,8 @@ through "The shop pays", "The shopping app pays", "The sale stands"). Caption wi
    2. `/operator`: Haiku 4.5, the buyer's request, the streamed timeline and the result.
    3. The PayPal link: the sandbox buyer pays $240.00.
    4. sandbox.paypal.com: the dispute form, "item not as described".
-   5. Hosted Recordings: the new **Live run** card, then its case page (verdict, hidden note).
+   5. Hosted Recordings: the new **Live run** card, then its case page (the red **● Live run**
+      cell in the plate, the verdict, the hidden note).
    6. The case's PayPal panel with the refund.
    7. The buyer's sandbox Activity showing the refund.
 5. *(fallback only)* **Site, P09**: the PayPal panel with the refund.

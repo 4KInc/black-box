@@ -91,7 +91,7 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
 - A bench of 62 cases, each with its verdict, rule and PayPal action fixed in advance: 15 recorded
   runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 241
   tests.
-- A threat model ([THREAT_MODEL.md](THREAT_MODEL.md)) mapping each attack to its defence and the
+- A threat model ([THREAT_MODEL.md](https://github.com/4KInc/black-box/blob/main/THREAT_MODEL.md)) mapping each attack to its defence and the
   bench case that shows it.
 - WebAuthn passkeys for the mandate, checked against the payer PayPal reports; RFC 9421 page
   signatures with RFC 9530 `Content-Digest`; the flagger fails closed.
@@ -131,7 +131,7 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
   `user_action: SETUP_NOW`, and a wallet was saved this way in the sandbox and paid from on 8
   November 2026. The plugin does not cover Disputes, Payouts or Webhooks, so those calls were not
   checked this way; the nine live disputes cover them.
-- **Postman:** [postman/](postman/README.md) has every PayPal sandbox call Black Box makes as a
+- **Postman:** [postman/](https://github.com/4KInc/black-box/blob/main/postman/README.md) has every PayPal sandbox call Black Box makes as a
   collection, with the code's own paths and bodies.
 
 ## Challenges, what we learned, what's next
