@@ -287,15 +287,32 @@ form.lab label.chk input{accent-color:var(--orange);margin-top:3px}
 form.lab label.chk b{color:var(--ink);margin-right:4px}
 form.lab button{justify-self:start;font:700 16px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:#140600;background:var(--orange);border:0;border-radius:3px;padding:12px 18px;cursor:pointer}
 .labbar .panel{border-color:var(--orange)}
-ol.how{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
-ol.how li{background:var(--bg-1);border:1px solid var(--rule);border-radius:4px;padding:16px 18px}
-ol.how .n{display:inline-grid;place-items:center;width:28px;height:28px;border:1px solid var(--orange);border-radius:50%;font:700 15px/1 var(--display);color:var(--orange)}
-ol.how h3,.stop h3{margin:12px 0 6px;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase}
-ol.how p,.stop p{margin:0;color:var(--ink-2)}ol.how b{color:var(--ink)}
-.tour{display:grid;grid-template-columns:repeat(auto-fit,minmax(230px,1fr));gap:12px}
+/* front page: how it works, three instruments on one rail */
+ol.flow{position:relative;list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:clamp(14px,3vw,40px)}
+ol.flow::before{content:"";position:absolute;left:8%;right:8%;top:62px;height:1px;background:repeating-linear-gradient(90deg,var(--rule-2) 0 6px,transparent 6px 12px)}
+ol.flow::after{content:"";position:absolute;left:8%;top:59px;width:7px;height:7px;border-radius:50%;background:var(--orange);box-shadow:0 0 12px var(--orange);opacity:0}
+.st{position:relative;z-index:1;display:grid;gap:14px;min-width:0}
+.st .viz{position:relative;height:124px;display:grid;align-content:center;gap:10px;padding:0 18px;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));border:1px solid var(--rule-2);border-radius:6px;overflow:hidden}
+.st h3{display:flex;gap:10px;align-items:baseline;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase}
+.st h3 span{font:400 12px/1 var(--mono);color:var(--orange)}
+.gz{position:relative;height:10px;background:var(--bg-3);border-radius:5px}
+.gz i{position:absolute;left:0;top:0;bottom:0;width:52%;border-radius:5px;background:var(--green)}
+.gz s{position:absolute;left:62.5%;top:-6px;bottom:-6px;width:2px;background:var(--ink);box-shadow:0 0 8px var(--ink)}
+.gzl{display:flex;justify-content:space-between;font:400 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding-right:30%}
+.seal{justify-self:start;font:700 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--green);border:1px solid var(--green);border-radius:3px;padding:5px 8px}
+.pg{display:flex;gap:6px}
+.pg b{font:400 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);background:var(--bg-3);border:1px solid var(--rule-2);border-radius:3px;padding:5px 7px}
+.order{font:600 17px/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--orange);border-radius:4px;padding:8px 10px;color:var(--ink)}
+.order small{display:block;font:400 10.5px/1.6 var(--mono);letter-spacing:.06em;text-transform:none;color:var(--orange)}
+.who{list-style:none;margin:0;padding:0;display:grid;gap:5px}
+.who li{display:flex;align-items:center;gap:8px;font:600 15px/1 var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);padding:5px 8px;border-radius:3px}
+.who li::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+.who .m{--c:var(--red)}.who .a{--c:var(--amber)}.who .u{--c:var(--cyan)}
+@media (max-width:860px){ol.flow{grid-template-columns:1fr}ol.flow::before,ol.flow::after{display:none}}
+.tour{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .stop{display:block;text-decoration:none;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));border:1px solid var(--rule-2);border-radius:4px;padding:14px 18px 16px}
-.stop h3{color:var(--orange)}.stop:hover{border-color:var(--orange)}
-@media (max-width:860px){ol.how{grid-template-columns:1fr}}
+.stop h3{margin:10px 0 4px;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--orange)}
+.stop p{margin:0;color:var(--ink-2)}.stop:hover{border-color:var(--orange)}
 ol.demo{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 ol.demo p{margin:6px 0 0;color:var(--ink-2)}
 a.go{font:700 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--orange);text-decoration:none}
@@ -473,6 +490,25 @@ footer.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;co
   @keyframes tape{from{opacity:0;transform:translateX(-8px);background:oklch(.71 .19 45 / .18)}60%{opacity:1;background:oklch(.71 .19 45 / .12)}to{opacity:1;transform:none;background:transparent}}
   .fdr .fdr-bar i{animation:spend 1.1s calc(.9s + 3 * .55s) cubic-bezier(.3,.7,.3,1) both}
   @keyframes spend{from{width:0}}
+  /* how it works: a 9 s loop, one station every 3 s, a pulse running the rail between them.
+     Negative delays start each loop mid-cycle, so nothing sits in its first frame while it waits. */
+  ol.flow::after{animation:rail 9s linear infinite}
+  @keyframes rail{0%{left:8%;opacity:0}4%{opacity:1}96%{opacity:1}100%{left:92%;opacity:0}}
+  .st .viz{animation:onair 9s infinite both}
+  .st:nth-child(2) .viz{animation-delay:-6s}.st:nth-child(3) .viz{animation-delay:-3s}
+  @keyframes onair{0%,30%{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange),0 0 28px oklch(.71 .19 45 / .25)}36%,100%{border-color:var(--rule-2);box-shadow:none}}
+  .gz i{animation:budget 9s cubic-bezier(.3,.7,.3,1) infinite both}
+  @keyframes budget{0%{width:0}10%,100%{width:52%}}
+  .seal{animation:press 9s infinite both}
+  @keyframes press{0%,9%{opacity:.15;transform:scale(1.25)}13%{opacity:1;transform:scale(.96)}16%,100%{opacity:1;transform:none}}
+  .pg b{animation:drop 9s -6s infinite both}
+  .pg b:nth-child(2){animation-delay:-5.75s}.pg b:nth-child(3){animation-delay:-5.5s}
+  @keyframes drop{0%{transform:none;opacity:1}8%{transform:translateY(30px);opacity:0}9%{transform:translateY(-8px);opacity:0}22%,100%{transform:none;opacity:1}}
+  .order small{animation:sealed 9s -6s infinite both}
+  @keyframes sealed{0%,8%{color:var(--ink-3)}10%{color:var(--ink);text-shadow:0 0 10px var(--orange)}20%,100%{color:var(--orange);text-shadow:none}}
+  .who li{animation:pick 9s infinite both}
+  .who .m{animation-delay:-3s}.who .a{animation-delay:0s}.who .u{animation-delay:-6s}
+  @keyframes pick{0%,30%{color:var(--ink);background:color-mix(in oklch,var(--c) 22%,transparent)}34%,100%{color:var(--ink-2);background:transparent}}
   .fdr-verdict{animation:stamp .5s calc(.9s + 6 * .55s) cubic-bezier(.2,1.4,.4,1) both}
   @keyframes stamp{from{opacity:0;transform:scale(1.06);filter:brightness(2)}to{opacity:1;transform:none;filter:none}}
   .fdr-foot{animation:fade .5s calc(1.2s + 6 * .55s) ease-out both}
@@ -636,32 +672,33 @@ function mandateSentence(m) {
 export function siteIntro() {
   return `<section class="hero front"><div><div class="eyebrow"><b>●</b> PayPal sandbox · no keys needed</div>
 <h1><span><i>Who pays when</i></span> <span><i>an AI agent</i></span> <span><em>buys wrong?</em></span></h1>
-<p>Black Box records what a shopping agent saw and ties it to the PayPal payment. If the buyer disputes,
-it works out who is at fault, the <b>shop</b>, the <b>agent</b>'s operator or the <b>buyer</b>, and tells PayPal what to do.</p>
-<p>Every recording below is a real run. The ones marked PayPal went through a sandbox dispute.</p></div>
+<p>Black Box seals what an AI shopping agent saw into the PayPal payment. When the buyer disputes, it decides who pays.</p></div>
 ${heroTape()}</section>
 ${howItWorks()}
 ${judgeTour()}`;
 }
 
-// Three steps in plain words, before any of the vocabulary the case pages use.
+// The three steps as three instruments on one rail, played in turn (CSS only). At rest, or with
+// reduced motion, every station shows its full state.
 function howItWorks() {
-  const step = (n, title, text) => `<li><span class="n">${n}</span><h3>${title}</h3><p>${text}</p></li>`;
-  return `<section class="sec"><header><span class="n">00</span><h2>How it works</h2></header><ol class="how">
-${step('1', 'The buyer sets a limit', '“One blue rain jacket, size M, at most $150.” They approve it with Touch ID, so nobody can raise it later.')}
-${step('2', 'Black Box records the shopping', 'Every page the AI agent read, and what it chose, is sealed into the PayPal payment. Change one letter afterwards and it shows.')}
-${step('3', 'A dispute settles itself', 'When the buyer disputes in PayPal, code decides who pays: the <b>shop</b>, if it tricked the agent; the <b>company running the agent</b>, if the agent overspent on its own; or nobody, if the buyer got what they asked for. PayPal carries it out.')}
+  return `<section class="sec"><header><span class="n">00</span><h2>How it works</h2></header><ol class="flow">
+<li class="st"><div class="viz" aria-hidden="true"><div class="gz"><i></i><s></s></div><div class="gzl"><span>$0</span><span>limit $150</span></div><span class="seal">◆ Touch ID</span></div>
+<h3><span>1</span> The buyer sets a limit</h3></li>
+<li class="st"><div class="viz" aria-hidden="true"><div class="pg"><b>page</b><b>page</b><b>choice</b></div><div class="order">PayPal payment<small>sealed · ff72c73a…</small></div></div>
+<h3><span>2</span> The agent shops, on the record</h3></li>
+<li class="st"><div class="viz"><ul class="who" aria-label="The three outcomes"><li class="m">The shop pays</li><li class="a">The agent’s company pays</li><li class="u">The sale stands</li></ul></div>
+<h3><span>3</span> A dispute settles itself</h3></li>
 </ol></section>`;
 }
 
 // The shortest path through the project, for someone with a few minutes. No password needed.
 function judgeTour() {
   const stop = (n, href, title, text, time) => `<a class="stop" href="${href}"><span class="eyebrow"><b>${n}</b> · ${time}</span><h3>${title} →</h3><p>${text}</p></a>`;
-  return `<section class="sec"><header><span class="n">01</span><h2>See it in five minutes</h2><p>No password, nothing to install.</p></header><div class="tour">
-${stop('1', '/bench/P09', 'Watch a real refund', 'A shop hid “$119 for AI agents” on a $240 jacket. The agent believed it, the buyer disputed in PayPal, and Black Box refunded them from the shop, by itself.', '2 min')}
-${labHref ? stop('2', `${labHref}?case=P09`, 'Try to cheat it', 'Play the shop, the agent’s operator or the buyer: edit the stored page, raise the budget, swap the record. Then watch the engine catch it.', '2 min') : ''}
-${stop(labHref ? '3' : '2', '/study', 'Does it really happen?', '15 AI models, each shown the same over-budget jacket with and without a hidden lie. Several current models fell for it.', '1 min')}
-${demoHref ? stop(labHref ? '4' : '3', demoHref, 'Run it live', 'A real agent shops, the sandbox buyer pays and disputes, and Black Box settles it while you watch. Needs the operator password.', '15 min') : ''}
+  return `<section class="sec"><header><span class="n">01</span><h2>See it in five minutes</h2></header><div class="tour">
+${stop('1', '/bench/P09', 'Watch a real refund', 'A live PayPal dispute, settled by itself', '2 min')}
+${labHref ? stop('2', `${labHref}?case=P09`, 'Try to cheat it', 'Tamper with a real case', '2 min') : ''}
+${stop(labHref ? '3' : '2', '/study', 'Does it really happen?', '15 AI models, one hidden lie', '1 min')}
+${demoHref ? stop(labHref ? '4' : '3', demoHref, 'Run it live', 'Needs the operator password', '15 min') : ''}
 </div></section>`;
 }
 
