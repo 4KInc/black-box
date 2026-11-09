@@ -686,7 +686,7 @@ function howItWorks() {
 <h3><span>1</span> The buyer sets a limit</h3></li>
 <li class="st"><div class="viz" aria-hidden="true"><div class="pg"><b>page</b><b>page</b><b>choice</b></div><div class="order">PayPal payment<small>sealed · ff72c73a…</small></div></div>
 <h3><span>2</span> The agent shops, on the record</h3></li>
-<li class="st"><div class="viz"><ul class="who" aria-label="The three outcomes"><li class="m">The shop pays</li><li class="a">The agent’s company pays</li><li class="u">The sale stands</li></ul></div>
+<li class="st"><div class="viz"><ul class="who" aria-label="The three outcomes"><li class="m">The shop pays</li><li class="a">The shopping app pays</li><li class="u">The sale stands</li></ul></div>
 <h3><span>3</span> A dispute settles itself</h3></li>
 </ol></section>`;
 }
