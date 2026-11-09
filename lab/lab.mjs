@@ -135,9 +135,8 @@ export function labPage(query = new URLSearchParams()) {
   const picked = BASES.some((d) => d.id === query.get('case')) ? query.get('case') : DEFAULT_CASE.id;
   return layout('Black Box · lab', `<section class="hero"><div><div class="eyebrow"><b>●</b> Lab · live engine</div>
 <h1>Try to <em>cheat it.</em></h1></div>
-<div><p>Pick a real case, choose how the buyer disputes it, and tamper with it the way a shop, buyer or agent operator might.
-The server re-runs the real engine on your request. Like an attacker, it has no signing keys. It never calls PayPal.</p>
-<p>Or <a href="/lab/facts">set the facts by hand</a> and see which rule applies.</p></div></section>
+<div><p>Pick a real case, tamper with it, and watch the real engine judge it again. No signing keys, no PayPal calls.</p>
+<p><a href="/lab/facts">Or set the facts by hand →</a></p></div></section>
 <section class="sec"><div class="eyebrow">Start from one of these, or pick any of the ${BASES.length} cases below</div>${picks(picked)}${labForm(new URLSearchParams({ case: picked }))}</section>`, { active: 'lab' });
 }
 

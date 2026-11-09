@@ -80,7 +80,7 @@ test('each scenario group says what it proves, in a tooltip a judge can hover, t
   const tips = [...html.matchAll(/<span class="why" tabindex="0" data-tip="([^"]+)" aria-label="What this proves: [^"]+">What this proves<\/span>/g)].map((m) => m[1]);
   assert.equal(tips.length, 6, 'one per group');
   assert.ok(tips.every((t) => t.startsWith('Proves ')));
-  assert.match(html, /\.why\[data-tip\]:hover::after,\.fold>summary \.why\[data-tip\]:focus::after\{content:attr\(data-tip\)/);
+  assert.match(html, /\.why\[data-tip\]:hover::after,:is\(\.fold>summary,\.hero\) \.why\[data-tip\]:focus::after\{content:attr\(data-tip\)/);
 });
 
 test('each case downloads as a PDF report for the dispute reviewer, made from the same judgment as the page', async () => {
@@ -215,7 +215,9 @@ test('the live case page replays the verdict, the hidden text and what PayPal di
 
 test('a case explains itself in plain words, from the case\'s own facts', async () => {
   const html = await (await fetch(`${base}/case/${LIVE}`)).text();
-  assert.equal((html.match(/<p class="plain">/g) ?? []).length, 4);
+  assert.equal((html.match(/<p class="plain">/g) ?? []).length, 2);
+  assert.match(html, /<details class="more"><summary>Compare the full page with exactly what the AI was given · \d+ hidden passages? highlighted<\/summary>/);
+  assert.match(html, /<details class="more"><summary>Show the \d+ hidden passages? and the AI check<\/summary>/);
   assert.match(html, /<p class="story">The shop hid a note only the AI would read, saying the price was \$119\.00\. The AI spent \$240\.00 on a \$150\.00 budget\. The shop planted the lie, so the shop refunds the buyer\./);
   assert.match(html, /<li class="MERCHANT fired"><span class="n">2<\/span><span class="tag">MERCHANT<\/span><span>Over the limit, after the AI read the shop&#39;s own hidden lie about this item\.<\/span>/);
   assert.match(html, /\$240\.00 refunded/);

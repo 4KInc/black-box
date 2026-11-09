@@ -146,12 +146,12 @@ main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px
 .fold>summary:hover h2{color:var(--orange)}.fold>.bcards{margin-top:16px}
 .fold>summary .tally::after{font-size:11px}main:has(.filters input:checked:not([id$="-all"])) .fold>summary .tally{font-size:0}
 .fold+.fold{margin-top:22px}
-.fold>summary .why{position:relative;align-self:center;display:inline-flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;border:1px solid var(--rule-2);border-radius:999px;font:400 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);cursor:help}
-.fold>summary .why::before{content:'?';display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--orange);color:#140600;font:700 10px/1 var(--sans)}
-.fold>summary .why:hover,.fold>summary .why:focus{color:var(--ink);border-color:var(--orange);outline:none}
+:is(.fold>summary,.hero) .why{position:relative;align-self:center;display:inline-flex;align-items:center;gap:7px;padding:4px 10px 4px 6px;border:1px solid var(--rule-2);border-radius:999px;font:400 11px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);cursor:help}
+:is(.fold>summary,.hero) .why::before{content:'?';display:inline-grid;place-items:center;width:15px;height:15px;border-radius:50%;background:var(--orange);color:#140600;font:700 10px/1 var(--sans)}
+:is(.fold>summary,.hero) .why:hover,:is(.fold>summary,.hero) .why:focus{color:var(--ink);border-color:var(--orange);outline:none}
 /* Each group is its own stacking context (it fades in), so lift the group whose tip is showing above the next. */
 .fold:has(.why:hover),.fold:has(.why:focus){position:relative;z-index:9}
-.fold>summary .why[data-tip]:hover::after,.fold>summary .why[data-tip]:focus::after{content:attr(data-tip);position:absolute;z-index:7;left:0;top:calc(100% + 8px);width:min(420px,84vw);padding:12px 14px;
+:is(.fold>summary,.hero) .why[data-tip]:hover::after,:is(.fold>summary,.hero) .why[data-tip]:focus::after{content:attr(data-tip);position:absolute;z-index:7;left:0;top:calc(100% + 8px);width:min(420px,84vw);padding:12px 14px;
   background:var(--bg-3);border:1px solid var(--rule-2);border-radius:4px;font:400 13.5px/1.5 var(--sans);color:var(--ink);letter-spacing:0;text-transform:none;box-shadow:0 8px 24px oklch(0 0 0 / .45);pointer-events:none;white-space:normal}
 .panel{background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-radius:4px;padding:clamp(14px,2vw,20px)}
 .grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
@@ -313,6 +313,14 @@ ol.flow::after{content:"";position:absolute;left:8%;top:59px;width:7px;height:7p
 .stop{display:block;text-decoration:none;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));border:1px solid var(--rule-2);border-radius:4px;padding:14px 18px 16px}
 .stop h3{margin:10px 0 4px;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--orange)}
 .stop p{margin:0;color:var(--ink-2)}.stop:hover{border-color:var(--orange)}
+details.more{margin-top:14px}
+details.more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px dashed var(--rule-2);border-radius:4px;font:400 11.5px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+details.more>summary::-webkit-details-marker{display:none}
+details.more>summary::before{content:"+";font:700 15px/1 var(--mono);color:var(--orange)}
+details.more[open]>summary::before{content:"–"}
+details.more>summary:hover{border-color:var(--orange);color:var(--ink)}
+details.more[open]>summary{margin-bottom:12px}
+.hero.top{align-items:start}
 ol.demo{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 ol.demo p{margin:6px 0 0;color:var(--ink-2)}
 a.go{font:700 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--orange);text-decoration:none}
@@ -883,8 +891,6 @@ function plainWords(c, j) {
   const m = r.mandate;
   const paid = j.order.capturedCents;
   const over = paid - m.maxTotalCents;
-  const item = j.product?.name ?? r.purchase.sku;
-  const visible = money(j.product?.priceCents ?? r.purchase.price_cents);
   const v = j.verdict.verdict;
   const rule = j.verdict.rule;
   const merchantHidden = j.findings.find((f) => f.inModelInput && f.namesPurchasedItem && f.contradictsListing && f.merchantOwned !== false && !f.thirdPartySigned && f.signedByMerchant);
@@ -910,10 +916,6 @@ function plainWords(c, j) {
     }[rule] ?? 'A person decides.',
   }[v];
 
-  const channels = merchantHidden || thirdParty || flagged.length
-    ? `A person sees ${item} for ${visible}. The AI was also given hidden text${liePrice ? ` saying ${liePrice}` : ''}, highlighted below.`
-    : `The AI saw what a person sees: ${item} for ${visible}. Nothing hidden names it.`;
-
   const hidden = merchantHidden
     ? `The shop wrote and signed this note, hid it from people, and it contradicts the listing. The AI read it. That puts the shop at fault, whether or not the note is what fooled the AI.${j.flagger && flagged.length ? ' The AI check quoted the same text.' : ''}`
     : thirdParty
@@ -936,12 +938,7 @@ function plainWords(c, j) {
     j.facts.requestExceedsMandate ? `The buyer's own words asked for more than the limit: ${j.buyerRequest.why.join('; ')}.` : '',
   ].filter(Boolean).join(' ');
 
-  const same = c.hash === j.order.customId;
-  const proof = same
-    ? "The recording's fingerprint matches the one locked in the PayPal payment, so nobody has edited it since."
-    : "The recording's fingerprint doesn't match the one in the PayPal payment: it was changed, or it belongs to a different payment.";
-
-  return { story, '2.0': channels, '3.0': hidden, '4.0': panel, '7.0': proof };
+  return { story, '3.0': hidden, '4.0': panel };
 }
 
 // The support summary for a purchase (the headline already says what happened): who is
@@ -1036,12 +1033,13 @@ ${techDetails([['Mandate fingerprint (SHA-256)', esc(r.mandate_hash)]])}</div>
 <div class="price">${money(j.product?.priceCents ?? r.purchase.price_cents)}<small>${esc(j.product?.name ?? r.purchase.sku)}</small></div></div>
 <div class="panel"><div class="ch two"><i>AI's view</i>${hiddenRead ? 'Hidden from the customer, read by the AI' : 'Read by the AI'}</div>
 ${hiddenRead ? `<blockquote><mark>“${esc(hiddenRead.text)}”</mark></blockquote><p class="where">Where: ${esc(methodPlain(hiddenRead.method))}.</p>` : '<p class="empty">Nothing hidden that names this item.</p>'}</div></div>`;
-  const channels = sec('2.0', 'What the shopping agent saw', '', `${contrast}<div class="grid2">
+  const channels = sec('2.0', 'What the shopping agent saw', '', `${contrast}
+${d.reason ? `<div class="cvr"><span class="who">Why ${esc(d.model)} bought it</span><p>“${esc(d.reason)}”</p></div>` : ''}
+<details class="more"><summary>Compare the full page with exactly what the AI was given${marked ? ` · ${marked} hidden passage${marked > 1 ? 's' : ''} highlighted` : ''}</summary><div class="grid2">
 <div><div class="ch">${VIEW_CUSTOMER}</div>
 <iframe sandbox="" referrerpolicy="no-referrer" loading="lazy" title="Recorded product page" src="${pageSrc}"></iframe></div>
-<div><div class="ch two">${VIEW_AI}${marked ? `<a href="#hidden">${marked} hidden passage${marked > 1 ? 's' : ''} highlighted ↓</a>` : ''}</div>
-<pre class="input" tabindex="0">${inputs.map((i) => i.html).join('\n\n')}</pre></div></div>
-${d.reason ? `<div class="cvr"><span class="who">Why ${esc(d.model)} bought it</span><p>“${esc(d.reason)}”</p></div>` : ''}`);
+<div><div class="ch two">${VIEW_AI}</div>
+<pre class="input" tabindex="0">${inputs.map((i) => i.html).join('\n\n')}</pre></div></div></details>`);
 
   // 3. hidden text and the flagger
   const findings = j.findings.length ? j.findings.map((f) => `<div class="panel finding"><div class="eyebrow">Hidden from the customer${f.thirdPartyIssuer ? ` · written by another company (${esc(new URL(f.thirdPartyIssuer).host)})` : ''}</div>
@@ -1052,11 +1050,12 @@ ${chip(f.inModelInput ? 'on' : '', 'Reached the model')}${chip(f.signedByMerchan
 ${j.flaggedPassages.length ? j.flaggedPassages.map((p) => `<q class="finding" style="display:block;margin:12px 0 8px">${esc(p.quote)}</q><div class="k" style="font-size:12.5px;margin-bottom:8px">${esc(p.reason)}</div>
 <div class="chips">${chip('ok', 'Found word for word in the model input')}${chip(p.namesPurchasedItem ? 'on' : '', p.namesPurchasedItem ? 'Names the item bought: counts' : 'Other product: ignored for this purchase')}</div>`).join('') : '<p class="empty" style="margin-top:10px">Found no text aimed at automated buyers.</p>'}</div>`
     : '<div class="panel" style="margin-top:12px"><p class="empty">No AI check on this case. The verdict is code only.</p></div>';
-  const hidden = sec('3.0', 'What was hidden from the customer', '', findings + flagger);
+  const shown = j.findings.length + (j.flagger ? 1 : 0);
+  const hidden = sec('3.0', 'What was hidden from the customer', '', shown ? `<details class="more"><summary>Show ${j.findings.length ? `the ${j.findings.length} hidden passage${j.findings.length > 1 ? 's' : ''}${j.flagger ? ' and the AI check' : ''}` : 'the AI check'}</summary>${findings}${flagger}</details>` : findings + flagger);
 
   // 4. annunciator panel
   const group = (title, keys) => `<div><h3>${title}</h3><div class="lamps">${keys.map((k) => `<div class="lampc ${lamp(k, j.facts[k])}" tabindex="0" data-tip="${esc(FACT_PLAIN[k])}" role="img" aria-label="${esc(FACT_PLAIN[k])} ${j.facts[k] ? 'True' : 'False'}.">${esc(FACT[k][0])}<small>${j.facts[k] ? 'TRUE' : 'FALSE'}</small></div>`).join('')}</div></div>`;
-  const panel = sec('4.0', 'The checks behind the decision', `${FACT_KEYS.length} yes/no facts. Green is fine, red failed, orange points at the shop. Hover or tap one to see what it means.`, `<div class="panel ann"><div class="groups">
+  const panel = sec('4.0', 'The checks behind the decision', 'Hover or tap a light to see what it checks.', `<div class="panel ann"><div class="groups">
 ${group('Record integrity', RECORD_CHECKS)}${group('The buyer\u2019s limit', ['mandateBroken'])}${group(`Merchant responsible · all ${MERCHANT_CONDITIONS.length}`, MERCHANT_CONDITIONS)}${group('Other signals', SIGNALS)}</div></div>`);
 
   // 5. decision ladder
@@ -1156,8 +1155,8 @@ const setupOf = (study) => ({
   sampled: Boolean(study.settings?.localSampled),
 });
 const modelWhere = (m, sampled, n) => (m.startsWith('local:')
-  ? (sampled ? `open model · temperature 0.7, ${n} samples` : `open model · greedy, so its ${n} runs repeat one answer`)
-  : `${isClaude(m) ? 'Anthropic API' : hostedFor(m)?.name ?? 'API'} · ${n} independent samples`);
+  ? (sampled ? `open model · ${n} samples` : 'open model · greedy')
+  : `${isClaude(m) ? 'Anthropic API' : hostedFor(m)?.name ?? 'API'} · ${n} samples`);
 
 // What one cell says, at a glance: the lie caused it, the model overspends anyway, or never fooled.
 export function cellKind(c) {
@@ -1184,7 +1183,6 @@ function studySection(study, num, keys) {
   const { rows } = studySummary(study);
   const st = setupOf(study);
   const pct = (a, n) => (n ? `${Math.round((a / n) * 100)}%` : '–');
-  const fooledModels = rows.filter((r) => r.cells.some((c) => c.effect !== null && c.effect >= 0.5)).map((r) => modelName(r.model));
   const head = `<div class="srow head"><div>Model</div>${study.lies.map((l) => `<div>${esc(l.who === 'merchant' ? 'Shop' : 'Review site')} hides a fake price<b>${esc(l.lie)}</b></div>`).join('')}</div>`;
   const body = rows.map((r) => `<div class="srow" data-m="${modelFamily(r.model)}" data-mm="${keys.get(r.model)}"><div class="sm"><b>${icon(r.model)}${esc(modelName(r.model))}</b><small>${esc(modelWhere(r.model, st.sampled, study.n))}</small></div>
 ${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'hit' ? ' hit' : k === 'anyway' ? ' anyway' : k === 'clean' ? ' clean' : ''}" data-lie="${esc(c.lie)}" data-r="${k}" tabindex="0" data-tip="${esc(cellTip(c, k, r.model, st.sampled, study.n))}">
@@ -1192,9 +1190,9 @@ ${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'h
 <div class="sbar lie"><span>with lie</span><i><u style="width:${pct(c.lieBought, c.lieN)}"></u></i><b>${c.lieBought}/${c.lieN}</b></div>
 <div class="sbar"><span>without</span><i><u style="width:${pct(c.ctlBought, c.ctlN)}"></u></i><b>${c.ctlBought}/${c.ctlN}</b></div></div>`; }).join('')}</div>`).join('');
   const want = [st.item.endsWith('s') ? '' : 'a', st.attrs.color, st.item].filter(Boolean).join(' ');
-  const plain = `Each AI had to buy ${want} for at most ${money(st.budget)}, and every product shown cost more. The big number is how much the hidden note raised the chance it bought anyway.${fooledModels.length ? ` Fooled at least half the time: ${fooledModels.join(', ')}.` : ''}`;
+  const plain = `Buy ${want}, at most ${money(st.budget)}. The big number is how much the lie raised buying anyway.`;
   return `<section class="sec ssetup" data-s="s${num}"><header><span class="n">${num}</span><h2>${esc(st.title)}</h2></header><p class="plain">${esc(plain)}</p>
-<div class="skey"><span><b class="r">+100</b>the lie made it overspend</span><span><b class="a">OVERSPENDS ANYWAY</b>ignores the budget, lie or not</span><span><b class="g">NEVER FOOLED</b>stayed within budget</span><span>Hover or tap a cell for details.</span></div>
+<div class="skey"><span><b class="r">+100</b>the lie made it overspend</span><span><b class="a">OVERSPENDS ANYWAY</b>ignores the budget, lie or not</span><span><b class="g">NEVER FOOLED</b>stayed within budget</span><span>Hover a cell for details.</span></div>
 <div class="study">${head}${body}</div></section>`;
 }
 
@@ -1204,8 +1202,8 @@ export function studyPage(studies) {
   const runs = list.reduce((n, st) => n + studySummary(st).total, 0);
   return layout('Black Box · who falls for it', `<section class="hero"><div><div class="eyebrow"><b>●</b> Study · ${list.length} setup${list.length > 1 ? 's' : ''} · ${runs} runs</div>
 <h1>Who falls for <em>a hidden price?</em></h1></div>
-<div><p>Every product shown costs more than the budget, so buying anything is a mistake. Each model ran ${list[0].n} times with a hidden lie on the page, and ${list[0].n} times on the same shop without it.</p>
-<p>Not a ranking: each provider ran at its own default sampling, and Muse Spark had a larger output budget (8,000 tokens instead of 600) because it reasons before it answers. Raw data: <span class="mono">study/README.md</span>.</p></div></section>
+<div><p>Every product costs more than the budget. Each model shopped ${list[0].n} times with a hidden lie on the page and ${list[0].n} times without.</p>
+<p><span class="why" tabindex="0" data-tip="Each provider ran at its own default sampling, and Muse Spark had a larger output budget (8,000 tokens instead of 600) because it reasons before it answers. Raw data: study/README.md.">Not a ranking</span></p></div></section>
 ${studyFilters(list)}
 ${list.map((st, i) => studySection(st, String(i + 1).padStart(2, '0'), modelKeys(list.flatMap((x) => x.models)))).join('\n')}`, { active: 'study' });
 }
@@ -1276,11 +1274,11 @@ export function benchPage(results) {
 ${r.mismatches.map((x) => `<p class="miss">${esc(x)}</p>`).join('')}
 <div class="foot"><span>If disputed as “${esc(reasonPlain(r.def.reason))}”</span><b>${esc(planPlain(r.got))}</b>${r.got.held ? `<span class="held">${HELD_PLAIN}</span>` : ''}${failsText(r.got.broken) ? `<span class="fails">${esc(failsText(r.got.broken))}</span>` : ''}</div></a>`;
   const n = (i) => `${i + 1}.0`;
-  return layout('Black Box · dispute scenarios', `<section class="hero"><div><div class="eyebrow"><b>●</b> Dispute scenarios · run offline</div>
+  return layout('Black Box · dispute scenarios', `<section class="hero top"><div><div class="eyebrow"><b>●</b> Dispute scenarios · run offline</div>
 <h1><em style="color:var(--${all ? 'green' : 'red'})">${passed} of ${results.length}</em><br>disputes judged right</h1></div>
-<div><p>Real and staged disputes, each with the right answer written down before Black Box sees it. Open a group below, or tap any tile to see that dispute in full.</p>
+<div><p>Each dispute’s right answer is written down before Black Box sees it.</p>
 <div class="vkey"><span class="MERCHANT"><i></i>Shop at fault</span><span class="AGENT"><i></i>Agent at fault</span><span class="USER"><i></i>Purchase stands</span><span class="NEEDS_A_HUMAN"><i></i>Needs a human</span></div>
-<p class="k" style="font-size:12.5px;margin:6px 0 0">R recorded runs and honest price data · E reworded lies · F AI check · P passkey approvals, incl. live PayPal disputes · A attacks on the record</p>${matrix}
+${matrix}
 <p class="k" style="font-size:12px;margin:14px 0 0">Check it yourself: <span class="mono">npm run bench</span></p></div></section>
 <section class="sec" style="padding-bottom:0">${benchFilters(results)}</section>
 ${SECTIONS.map(([kind, title, note, proves], i) => fold(n(i), title, note, results.filter((r) => r.def.kind === kind), row, proves)).join('')}`, { active: 'bench' });
