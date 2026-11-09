@@ -139,7 +139,9 @@ gcloud run deploy black-box --source . --region us-central1 --project $P --quiet
 node scripts/live.mjs preflight   # preflight ok: Anthropic key answers, PayPal sandbox token issued, flagger on
 ```
 
-Revision `black-box-00063-752`. The shops were not redeployed: their code did not change. Checked:
+That made revision `black-box-00063-752`. The front-page change after it was deployed with the
+same command and no flags (every setting above is kept), as revision `black-box-00064-4mh`. The
+shops were not redeployed: their code did not change. Checked:
 `/demo`, `/lab`, `/bench` and `/lab/facts` return 200; `/operator` and `/mandate/` return 401
 without the password; `/bench` reads 62 of 62; `/operator` shows "25 of 25 runs left today" and
 offers exactly the three models above. Judges without a passkey device use a mandate approved in
