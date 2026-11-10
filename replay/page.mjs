@@ -13,6 +13,7 @@ import { toValue } from '../engine/actions.mjs';
 import { findHidden } from '../engine/extract.mjs';
 import { FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES, VERDICT } from '../engine/verdict.mjs';
 import { statementsFor, templateNote } from '../evidence/evidence.mjs';
+import { settlement } from './settlement.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const money = (c, cur = 'USD') => (Number.isInteger(c) ? `$${toValue(c)}${cur === 'USD' ? '' : ' ' + cur}` : '–');
@@ -180,6 +181,7 @@ footer.site nav a{color:var(--ink-2);text-decoration:none}footer.site nav a:hove
 .cause .pp .amt{font:700 clamp(30px,4vw,44px)/1 var(--display);letter-spacing:.02em}
 .cause .pp .amt small{display:block;font:600 14px/1.3 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2);margin-top:6px}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:4px 12px;font:400 11.5px/1.5 var(--mono);color:var(--ink-3);margin-top:8px}
+.kv .settle{font-family:var(--sans);color:var(--ink)}.kv .settle.settled{color:var(--green)}.kv .settle.unknown,.kv .settle.repayment-failed{color:var(--red)}.kv .settle:is(.refund-pending,.repayment-pending){color:var(--amber)}
 .kv b{color:var(--ink-2);font-weight:400;overflow-wrap:anywhere}
 @media (max-width:860px){.cause{grid-template-columns:1fr}.cause .pp{border-left:0;border-top:1px solid var(--rule)}}
 /* the data plate above the verdict: label over value, cells divided like an instrument strip */
@@ -868,9 +870,12 @@ function causePanel(c, j) {
   }
   const credit = buyerCredit(p);
   const refund = p.after?.refundTransactions?.[0];
+  // Where the money stands, apart from the verdict (replay/settlement.mjs). A lab run moved none.
+  const settled = p.labRun ? null : settlement(p, j.verdict.verdict);
   return `<div class="eyebrow"><b>●</b> ${p.labRun ? 'Lab run · nothing sent to PayPal' : `PayPal ${p.executed ? 'carried it out' : 'dispute open'}`}</div>
 ${p.executed ? `<div class="amt">${credit ? money(credit.amount.cents, credit.amount.currency) : /^provide-evidence/.test(p.executed.action) ? 'Evidence sent' : esc(actionPlain(p.executed.action).replace(/^./, (x) => x.toUpperCase()))}<small>${credit ? 'back to the buyer' : /^provide-evidence/.test(p.executed.action) ? 'the sale stands; no money moved' : 'sent to PayPal'}</small></div>` : `<div class="amt">${esc(planText(j.plan))}<small>${p.labRun ? 'what Black Box would do on this dispute' : 'planned, not yet executed'}</small></div>`}
 <div class="kv"><span>Dispute</span><b class="mono">${esc(disputeName(p))}</b>
+${settled ? `<span>Settlement</span><b class="settle ${settled.state}">${esc(settled.text)}</b>` : ''}
 ${p.escalated ? `<span>Escalated</span><b>${time(p.escalated.at)}</b>` : ''}
 ${p.executed ? `<span>Black Box</span><b>${esc(actionPlain(p.executed.action))}, ${time(p.executed.at)}</b>` : ''}
 ${refund ? `<span>Refund</span><b class="mono">${esc(refund.id)}</b>` : ''}

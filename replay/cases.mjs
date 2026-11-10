@@ -11,6 +11,8 @@ import { movesMoney } from '../engine/actions.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { recordHash } from '../recorder/recorder.mjs';
 import { enrolmentFrom, payerForKey } from '../mandate/server.mjs';
+import { attempts } from '../executor/attempts.mjs';
+export { settlement } from './settlement.mjs';
 
 const cents = (v) => Math.round(Number(v) * 100);
 const amount = (a) => (a ? { cents: cents(a.value), currency: a.currency_code } : null);
@@ -65,6 +67,9 @@ export function paypalFromLog(entries) {
   const payoutAfter = attempt?.after;
   const after = ok('get dispute (after)').at(-1);
   const flagger = entries.findLast((e) => e.step === 'flagger' && e.result)?.result ?? null;
+  // Actions sent whose result is not known, and the state of the latest payout attempt.
+  const unknown = attempts(entries).filter((a) => a.state === 'unknown').map((a) => a.kind);
+  const payoutState = payoutAttempts(entries).at(-1)?.state ?? null;
   const evidence = entries.findLast((e) => e.step === 'evidence-note')?.note ?? null;
   return {
     disputeId: dispute.dispute_id,
@@ -89,6 +94,8 @@ export function paypalFromLog(entries) {
       from: 'agent-operator', to: payout.request.items[0].receiver,
     } : null,
     escalated: escalated ? { at: escalated.at, debugId: escalated.debug_id ?? null } : null,
+    ...(unknown.length ? { unknown } : {}),
+    ...(payoutState ? { payoutState } : {}),
     executed: executed ? { action: executed.step, httpStatus: executed.status, at: executed.at, debugId: executed.debug_id ?? null } : null,
     after: after ? {
       status: after.status,

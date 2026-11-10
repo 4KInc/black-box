@@ -29,11 +29,11 @@ import { HELD_WHY, movesMoney, toValue } from '../engine/actions.mjs';
 import { enrolmentFrom } from '../mandate/server.mjs';
 import { flagInjection } from '../flagger/flagger.mjs';
 import { evidenceFile, evidenceNote, statementsFor, templateNote } from '../evidence/evidence.mjs';
+import { actionKind, attempts } from './attempts.mjs';
+
+export { actionKind, attempts };
 
 const cents = (v) => Math.round(Number(v) * 100);
-const ACTION_STEP = /^(accept-claim|make-offer|provide-evidence)/;
-const ok = (e) => e.status >= 200 && e.status < 300;
-const refused = (e) => e.status >= 400 && e.status < 500;
 
 // A lock older than this belonged to a run that died between its attempt and its result.
 export const STALE_LOCK_MS = 5 * 60_000;
@@ -41,8 +41,6 @@ export const STALE_LOCK_MS = 5 * 60_000;
 export const ACTIONABLE_STATUS = new Set(['OPEN', 'WAITING_FOR_SELLER_RESPONSE', 'UNDER_REVIEW']);
 
 export const payloadHash = (payload) => createHash('sha256').update(typeof payload === 'string' ? payload : JSON.stringify(payload)).digest('hex');
-// One action ID per kind of action on a dispute; a partial accept-claim is the same endpoint.
-export const actionKind = (step) => (step === 'escalate' ? 'escalate' : String(step).match(ACTION_STEP)?.[1] ?? step);
 export const actionId = (disputeId, kind) => `${disputeId}:${kind}`;
 
 // What PayPal's current dispute says about an action: true (it happened), false (it clearly did
@@ -61,26 +59,6 @@ export function actionDone(kind, dispute) {
     return !stage ? null : stage !== 'INQUIRY' ? true : closed ? null : false;
   }
   return null;
-}
-
-// The latest attempt at each action, with what became of it:
-//   'succeeded'  PayPal accepted it, or PayPal later showed it had happened (reconciled)
-//   'refused'    PayPal answered 4xx: it did not happen
-//   'unknown'    no result logged (a crash or a timeout), a 5xx, or a network error
-// Entries from before attempts were logged (a result with no actionId) count as succeeded or refused.
-export function attempts(entries) {
-  const out = new Map();
-  for (const e of entries) {
-    if (e.step === 'attempt') out.set(e.actionId, { actionId: e.actionId, kind: e.kind, step: e.action, payloadHash: e.payloadHash, at: e.at, state: 'unknown' });
-    else if (e.step === 'reconciled' && out.has(e.actionId)) out.get(e.actionId).state = 'succeeded';
-    else if ((ACTION_STEP.test(e.step ?? '') || e.step === 'escalate') && e.actionId && out.has(e.actionId)) {
-      out.get(e.actionId).state = ok(e) ? 'succeeded' : refused(e) ? 'refused' : 'unknown';
-    } else if ((ACTION_STEP.test(e.step ?? '') || e.step === 'escalate') && !e.actionId && (ok(e) || refused(e))) {
-      const kind = actionKind(e.step);
-      out.set(`legacy:${kind}`, { actionId: null, kind, step: e.step, at: e.at, state: ok(e) ? 'succeeded' : 'refused' });
-    }
-  }
-  return [...out.values()];
 }
 
 // The dispute link PayPal shows when an action is currently allowed.

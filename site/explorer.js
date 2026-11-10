@@ -101,6 +101,7 @@
         { field: 'fails', headerName: 'Record checks failed', width: 220 },
         { field: 'live', headerName: 'Live on PayPal', width: 130, cellRenderer: (p) => (p.value ? '<span class="xp-bad">● live</span>' : 'simulated') },
         { field: 'disputeId', headerName: 'Dispute ID', width: 170 },
+        { field: 'settlement', headerName: 'Settlement (sandbox)', width: 320 },
         { field: 'pass', headerName: 'Bench', width: 100, pinned: 'right', cellRenderer: yesNo('ok', ['✓ right', '✗ wrong']) },
       ],
       detail: (r) => `<h3><span class="xp-v ${esc(r.verdict)}">${esc(LABEL[r.verdict])}</span> · ${esc(r.id)} · rule ${r.rule}</h3>
@@ -112,6 +113,7 @@ ${kv('Dispute', r.disputeId ? `${r.disputeId}${r.live ? ' · live sandbox' : ' �
 ${kv('Order', r.orderId)}${kv('Capture', r.captureId)}
 ${r.executed.map((e) => kv('Black Box', e)).join('')}
 ${kv('Payout', r.payout)}
+${kv('Settlement', r.settlement)}
 ${kv('custom_id', r.customId)}
 ${kv('Record hash', r.recordHash)}
 ${kv('Signed page', r.pageUrl)}

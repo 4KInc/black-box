@@ -5,6 +5,7 @@
 // script from the site; its data is a JSON block, so nothing runs that was not built here.
 // The verdicts it shows are the bench's own results: AG Grid only displays them.
 
+import { settlement } from '../replay/settlement.mjs';
 import { decide, FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES } from '../engine/verdict.mjs';
 import { actionPlain, cellKind, triggerPlain, decisionOf, FACT, failsText, label, layout, modelFamily, modelName, planPlain, reasonPlain, RULE_SHORT, SECTIONS, setupOf, studySummary } from '../replay/page.mjs';
 
@@ -55,6 +56,7 @@ function scenarioRow(r) {
     recordHash: r.c.hash,
     executed: [].concat(p.executed ?? []).map((e) => actionPlain(e.action)),
     payout: p.payout ? `${p.payout.from} → ${p.payout.to} · batch ${p.payout.batchId} ${p.payout.status}` : null,
+    settlement: settlement(p, r.got.verdict)?.text ?? null,
     pageUrl: page.url ?? null,
     signatureInput: h['signature-input'] ?? null,
     signature: h.signature ?? null,
