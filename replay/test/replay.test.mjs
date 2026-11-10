@@ -288,7 +288,8 @@ test('the front page explains it in three plain steps and offers a short tour, w
     setLabHref(null); setDemoHref(null);
     const bare = siteIntro();
     assert.doesNotMatch(bare, /lab\.example|\?case=|Run it live/);
-    assert.match(bare, /<b>2<\/b> · 1 min/);
+    assert.equal(bare.match(/class="stop"/g).length, 2); // the judges' page and the study
+    assert.doesNotMatch(full, /\d+ min\b/);
   } finally { setLabHref('/lab'); setDemoHref(null); }
 });
 

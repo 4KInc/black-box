@@ -131,8 +131,7 @@ export function walletPage(root, { note = '' } = {}) {
     ? `<p>Saved: the PayPal account <b>${esc(w.email ?? w.payer_id ?? 'of the buyer')}</b>${w.payer_id ? ` (payer ID <span class="mono">${esc(w.payer_id)}</span>)` : ''}, on ${esc(w.saved_at.slice(0, 16).replace('T', ' '))} UTC. The agent can now pay at the shop by itself.</p>
 <form class="lab" method="post" action="/wallet/forget"><button type="submit">Forget the saved wallet</button></form>`
     : '<p>No wallet saved yet. Without one, the buyer approves each payment through a PayPal link.</p>';
-  return layout('Black Box · wallet', `<section class="hero"><div><div class="eyebrow"><b>●</b> Buyer · live</div>
-<h1>Let the agent <em>pay.</em></h1></div>
+  return layout('Black Box · wallet', `<section class="hero"><div><h1>Let the agent <em>pay.</em></h1></div>
 <div><p>Shopping agents pay without showing the buyer a checkout screen. Here the buyer saves their PayPal wallet once (PayPal's saved payment methods), and from then on the agent's purchases are charged straight away. The buyer finds out from PayPal, as they would with a real agent, and disputes there.</p>
 <p>The passkey mandate is the limit the buyer set. PayPal does not enforce it: Black Box judges against it afterwards.</p></div></section>
 <section class="sec"><div class="panel lab">${note}${status}
@@ -169,8 +168,7 @@ export function operatorPage(root, { env = process.env, shopUrl, now = Date.now(
 <p class="runs"><b>${left} of ${max}</b> runs left today (UTC). Each run spends model credit and creates a PayPal order.</p>
 <button type="submit"${left ? '' : ' disabled'}>Send the agent shopping</button></form>`
     : `<p class="panel">${all.length ? `No mandate in force: the ${all.length} approved here ${all.length === 1 ? 'has' : 'have'} expired.` : 'No mandate yet.'} <a href="/mandate/">Approve one with a passkey</a> first.</p>`;
-  return layout('Black Box · operator', `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
-<h1>Send the agent <em>shopping.</em></h1></div>
+  return layout('Black Box · operator', `<section class="hero"><div><h1>Send the agent <em>shopping.</em></h1></div>
 <div><p>A real AI agent shops at <a href="${esc(shopUrl)}">${esc(new URL(shopUrl).host)}</a> within the mandate below. Black Box records every page it reads and what it decides, and seals the record into the PayPal order.</p>
 <p>Paste what the buyer would tell their agent. The agent gets it with the mandate, which stays the limit Black Box judges against.</p>
 <p><a href="/mandate/">Approve a new mandate</a></p></div></section>
@@ -180,12 +178,11 @@ export function operatorPage(root, { env = process.env, shopUrl, now = Date.now(
 const SANDBOX_ACTIVITY = 'https://www.sandbox.paypal.com/myaccount/activities/';
 function resultBody({ choice, declined, sealed, order, preview, model }) {
   if (declined) {
-    return `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div><h1>It bought <em>nothing.</em></h1></div>
+    return `<section class="hero"><div><h1>It bought <em>nothing.</em></h1></div>
 <div><p><b>${esc(model)}</b>: “${esc(choice.reason)}”</p><p>No order, so there is nothing to dispute. The run is recorded: <a href="/case/${esc(sealed.hash)}">open it in Black Box</a> · <a href="/operator">Send it again</a></p></div></section>`;
   }
   const r = sealed.record;
-  return `<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
-<h1>It bought <em>${esc(r.purchase.sku)}.</em></h1></div>
+  return `<section class="hero"><div><h1>It bought <em>${esc(r.purchase.sku)}.</em></h1></div>
 <div><p><b>${esc(model)}</b>: “${esc(choice.reason)}”</p>
 <p>${money(r.purchase.price_cents)} on a ${money(r.mandate.maxTotalCents)} budget. Record <span class="mono">${esc(sealed.hash.slice(0, 16))}…</span> is sealed into PayPal order <span class="mono">${esc(order.order_id)}</span>.</p>
 <p>If disputed as “not as described”: <b>${esc(preview.verdict.verdict === 'NEEDS_A_HUMAN' ? 'NEEDS A HUMAN' : preview.verdict.verdict)}</b> (rule ${preview.verdict.rule}).</p></div></section>
@@ -223,12 +220,11 @@ const WALLET_CSP = HEADERS['content-security-policy'].replace("form-action 'self
 
 export function demoPage({ shopUrl }) {
   const step = (n, title, text, href, link) => `<li class="panel"><div class="eyebrow"><b>${n}</b> ${title}</div><p>${text}</p>${href ? `<p><a class="go" href="${esc(href)}">${link} →</a></p>` : ''}</li>`;
-  return layout('Black Box · live demo', `<section class="hero"><div><div class="eyebrow"><b>●</b> Live demo · PayPal sandbox</div>
-<h1>Watch an agent <em>get fooled.</em></h1></div>
+  return layout('Black Box · live demo', `<section class="hero"><div><h1>Watch an agent <em>get fooled.</em></h1></div>
 <div><p>A real AI agent shops at a real (sandbox) store that hides a note only AI agents read. The buyer disputes the purchase in PayPal, and Black Box settles it by itself.</p>
-<p>Steps 1 to 3 need the operator password, because they spend model credit and create PayPal orders. About 15 minutes in all, most of it waiting for PayPal to report the dispute.</p></div></section>
+<p>Steps 1 to 3 need the operator password, because they spend model credit and create PayPal orders.</p></div></section>
 <section class="sec"><div class="panel shortcut"><div class="eyebrow"><b>●</b> Short on time?</div>
-<p>This whole chain has already run live nine times. <a class="go" href="/bench/P09">Replay one in two minutes →</a></p>
+<p>This whole chain has already run live nine times. <a class="go" href="/bench/P09">Replay one →</a></p>
 <p>No Touch ID or other passkey device? Skip step 1: a limit our team approved with a passkey, valid through judging, is already offered on the next page.</p></div>
 <ol class="demo" style="margin-top:12px">
 ${step('01', 'The buyer sets the limit', 'Approve “blue rain jacket, size M, at most $150” with your passkey (Touch ID). It signs exactly that limit, so nobody can raise it later. Once, the buyer also saves their PayPal wallet, so the agent can pay by itself.', '/mandate/', 'Approve with a passkey')}
@@ -337,8 +333,7 @@ export function createLive({
         // Streamed: the page grows as the agent works, then the result follows the timeline.
         const [head, tail] = layout('Black Box · operator', '\u0000').split('\u0000');
         res.writeHead(200, HEADERS);
-        res.write(`${head}${RUN_CSS}<section class="hero"><div><div class="eyebrow"><b>●</b> Agent operator · live</div>
-<h1>The agent is <em>shopping.</em></h1></div><div><p>${esc(modelName(env, model))} at <a href="${esc(shopUrl)}">${esc(new URL(shopUrl).host)}</a>, within: ${esc(readback(approved.mandate))}.</p>${request ? `<p>The buyer asked: “${esc(request)}”</p>` : ''}</div></section>
+        res.write(`${head}${RUN_CSS}<section class="hero"><div><h1>The agent is <em>shopping.</em></h1></div><div><p>${esc(modelName(env, model))} at <a href="${esc(shopUrl)}">${esc(new URL(shopUrl).host)}</a>, within: ${esc(readback(approved.mandate))}.</p>${request ? `<p>The buyer asked: “${esc(request)}”</p>` : ''}</div></section>
 <section class="sec"><ol class="tape run">`);
         const t0 = Date.now();
         const line = (ev, text, cls = '') => res.write(`<li${cls ? ` class="${cls}"` : ''}><span class="t">+${((Date.now() - t0) / 1000).toFixed(1)}s</span><span class="ev">${ev}</span><span>${text}</span></li>\n`);

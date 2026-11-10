@@ -329,7 +329,7 @@ ol.flow::after{content:"";position:absolute;left:8%;top:59px;width:7px;height:7p
 @media (max-width:860px){ol.flow{grid-template-columns:1fr}ol.flow::before,ol.flow::after{display:none}}
 .tour{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px}
 .stop{display:block;text-decoration:none;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));border:1px solid var(--rule-2);border-radius:4px;padding:14px 18px 16px}
-.stop h3{margin:10px 0 4px;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--orange)}
+.stop h3{margin:0 0 4px;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--orange)}
 .stop p{margin:0;color:var(--ink-2)}.stop:hover{border-color:var(--orange)}
 
 /* ---- the judges' page: three live disputes, one card each. A card says one thing: who paid,
@@ -369,7 +369,6 @@ details.jproof[open]>summary::before{content:"− "}
 .jproof dt{color:var(--ink-3)}
 .jproof dd{margin:0;min-width:0;font:400 12px/1.5 var(--mono);color:var(--ink-2);overflow-wrap:anywhere}
 .jproof dd.ok{color:var(--green);font-family:var(--sans)}
-.jnote{max-width:78ch;color:var(--ink-3);font-size:13px}
 details.more{margin-top:14px}
 details.more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px dashed var(--rule-2);border-radius:4px;font:400 11.5px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
 details.more>summary::-webkit-details-marker{display:none}
@@ -753,8 +752,7 @@ function mandateSentence(m) {
 
 // The public front page's introduction.
 export function siteIntro() {
-  return `<section class="hero front"><div><div class="eyebrow"><b>●</b> PayPal sandbox · no keys needed</div>
-<h1><span><i>Who pays when</i></span> <span><i>an AI agent</i></span> <span><em>buys wrong?</em></span></h1>
+  return `<section class="hero front"><div><h1><span><i>Who pays when</i></span> <span><i>an AI agent</i></span> <span><em>buys wrong?</em></span></h1>
 <p>Black Box seals what an AI shopping agent saw into the PayPal payment. When the buyer disputes, it decides who pays.</p></div>
 ${heroTape()}</section>
 ${howItWorks()}
@@ -774,14 +772,14 @@ function howItWorks() {
 </ol></section>`;
 }
 
-// The shortest path through the project, for someone with a few minutes. No password needed.
+// The shortest path through the project. No password needed.
 function judgeTour() {
-  const stop = (n, href, title, text, time) => `<a class="stop" href="${href}"><span class="eyebrow"><b>${n}</b> · ${time}</span><h3>${title} →</h3><p>${text}</p></a>`;
-  return `<section class="sec"><header><h2>See it in five minutes</h2></header><div class="tour">
-${stop('1', '/judge', 'Three live disputes', 'The shop pays, the app pays, the sale stands', '2 min')}
-${labHref ? stop('2', `${labHref}?case=P09`, 'Try to cheat it', 'Tamper with a real case', '2 min') : ''}
-${stop(labHref ? '3' : '2', '/study', 'Does it really happen?', '15 AI models, one hidden lie', '1 min')}
-${demoHref ? stop(labHref ? '4' : '3', demoHref, 'Run it live', 'Needs the operator password', '15 min') : ''}
+  const stop = (href, title, text) => `<a class="stop" href="${href}"><h3>${title} →</h3><p>${text}</p></a>`;
+  return `<section class="sec"><header><h2>Where to start</h2></header><div class="tour">
+${stop('/judge', 'Three live disputes', 'The shop pays, the app pays, the sale stands')}
+${labHref ? stop(`${labHref}?case=P09`, 'Try to cheat it', 'Tamper with a real case') : ''}
+${stop('/study', 'Does it really happen?', '15 AI models, one hidden lie')}
+${demoHref ? stop(demoHref, 'Run it live', 'Needs the operator password') : ''}
 </div></section>`;
 }
 
@@ -821,7 +819,7 @@ export function indexPage(rows, { intro = '' } = {}) {
 <div class="foot">${c.paypal ? `<span class="live">PayPal dispute <span class="id">${esc(c.paypal.disputeId)}</span></span><b>${esc(paypalStatus(c.paypal).replace(/^./, (x) => x.toUpperCase()))}</b>` : `<span>Not disputed</span><span>If disputed as “${esc(reasonPlain(j.reason))}”: <b class="if">${esc(planPlain(j.plan))}</b></span>`}</div></a>`;
   }).join('');
   const empty = '<p class="empty">No recordings yet. Run the agent (node agent/run.mjs) to make one.</p>';
-  return layout('Black Box · recordings', `${intro || `<section class="hero"><div><div class="eyebrow"><b>●</b> Recordings</div><h1>Every run, <em>on tape</em></h1></div>
+  return layout('Black Box · recordings', `${intro || `<section class="hero"><div><h1>Every run, <em>on tape</em></h1></div>
 <div><p>Each recording is what an AI shopping agent saw and decided, sealed into its PayPal order, or kept as a decline if it bought nothing. Open one to replay it and see who pays.</p></div></section>`}
 <section class="sec"><header><h2>Recordings</h2><p>${rows.length} agent runs${live ? `, ${live} of them disputed on PayPal` : ''}.</p></header>
 ${rows.length ? recordingFilters(rows) : ''}<div class="recs">${cards || empty}</div></section>`, { active: 'recordings' });
@@ -1316,8 +1314,7 @@ ${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'h
 export function studyPage(studies) {
   const list = Array.isArray(studies) ? studies : [studies];
   const runs = list.reduce((n, st) => n + studySummary(st).total, 0);
-  return layout('Black Box · who falls for it', `<section class="hero"><div><div class="eyebrow"><b>●</b> Study · ${list.length} setup${list.length > 1 ? 's' : ''} · ${runs} runs</div>
-<h1>Who falls for <em>a hidden price?</em></h1></div>
+  return layout('Black Box · who falls for it', `<section class="hero"><div><h1>Who falls for <em>a hidden price?</em></h1></div>
 <div><p>Every product costs more than the budget. Each model shopped ${list[0].n} times with a hidden lie on the page and ${list[0].n} times without.</p>
 <p><span class="why" tabindex="0" data-tip="Each provider ran at its own default sampling, and Muse Spark had a larger output budget (8,000 tokens instead of 600) because it reasons before it answers. Raw data: study/README.md.">Not a ranking</span></p></div></section>
 ${studyFilters(list)}
@@ -1390,10 +1387,8 @@ export function benchPage(results) {
 ${r.mismatches.map((x) => `<p class="miss">${esc(x)}</p>`).join('')}
 <div class="foot"><span>If disputed as “${esc(reasonPlain(r.def.reason))}”</span><b>${esc(planPlain(r.got))}</b>${r.got.held ? `<span class="held">${HELD_PLAIN}</span>` : ''}${failsText(r.got.broken) ? `<span class="fails">${esc(failsText(r.got.broken))}</span>` : ''}</div></a>`;
   const n = (i) => `${i + 1}.0`;
-  return layout('Black Box · dispute scenarios', `<section class="hero top"><div><div class="eyebrow"><b>●</b> Dispute scenarios · run offline</div>
-<h1><em style="color:var(--${all ? 'green' : 'red'})">${passed} of ${results.length}</em> disputes judged right</h1></div>
-<div><p>Each dispute’s right answer is written down before Black Box sees it. Every tile is one dispute; open it to see why.</p>
-<p class="k" style="font-size:12.5px">Check it yourself: <span class="mono">npm run bench</span></p></div></section>
+  return layout('Black Box · dispute scenarios', `<section class="hero top"><div><h1><em style="color:var(--${all ? 'green' : 'red'})">${passed} of ${results.length}</em> disputes judged right</h1></div>
+<div><p>Each dispute’s right answer is written down before Black Box sees it. Every tile is one dispute; open it to see why.</p></div></section>
 <section class="sec" style="margin-top:28px"><div class="vkey" style="margin:0 0 12px"><span class="MERCHANT"><i></i>Shop at fault</span><span class="AGENT"><i></i>Agent at fault</span><span class="USER"><i></i>Purchase stands</span><span class="NEEDS_A_HUMAN"><i></i>Needs a human</span></div>
 ${matrix}</section>
 <section class="sec" style="padding-bottom:0">${benchFilters(results)}</section>
@@ -1463,16 +1458,13 @@ ${ids.map(([k, x]) => `<dt>${k}</dt><dd>${esc(x)}</dd>`).join('')}
 
 export function judgePage(results) {
   const picked = JUDGE_CASES.map((s) => ({ s, r: results.find((r) => r.def.id === s.id) })).filter(({ r }) => r?.c.paypal?.executed);
-  return layout('Black Box · for judges', `<section class="jhero"><div><div class="eyebrow"><b>●</b> For judges · 2 minutes</div>
-<h1>Three disputes, <em>three outcomes</em></h1></div>
+  return layout('Black Box · for judges', `<section class="jhero"><div><h1>Three disputes, <em>three outcomes</em></h1></div>
 <p>Three real disputes in the PayPal sandbox. Black Box settled each one on its own. Press <b>Re-run the engine</b> to watch it decide again.</p></section>
-<section class="sec" style="margin-top:28px"><div class="jcards">${picked.map(({ s, r }) => judgeCard(r, s)).join('')}</div>
-<p class="jnote" style="margin-top:22px">A live run from scratch takes about 15 minutes: the buyer signs in to the sandbox to pay and to dispute, and PayPal reports the dispute 3 to 12 minutes later. ${demoHref ? `The <a href="${esc(demoHref)}">live demo</a> runs it, with the operator password from the testing instructions.` : ''} Or check every verdict yourself: <span class="mono">npm run bench</span>.</p></section>`, { active: 'judge' });
+<section class="sec" style="margin-top:28px"><div class="jcards">${picked.map(({ s, r }) => judgeCard(r, s)).join('')}</div></section>`, { active: 'judge' });
 }
 
 // Any address with nothing behind it.
 export function notFoundPage(what = 'There is nothing at this address.') {
-  return layout('Not found · Black Box', `<section class="hero"><div><div class="eyebrow"><b>●</b> 404</div>
-<h1>No <em>recording</em> here.</h1></div>
+  return layout('Not found · Black Box', `<section class="hero"><div><h1>No <em>recording</em> here.</h1></div>
 <div><p>${esc(what)}</p><p><a href="/judge">Start with the three live disputes →</a></p><p><a href="/">Every recording</a> · <a href="/bench">Dispute scenarios</a></p></div></section>`);
 }

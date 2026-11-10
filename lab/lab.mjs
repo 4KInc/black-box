@@ -133,8 +133,7 @@ function picks(picked) {
 
 export function labPage(query = new URLSearchParams()) {
   const picked = BASES.some((d) => d.id === query.get('case')) ? query.get('case') : DEFAULT_CASE.id;
-  return layout('Black Box · lab', `<section class="hero"><div><div class="eyebrow"><b>●</b> Lab · live engine</div>
-<h1>Try to <em>cheat it.</em></h1></div>
+  return layout('Black Box · lab', `<section class="hero"><div><h1>Try to <em>cheat it.</em></h1></div>
 <div><p>Pick a real case, tamper with it, and watch the real engine judge it again. No signing keys, no PayPal calls.</p>
 <p><a href="/lab/facts">Or set the facts by hand →</a></p></div></section>
 <section class="sec"><div class="eyebrow">Start from one of these, or pick any of the ${BASES.length} cases below</div>${picks(picked)}${labForm(new URLSearchParams({ case: picked }))}</section>`, { active: 'lab' });
@@ -165,8 +164,7 @@ export function factsPage(query) {
   const facts = Object.fromEntries(FACT_KEYS.map((k) => [k, on.has(k)]));
   const v = decide(facts);
   const boxes = FACT_GROUPS.map(([title, keys]) => `<fieldset><legend>${esc(title)}</legend>${keys.map((k) => `<label class="chk"><input type="checkbox" name="on" value="${k}"${facts[k] ? ' checked' : ''}><span class="mono">${k}</span></label>`).join('')}</fieldset>`).join('');
-  return layout('Black Box · lab · facts', `<section class="hero"><div><div class="eyebrow"><b>●</b> Lab · the rules alone</div>
-<h1>${esc(label(v.verdict))} <em>· rule ${v.rule}</em></h1></div>
+  return layout('Black Box · lab · facts', `<section class="hero"><div><h1>${esc(label(v.verdict))} <em>· rule ${v.rule}</em></h1></div>
 <div><p>${esc(RULE_SHORT[v.rule])}</p><p>The engine decides from these ${FACT_KEYS.length} yes/no facts. Tick any combination: exactly one rule applies, and the tests check all ${(2 ** FACT_KEYS.length).toLocaleString('en-US')} combinations.</p></div></section>
 <section class="sec"><form class="panel lab" method="get" action="/lab/facts"><input type="hidden" name="set" value="1">${boxes}<button type="submit">Decide</button></form>
 <ol class="ladder">${RULES.map((r) => `<li class="${r.verdict}${r.n === v.rule ? ' fired' : ''}"><span class="n">${r.n}</span><span class="tag">${label(r.verdict)}</span><span>${esc(RULE_SHORT[r.n])}</span></li>`).join('')}</ol></section>`, { active: 'lab' });

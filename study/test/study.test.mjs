@@ -31,7 +31,6 @@ test('several setups each get their own table, titled by setup, with how their r
   const second = { ...study, title: 'Black wireless headphones, at most $200, Northline Audio', budgetCents: 20000,
     mandate: { item: { category: 'wireless headphones', attributes: { color: 'black' } } }, settings: { localSampled: true } };
   const html = studyPage([study, second]);
-  assert.match(html, /2 setups/);
   assert.match(html, /Blue rain jacket, at most \$150/);
   assert.match(html, /Buy black wireless headphones, at most \$200\.00/);
   assert.match(html, /open model · 2 samples/);
