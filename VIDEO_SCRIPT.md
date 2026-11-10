@@ -22,8 +22,8 @@ capture, in filming order.
 ## 0:00 – 0:15 · Hook
 
 **On screen:** the site's front page, from the top: the headline rises line by line and the
-recorder beside it plays P09 back (the hidden note, $240 bought on a $150 budget, **MERCHANT**,
-$240 refunded from the shop).
+recorder beside it plays P09 back (the hidden note, "Claude Haiku 4.5 pays $240 on a $150
+budget", **MERCHANT**, $240 refunded from the shop).
 
 **Voice-over:**
 > My AI agent paid two hundred and forty dollars on a hundred-and-fifty-dollar budget. Who pays:
@@ -31,7 +31,7 @@ $240 refunded from the shop).
 
 ## 0:15 – 0:35 · What a person sees, what the agent read
 
-**On screen:** P09, section 2 "What the shopping agent saw": the customer's view at $240.00 next to
+**On screen:** P09, the section **What the shopping agent saw**: the customer's view at $240.00 next to
 the AI's view with the highlighted JSON-LD note "... bringing the final total to $119.00", then
 the agent's stated reason. Click **"+ Compare the full page with exactly what the AI was given"**
 to open the signed page beside the exact model input.
@@ -62,8 +62,8 @@ next beat.
 | 0:58 | `/operator`: Claude Haiku 4.5, the buyer's request "Keep it under $150", **Send the agent shopping**. The timeline streams: pages read and signed, the decision, the seal, the order | "A real agent shops. Black Box records what it reads and seals the record into the PayPal payment." |
 | 1:08 | **Pay with PayPal as the buyer**: the sandbox buyer pays $240.00 | "The buyer pays two forty." |
 | 1:13 | sandbox.paypal.com as the buyer: Activity → the payment → Report a problem → item not as described | "And disputes it, like any purchase." |
-| 1:20 | Hosted Recordings: the run at the top, tagged **Live run**; open it: the plate at the top shows a blinking red **● Live run** cell, then **MERCHANT · rule 2** and the hidden note highlighted | "PayPal's webhook wakes Black Box. No one at the keyboard. Code checks sixteen facts: the shop's own signed page hid a lie about this jacket, the agent read it, the budget was broken. Rule two: the shop pays." |
-| 1:32 | The case's PayPal panel: `accept-claim` REFUND, HTTP 200, the refund ID; then the buyer's sandbox Activity showing the refund | "Black Box accepts the claim, and the buyer has the money back, in PayPal's own activity page." |
+| 1:20 | Hosted Recordings: the run at the top, tagged **Live run** and **Shop at fault**; open it: the plate at the top shows a blinking red **● Live run** cell and the agent, Claude Haiku 4.5; then the verdict **MERCHANT**, "rule 2 of 6", and the hidden note highlighted | "PayPal's webhook wakes Black Box. No one at the keyboard. Code checks sixteen facts: the shop's own signed page hid a lie about this jacket, the agent read it, the budget was broken. Rule two: the shop pays." |
+| 1:32 | The case's PayPal panel: **$240.00 back to the buyer**, "Black Box: accepted the claim", the refund ID and "Woken by: PayPal's webhook (dispute opened), no one at the keyboard"; then the buyer's sandbox Activity showing the refund | "Black Box accepts the claim, and the buyer has the money back, in PayPal's own activity page." |
 
 Cut the 3 to 12 minutes the sandbox takes to report the dispute. If the sandbox misbehaves on the
 day, film P09 instead: the same chain, settled live on 7 November 2026 (PP-R-XXC-10197051).
@@ -124,7 +124,7 @@ through "The shop pays", "The shopping app pays", "The sale stands"). Caption wi
 ## Shot list (in filming order)
 
 1. **Site front page**, from the top: the headline and the recorder playing back P09.
-2. **Site, P09** (`/bench/P09/`): section 2 (both views and the agent's reason), then open
+2. **Site, P09** (`/bench/P09/`): **What the shopping agent saw** (both views and the agent's reason), then open
    "Compare the full page with exactly what the AI was given".
 3. **Site, Study** (`/study/`): hover "Not a ranking", then one slow pan across the setup 1 grid.
 4. **Live run** on the hosted demo:
@@ -132,9 +132,9 @@ through "The shop pays", "The shopping app pays", "The sale stands"). Caption wi
    2. `/operator`: Haiku 4.5, the buyer's request, the streamed timeline and the result.
    3. The PayPal link: the sandbox buyer pays $240.00.
    4. sandbox.paypal.com: the dispute form, "item not as described".
-   5. Hosted Recordings: the new **Live run** card, then its case page (the red **● Live run**
-      cell in the plate, the verdict, the hidden note).
-   6. The case's PayPal panel with the refund.
+   5. Hosted Recordings: the new **Live run** card (**Shop at fault**), then its case page (the
+      red **● Live run** cell in the plate, the verdict, the hidden note).
+   6. The case's PayPal panel: the refund, "accepted the claim" and what woke Black Box.
    7. The buyer's sandbox Activity showing the refund.
 5. *(fallback only)* **Site, P09**: the PayPal panel with the refund.
 6. **Site, P08** (`/bench/P08/`): verdict, the case story, the PayPal panel.
@@ -149,5 +149,8 @@ through "The shop pays", "The shopping app pays", "The sale stands"). Caption wi
 - Film at 1440 px wide or more, so the two views sit side by side.
 - The live run is all hosted: nothing to start on your machine.
 - The front page's animations play once on load (the headline and the recorder) and loop in "How
-  it works"; reload the page to film the opening again.
+  it works"; reload the page to film the opening again. The recorder takes about 5 seconds to reach
+  its verdict, so hold the shot until "$240 refunded from the shop" shows.
+- On the judges' page, open only card A's **Proof**. The three cards share one set of rows, so the
+  other two grow by the same height, with empty space at their bottoms; keep the camera on card A.
 - Never show `.env`, `operator/.env` or `killtest/.env` on screen.
