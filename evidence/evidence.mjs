@@ -9,6 +9,7 @@
 // note never depends on the AI. The statements always go to PayPal as well, with the record.
 
 import { VERDICT } from '../engine/verdict.mjs';
+import { IN_SCOPE_REASONS } from '../engine/actions.mjs';
 import { anthropic } from '../agent/llm.mjs';
 
 export const NARRATOR_MODEL = 'claude-sonnet-5-5';
@@ -17,6 +18,9 @@ export const NOTE_MAX = 1500; // PayPal's evidence notes allow 2000 characters; 
 const money = (c) => `$${(c / 100).toFixed(2)}`;
 const attrs = (a = {}) => Object.entries(a).map(([k, v]) => `${k} ${v}`).join(', ');
 
+// What the record can show for each dispute reason: who authorised the purchase, the amount, and that
+// the item matches the signed listing. Nothing here, or above, speaks to delivery or the item's
+// condition, which the record cannot show; a reason outside these three gets no statements at all.
 const BY_REASON = {
   MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: (s) => `The order is for the exact item and price on the merchant's signed listing (SKU ${s.sku}).`,
   INCORRECT_AMOUNT: (s) => (s.captured === s.price ? `The amount PayPal captured, ${money(s.captured)}, equals the signed listing price.` : null),
@@ -24,14 +28,14 @@ const BY_REASON = {
 };
 
 // j = evaluateCase() result (or judge()); hash = the record hash; reason = PayPal dispute reason.
-// Returns null unless the verdict is USER: the other verdicts refund, so they send no evidence.
+// Returns null unless the verdict is USER (the other verdicts refund, so they send no evidence) and
+// the reason is one Black Box answers (engine/actions.mjs).
 export function statementsFor({ record, j, hash, reason }) {
-  if (j.verdict.verdict !== VERDICT.USER) return null;
+  if (j.verdict.verdict !== VERDICT.USER || !IN_SCOPE_REASONS.includes(reason)) return null;
   const m = record.mandate;
   const p = j.product ?? { name: record.purchase.sku, sku: record.purchase.sku, priceCents: record.purchase.price_cents, attributes: {} };
   const captured = j.order.capturedCents;
   const pages = record.fetches.length;
-  const decision = (record.decisions ?? []).findLast((d) => d.action === 'buy');
   const contradicting = j.findings.some((f) => f.inModelInput && f.namesPurchasedItem && f.contradictsListing);
 
   const out = [
@@ -45,7 +49,6 @@ export function statementsFor({ record, j, hash, reason }) {
     !contradicting && !j.facts.unattributedHiddenText && !j.facts.unclassifiedAgentText && !j.facts.aiInjectionFlag
       ? "Nothing hidden in what the agent read stated a different price for this item or told the agent to ignore the buyer's limits."
       : null,
-    decision?.reason ? `The agent's recorded reason: "${decision.reason.slice(0, 400)}"` : null,
     BY_REASON[reason]?.({ sku: p.sku, captured, price: p.priceCents }) ?? null,
     `The attached record shows every page the agent read and the exact text the model received. Its SHA-256 hash, ${hash}, equals the custom_id on this PayPal order, set at checkout.`,
     'The verdict comes from fixed rules applied by code, so anyone with the record can re-run them and get the same result.',
@@ -53,7 +56,9 @@ export function statementsFor({ record, j, hash, reason }) {
   return out.filter(Boolean);
 }
 
-export const templateNote = (statements) => statements.filter((s) => !s.startsWith("The agent's recorded reason")).join(' ').slice(0, NOTE_MAX);
+// The agent's own words are not a statement: they could say anything (that the item is in stock, or
+// when it arrives) and are only what the agent said. They stay in the attached record.
+export const templateNote = (statements) => statements.join(' ').slice(0, NOTE_MAX);
 
 // Tokens a note must not invent: hashes, anything with a digit (amounts, dates, IDs) and SKUs.
 const TOKENS = /\b[0-9a-f]{12,}\b|\$?\d[\d,.:/-]*\d|\$?\d|\b[A-Z0-9]{2,}(?:-[A-Z0-9]+)+\b/g;

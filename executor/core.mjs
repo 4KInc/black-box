@@ -25,7 +25,7 @@ import { join } from 'node:path';
 import { accessToken, API, paypal } from '../lib/paypal.mjs';
 import { loadRecord } from '../recorder/recorder.mjs';
 import { evaluateCase } from '../engine/case.mjs';
-import { HELD_WHY, movesMoney, toValue } from '../engine/actions.mjs';
+import { HELD_WHY, IN_SCOPE_REASONS, movesMoney, toValue } from '../engine/actions.mjs';
 import { enrolmentFrom } from '../mandate/server.mjs';
 import { flagInjection } from '../flagger/flagger.mjs';
 import { evidenceFile, evidenceNote, statementsFor, templateNote } from '../evidence/evidence.mjs';
@@ -195,8 +195,10 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
   if (held) return { ...out, status: 'held' };
 
   const p = result.plan;
-  if (!execute || p.action === 'none') return { ...out, status: 'planned' };
   const hold = (why, extra = {}) => { log.write({ step: 'hold', source, why, ...extra }); return { ...out, status: 'held-for-person', why }; };
+  // A reason Black Box does not answer (non-receipt, duplicates, unknown ones) goes to a person.
+  if (execute && !IN_SCOPE_REASONS.includes(dispute.reason)) return hold(`the dispute reason ${dispute.reason ?? '(none)'} is not one Black Box acts on`);
+  if (!execute || p.action === 'none') return { ...out, status: 'planned' };
 
   // Earlier attempts at the planned action (and at escalating, for evidence) come first: one that
   // succeeded means done; one whose outcome is unknown is settled from what PayPal shows now.

@@ -68,3 +68,31 @@ test('the evidence file carries the note, the numbered statements and the whole 
   assert.ok(f.includes(`1. ${S[0]}`));
   assert.deepEqual(JSON.parse(f.slice(f.indexOf('--- The sealed record (JSON) ---') + 33)), HONEST.record);
 });
+
+// What each reason's evidence may claim: authorisation, the amount, and that the item matches the
+// signed listing, which the record shows. Never delivery or condition, which it cannot.
+const BEYOND_THE_RECORD = /\b(deliver\w*|ship(ped|ping|ment)?|arriv\w*|tracking|courier|condition|damag\w*|undamaged|defect\w*|working order|good order|in stock)\b/i;
+const REASON_CLAIM = {
+  UNAUTHORISED: /buyer's own agent, under the authorisation above/,
+  INCORRECT_AMOUNT: /captured, \$129\.00, equals the signed listing price/,
+  MERCHANDISE_OR_SERVICE_NOT_AS_DESCRIBED: /exact item and price on the merchant's signed listing/,
+};
+for (const [reason, claim] of Object.entries(REASON_CLAIM)) {
+  test(`${reason}: the evidence claims only what the record shows`, () => {
+    const s = statementsFor({ ...HONEST, reason });
+    const all = s.join('\n');
+    assert.match(all, claim);
+    assert.doesNotMatch(all, BEYOND_THE_RECORD);
+    // "received" appears only for the text the model received, never for the item.
+    assert.deepEqual(all.match(/\breceiv\w*/gi), ['received']);
+    assert.match(all, /the exact text the model received/);
+    // The other reasons' claims are not made.
+    for (const [other, c] of Object.entries(REASON_CLAIM)) if (other !== reason) assert.doesNotMatch(all, c, other);
+  });
+}
+
+test('a reason outside the three gets no evidence statements at all', () => {
+  for (const reason of ['MERCHANDISE_OR_SERVICE_NOT_RECEIVED', 'DUPLICATE_TRANSACTION', 'CREDIT_NOT_PROCESSED', 'OTHER', undefined]) {
+    assert.equal(statementsFor({ ...HONEST, reason }), null, String(reason));
+  }
+});

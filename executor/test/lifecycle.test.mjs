@@ -342,3 +342,40 @@ test('payout refused (4xx): no batch was made, so the next attempt keeps the sam
     assert.deepEqual(w.posts.map((p) => p.sender_batch_header.sender_batch_id), ['blackbox-PP-D-PAY', 'blackbox-PP-D-PAY']);
   } finally { w.done(); }
 });
+
+// ---------- only where it fits the dispute reason ----------
+
+test('a reason Black Box does not answer (non-receipt, unknown) is held for a person, with nothing sent', async () => {
+  for (const reason of ['MERCHANDISE_OR_SERVICE_NOT_RECEIVED', 'SOMETHING_NEW']) {
+    const w = world(HONEST, { reason, links: ['provide_evidence', 'accept_claim'] });
+    try {
+      const out = await w.resolve();
+      assert.equal(out.status, 'held-for-person', reason);
+      assert.match(out.why, new RegExp(`${reason} is not one Black Box acts on`));
+      assert.equal(out.result.plan.action, 'none');
+      assert.equal(w.posts.length, 0);
+      assert.equal((await w.resolve({ execute: false })).status, 'planned', 'a dry run only plans');
+    } finally { w.done(); }
+  }
+});
+
+test('evidence on an inquiry PayPal does not let Black Box escalate is held, never sent', async () => {
+  const w = world(HONEST, { links: [], stage: 'INQUIRY' });
+  try {
+    const out = await w.resolve();
+    assert.equal(out.status, 'held-for-person');
+    assert.match(out.why, /inquiry PayPal does not let Black Box escalate/);
+    assert.equal(w.posts.length, 0);
+  } finally { w.done(); }
+});
+
+test('an action PayPal does not offer yet sends nothing, and is checked again later', async () => {
+  const w = world(MERCHANT_LIE, { links: [] });
+  try {
+    assert.equal((await w.resolve()).status, 'not-ready');
+    assert.equal(w.posts.length, 0);
+    w.dispute.links = [{ rel: 'accept_claim' }];
+    assert.equal((await w.resolve()).status, 'executed');
+    assert.equal(w.posts.length, 1);
+  } finally { w.done(); }
+});
