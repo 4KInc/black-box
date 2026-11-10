@@ -301,14 +301,21 @@ test('the judges\' page: the three outcomes, each a live dispute with PayPal\'s 
     const fixture = CASES.find((d) => d.id === id).paypal;
     const p = JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', fixture), 'utf8'));
     for (const v of [p.disputeId, p.orderId, p.captureId, p.customId]) assert.ok(card.includes(v), `${id} shows ${v}`);
-    assert.match(card, /custom_id<\/span> <span class="ok">✓ the same/);
-    assert.match(card, /Record checks: <span class="ok">6 of 6 pass/);
+    assert.match(card, /<span class="chip ok">custom_id = record hash<\/span><span class="chip ok">shop signature<\/span><span class="chip ok">6 of 6 checks<\/span>/);
     assert.match(card, new RegExp(`<a class="jgo" href="/lab/run\\?case=${id}">Re-run the engine`));
     assert.match(card, new RegExp(`href="/lab/run\\?case=${id}&amp;t=edit-page"`));
   }
-  assert.match(cards[0][3], /6AV05849L1468224H/); // P09's refund
-  assert.match(cards[1][3], /batch <span class="mono">ZLR5F7QM5LBQ4<\/span> SUCCESS/); // P06's payout
+  // What each dispute moved, from PayPal's report: the shop refunds $240; the buyer gets $90 and
+  // the app repays the shop $90; nothing moves when the sale stands.
+  const moved = (card) => [...card.matchAll(/<div class="jrow"><span>(\w+)<\/span>.*?<b[^>]*>([^<]+)<\/b>/g)].map(([, who, c]) => `${who} ${c}`);
+  assert.deepEqual(moved(cards[0][3]), ['Buyer +$240.00', 'Shop −$240.00', 'App $0.00']);
+  assert.match(cards[0][3], /<small>Refund<\/small><span>6AV05849L1468224H<\/span>/);
+  assert.deepEqual(moved(cards[1][3]), ['Buyer +$90.00', 'Shop $0.00', 'App −$90.00']);
+  assert.match(cards[1][3], /<small>Payout batch<\/small><span>ZLR5F7QM5LBQ4 SUCCESS<\/span>/);
+  assert.deepEqual(moved(cards[2][3]), []);
+  assert.match(cards[2][3], /No money moved/);
   assert.match(cards[2][3], /provide-evidence/);
+  assert.match(cards[0][3], /<b>3 min 54 s<\/b>/); // P09: dispute 23:10:19, refund sent 23:14:13
   // The quoted note is the one the agent was given.
   const p09 = JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', CASES.find((d) => d.id === 'P09').record), 'utf8'));
   assert.ok(p09.model_inputs[0].text.includes('bringing the final total to $119.00.'));

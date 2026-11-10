@@ -325,36 +325,69 @@ ol.flow::after{content:"";position:absolute;left:8%;top:59px;width:7px;height:7p
 .stop h3{margin:10px 0 4px;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--orange)}
 .stop p{margin:0;color:var(--ink-2)}.stop:hover{border-color:var(--orange)}
 
-/* ---- the judges' page: three live disputes, one card each ---- */
-.jcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;align-items:start}
-.jcard{display:flex;flex-direction:column;gap:14px;min-width:0;background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-top:3px solid var(--c);border-radius:4px;padding:18px clamp(14px,2vw,20px) 20px}
-.jcard .jtop{display:flex;align-items:center;gap:10px;font:700 13px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--c)}
-.jcard .jtop i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
-.jcard .jtop small{margin-left:auto;font:400 11px/1 var(--mono);letter-spacing:.06em;color:var(--ink-3)}
-.jcard .jl{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--c);border-radius:3px;font:700 14px/1 var(--display)}
-.jcard h2{font:700 clamp(30px,3.6vw,40px)/.95 var(--display);letter-spacing:.02em;text-transform:uppercase}
-.jcard>p{margin:0;color:var(--ink-2)}
-.jcard q{color:var(--ink);font-style:italic}
-.jcard dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;margin:0;font-size:13px}
-.jcard dt{font:400 10.5px/1.9 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
-.jcard dd{margin:0;min-width:0;overflow-wrap:anywhere}
-.jcard dd b{color:var(--c)}
-.jcard h3{font:400 10.5px/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);border-top:1px solid var(--rule);padding-top:12px}
-.jtape{list-style:none;margin:0;padding:0;display:grid;gap:7px;border-left:1px solid var(--rule-2);padding-left:12px}
+/* ---- the judges' page: three live disputes, one card each. Each card reads top to bottom as the
+   dispute did: what the agent spent against its limit, who the money moved between, PayPal's IDs,
+   and the seal that binds the record to the payment. ---- */
+.jhero{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 32px;padding-top:clamp(6px,2vw,18px)}
+.jhero h1{font:700 clamp(38px,5.4vw,64px)/.9 var(--display);text-transform:uppercase}
+.jhero h1 em{font-style:normal;color:var(--orange)}
+.jhero p{margin:0;max-width:52ch;color:var(--ink-2)}
+.jcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,330px),1fr));gap:16px;align-items:stretch}
+.jcard{display:flex;flex-direction:column;gap:18px;min-width:0;background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-top:3px solid var(--c);border-radius:4px;padding:18px clamp(14px,2vw,20px) 20px}
+.jtop{display:flex;align-items:center;gap:10px;font:700 13px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--c)}
+.jtop i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+.jtop small{margin-left:auto;font:400 11px/1 var(--mono);letter-spacing:.06em;color:var(--ink-3)}
+.jl{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--c);border-radius:3px;font:700 14px/1 var(--display)}
+.jcard h2{font:700 clamp(30px,3.4vw,38px)/.95 var(--display);text-transform:uppercase;margin-top:-4px}
+.jwhy{margin:-8px 0 0;color:var(--ink-2);font-size:13.5px}
+.jwhy q{color:var(--ink);font-style:italic}
+.jk{display:block;font:400 10.5px/1.4 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3);margin-bottom:8px}
+/* the budget gauge: the bar is what was paid, the notch is the buyer's limit */
+.jgauge{position:relative;height:12px;border-radius:2px;background:var(--bg-3)}
+.jgauge i{position:absolute;inset:0 auto 0 0;border-radius:2px;background:var(--ink-3)}
+.jgauge u{position:absolute;top:0;bottom:0;border-radius:0 2px 2px 0;background:repeating-linear-gradient(135deg,var(--red) 0 4px,oklch(.5 .17 27) 4px 8px)}
+.jgauge s{position:absolute;top:-5px;bottom:-5px;width:2px;background:var(--ink)}
+.jgl{display:flex;justify-content:space-between;align-items:baseline;gap:8px;white-space:nowrap;margin-top:8px;font:400 12px/1.3 var(--mono);color:var(--ink-3);font-variant-numeric:tabular-nums}
+.jgl b{font:700 20px/1 var(--display);color:var(--ink);letter-spacing:.02em}
+.jgl .over{color:var(--red)}
+/* who the money moved between: one diverging bar per party, centred on $0, to one scale */
+.jmoney{display:grid;gap:7px}
+.jrow{display:grid;grid-template-columns:62px minmax(0,1fr) 78px;align-items:center;gap:10px;font-size:12.5px}
+.jrow>span:first-child{font:600 14px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
+.jbar{position:relative;height:18px;background:linear-gradient(90deg,transparent calc(50% - .5px),var(--rule-2) calc(50% - .5px) calc(50% + .5px),transparent calc(50% + .5px))}
+.jbar i{position:absolute;top:2px;bottom:2px;border-radius:2px}
+.jbar i.in{left:50%;background:var(--green)}.jbar i.out{right:50%;background:var(--red)}
+.jrow b{text-align:right;font:400 13px/1 var(--mono);font-variant-numeric:tabular-nums;color:var(--ink)}
+.jrow b.z{color:var(--ink-3)}
+.jmoney small{font:400 11px/1.3 var(--mono);color:var(--ink-3)}
+.jnil{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px dashed var(--rule-2);border-radius:3px;color:var(--ink-2);font-size:13px}
+.jnil b{font:700 22px/1 var(--display);color:var(--c)}
+/* the settlement clock and PayPal's IDs */
+.jclock{display:flex;align-items:baseline;gap:10px;flex-wrap:wrap}
+.jclock b{font:700 30px/1 var(--display);color:var(--ink);font-variant-numeric:tabular-nums}
+.jclock span{color:var(--ink-3);font-size:12.5px}
+.jids{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:6px}
+.jid{min-width:0;padding:7px 9px;border:1px solid var(--rule);border-radius:3px;background:oklch(.13 .005 250)}
+.jid small{display:block;font:400 9.5px/1.3 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.jid span{display:block;font:400 12px/1.5 var(--mono);color:var(--ink);overflow-wrap:anywhere}
+.jseal{display:flex;flex-wrap:wrap;gap:6px}
+.jhash{font:400 11.5px/1.4 var(--mono);color:var(--ink-3);overflow-wrap:anywhere;margin-top:8px}
+.jhash b{color:var(--ink-2);font-weight:400}
+details.jtrail>summary{cursor:pointer;font:400 11px/1.4 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-2)}
+details.jtrail>summary:hover{color:var(--ink)}
+.jtape{list-style:none;margin:10px 0 0;padding:0 0 0 12px;display:grid;gap:7px;border-left:1px solid var(--rule-2)}
 .jtape li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;font-size:12.5px;line-height:1.45;position:relative}
 .jtape li::before{content:"";position:absolute;left:-16px;top:6px;width:7px;height:7px;border-radius:50%;background:var(--rule-2)}
 .jtape li.bb::before{background:var(--orange)}.jtape li.pp::before{background:var(--c)}
 .jtape .t{font:400 11px/1.6 var(--mono);color:var(--ink-3)}
 .jtape .mono{color:var(--ink-2)}
-.jhash{display:grid;gap:6px;font-size:12.5px}
-.jhash code{display:block;font:400 11.5px/1.5 var(--mono);color:var(--ink-2);background:var(--bg);border:1px solid var(--rule);border-radius:3px;padding:6px 8px;overflow-wrap:anywhere}
-.jhash .ok{color:var(--green)}.jhash .bad{color:var(--red)}
+.jacts{display:grid;gap:8px;margin-top:auto}
 .jgo{display:block;text-align:center;text-decoration:none;font:700 17px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:#140600;background:var(--orange);border-radius:3px;padding:14px 16px}
 .jgo:hover{background:var(--amber)}
 .jgo small{display:block;margin-top:6px;font:400 11px/1.3 var(--sans);letter-spacing:0;text-transform:none;color:oklch(.25 .06 45)}
 .jalt{display:block;text-align:center;text-decoration:none;font:600 14px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);border:1px solid var(--rule-2);border-radius:3px;padding:11px 14px}
 .jalt:hover{border-color:var(--orange)}
-.jmore{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-2)}
+.jmore{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 16px;font-size:12.5px;color:var(--ink-2)}
 .jnote{max-width:78ch;color:var(--ink-2)}
 details.more{margin-top:14px}
 details.more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px dashed var(--rule-2);border-radius:4px;font:400 11.5px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
@@ -1347,11 +1380,11 @@ ${SECTIONS.map(([kind, title, note, proves], i) => fold(n(i), title, note, resul
 // engine on the sealed record in the lab, so a judge sees the verdict decided again, not a video.
 export const JUDGE_CASES = [
   { id: 'P09', letter: 'A', head: 'The shop pays',
-    what: (r, m) => `The shop's page showed ${m.paid}. Its structured data, which shoppers never see, told AI agents: <q>…bringing the final total to $119.00.</q> ${esc(m.model)} believed it and paid ${m.paid} on a ${m.cap} budget.` },
+    what: (m) => `The shop hid a note only AI agents read: <q>…final total to $119.00.</q> ${esc(m.model)} believed it.` },
   { id: 'P06', letter: 'B', head: 'The shopping app pays',
-    what: (r, m) => `Nothing on the page misled the agent. ${esc(m.model)} paid ${m.paid} on a ${m.cap} budget by itself, and the buyer disputed the ${money(r.got.refundCents)} over the limit.` },
+    what: (m) => `Nothing misled the agent. ${esc(m.model)} overspent by itself.` },
   { id: 'P04', letter: 'C', head: 'The sale stands',
-    what: (r, m) => `${esc(m.model)} ignored the shop's hidden notes and paid ${m.paid}, within the ${m.cap} budget. The buyer disputed it anyway.` },
+    what: (m) => `${esc(m.model)} stayed within the limit. The buyer disputed it anyway.` },
 ];
 
 // "claude-haiku-4-5-20251001" as "Claude Haiku 4.5"; "Llama-3.2-1B" as "Llama 3.2 1B".
@@ -1359,23 +1392,52 @@ const judgeModel = (model) => modelName(model)
   .replace(/^claude-([a-z]+)-(\d+)-(\d+)(-\d{8})?$/, (_, n, a, b) => `Claude ${n[0].toUpperCase()}${n.slice(1)} ${a}.${b}`)
   .replace(/^(Llama)-(\d+\.\d+)-(\w+)$/, '$1 $2 $3');
 
+// What the dispute did to each party's money, from PayPal's own report: the settlement (not the
+// dispute fee) and the operator's payout. The purchase itself is not counted.
+export function disputeMoney(p) {
+  const settled = (party, type) => (p.after?.moneyMovements ?? []).filter((x) => x.party === party && x.type === type && x.reason === 'DISPUTE_SETTLEMENT').reduce((n, x) => n + x.amount.cents, 0);
+  const payout = p.payout?.amount.cents ?? 0;
+  const refund = settled('SELLER', 'DEBIT');
+  return { buyer: settled('BUYER', 'CREDIT'), shop: payout - refund, app: -payout, refund, payout };
+}
+
+const signed = (c) => (c > 0 ? `+${money(c)}` : c < 0 ? `−${money(-c)}` : '$0.00');
+const span = (from, to) => { const s = Math.round((Date.parse(to) - Date.parse(from)) / 1000); return `${Math.floor(s / 60)} min ${String(s % 60).padStart(2, '0')} s`; };
+
 function judgeCard(r, { letter, head, what }) {
   const p = r.c.paypal;
   const rec = r.c.record;
   const page = rec.fetches[rec.purchase.page_index];
   const v = r.got.verdict;
-  const m = { model: judgeModel(decisionOf(rec).model ?? 'unknown model'), paid: money(p.captured.cents), cap: money(rec.mandate.maxTotalCents) };
+  const paid = p.captured.cents;
+  const cap = rec.mandate.maxTotalCents;
+  const m = { model: judgeModel(decisionOf(rec).model ?? 'unknown model') };
+  // The gauge runs to the larger of the two, so the limit's notch and the overspend stay in view.
+  const top = Math.max(paid, cap) * 1.08;
+  const pct = (c) => `${((c / top) * 100).toFixed(1)}%`;
+  const gauge = `<div><span class="jk">Spent against the buyer's limit</span>
+<div class="jgauge" role="img" aria-label="Paid ${money(paid)} on a ${money(cap)} limit"><i style="width:${pct(Math.min(paid, cap))}"></i>${paid > cap ? `<u style="left:${pct(cap)};width:${pct(paid - cap)}"></u>` : ''}<s style="left:${pct(cap)}"></s></div>
+<div class="jgl"><span>paid <b>${money(paid)}</b></span>${paid > cap ? `<span class="over">${money(paid - cap)} over</span>` : '<span>within limit</span>'}<span>limit <b>${money(cap)}</b></span></div></div>`;
+  const d = disputeMoney(p);
+  const most = Math.max(Math.abs(d.buyer), Math.abs(d.shop), Math.abs(d.app), d.refund, 1);
+  const bar = (who, c) => `<div class="jrow"><span>${who}</span><span class="jbar">${c ? `<i class="${c > 0 ? 'in' : 'out'}" style="width:${((Math.abs(c) / most) * 50).toFixed(1)}%"></i>` : ''}</span><b${c ? '' : ' class="z"'}>${signed(c)}</b></div>`;
+  const moved = d.buyer || d.refund || d.payout
+    ? `<div class="jmoney" role="img" aria-label="Buyer ${signed(d.buyer)}, shop ${signed(d.shop)}, shopping app ${signed(d.app)}">
+${bar('Buyer', d.buyer)}${bar('Shop', d.shop)}${bar('App', d.app)}${d.payout && d.refund ? `<small>The shop refunded ${money(d.refund)}; the app repaid it ${money(d.payout)} through Payouts.</small>` : ''}</div>`
+    : `<div class="jnil"><b>$0.00</b><span>No money moved. PayPal has Black Box's evidence that the sale matched what the buyer approved.</span></div>`;
+  const ids = [['Dispute', p.disputeId], ['Order', p.orderId], ['Capture', p.captureId],
+    ...(p.after?.refundTransactions ?? []).map((t) => ['Refund', t.id]),
+    ...(p.payout ? [['Payout batch', `${p.payout.batchId} ${p.payout.status}`]] : [])];
   const step = (at, text, cls = '') => `<li class="${cls}"><span class="t">${clock(at)}</span><span>${text}</span></li>`;
-  const refund = p.after?.refundTransactions?.[0];
   const credit = buyerCredit(p);
   const tape = [
-    step(p.orderCreatedAt, `Order <span class="mono">${esc(p.orderId)}</span> captured: ${m.paid} (capture <span class="mono">${esc(p.captureId)}</span>)`),
-    step(p.filedAt, `Buyer opens dispute <span class="mono">${esc(p.disputeId)}</span>: ${esc(reasonPlain(p.reason))}`),
+    step(p.orderCreatedAt, `Order captured: ${money(paid)}`),
+    step(p.filedAt, `Buyer opens the dispute: ${esc(reasonPlain(p.reason))}`),
     p.escalated ? step(p.escalated.at, 'Black Box escalates the inquiry to a claim, so evidence can be sent', 'bb') : '',
     step(p.executed.at, `Black Box sends <span class="mono">${esc(p.executed.action)}</span> · HTTP ${esc(p.executed.httpStatus)}`, 'bb'),
-    credit ? step(p.after.updatedAt, `PayPal refunds the buyer ${money(credit.amount.cents)}${refund ? ` (refund <span class="mono">${esc(refund.id)}</span>)` : ''}`, 'pp') : '',
-    p.executed.action === 'provide-evidence' ? step(p.executed.at, 'PayPal has the checked note and the record; no money moved', 'pp') : '',
-    p.payout ? step(p.payout.at, `Payouts: the shopping app repays the shop ${money(p.payout.amount.cents)} · batch <span class="mono">${esc(p.payout.batchId)}</span> ${esc(p.payout.status)}`, 'pp') : '',
+    credit ? step(p.after.updatedAt, `PayPal refunds the buyer ${money(credit.amount.cents)}`, 'pp') : '',
+    p.executed.action === 'provide-evidence' ? step(p.executed.at, 'PayPal has the checked note and the record', 'pp') : '',
+    p.payout ? step(p.payout.at, `Payouts: the shopping app repays the shop ${money(p.payout.amount.cents)} · ${esc(p.payout.status)}`, 'pp') : '',
   ].join('');
   const checks = RECORD_CHECKS.filter((k) => r.j.facts[k]).length;
   const bound = p.customId === r.c.hash;
@@ -1384,29 +1446,27 @@ function judgeCard(r, { letter, head, what }) {
   return `<article class="jcard ${v}" id="${r.def.id}">
 <div class="jtop"><span class="jl">${letter}</span><i></i>${esc(label(v))} · rule ${r.got.rule}<small>${esc(r.def.id)} · ${day(p.filedAt)}</small></div>
 <h2>${head}</h2>
-<p>${what(r, m)}</p>
-<dl><dt>Decided</dt><dd><b>${esc(label(v))}</b>, rule ${r.got.rule}: ${esc(RULE_SHORT[r.got.rule] ?? '')}</dd>
-<dt>PayPal action</dt><dd><span class="mono">${esc(r.got.action)}</span> → ${esc(paypalStatus(p))}${p.payout ? `, and ${money(p.payout.amount.cents)} from the app to the shop` : ''}</dd>
-<dt>Who acted</dt><dd>No one at the keyboard: PayPal's <span class="mono">${esc(String(p.trigger ?? '').replace(/^webhook /, '').replace(/ \(.*\)$/, ''))}</span> webhook woke the autopilot</dd></dl>
-<h3>In the PayPal sandbox</h3>
-<ol class="jtape">${tape}</ol>
-<h3>Bound to the payment</h3>
-<div class="jhash"><span>Record SHA-256</span><code>${esc(r.c.hash)}</code>
-<span>PayPal order <span class="mono">custom_id</span> ${bound ? '<span class="ok">✓ the same</span>' : '<span class="bad">✗ differs</span>'}</span>
-<span>Shop page signature, Ed25519 key <span class="mono">${esc(page.verification.keyid.slice(0, 16))}…</span> · page SHA-256 <span class="mono">${esc(page.body_sha256.slice(0, 16))}…</span></span>
-<span>Record checks: <span class="${checks === RECORD_CHECKS.length ? 'ok' : 'bad'}">${checks} of ${RECORD_CHECKS.length} pass</span></span></div>
-${labHref ? `<a class="jgo" href="${esc(run)}">Re-run the engine →<small>The lab decides it again from the sealed record, on the server, now</small></a>
+<p class="jwhy">${what(m)}</p>
+${gauge}
+<div><span class="jk">What the dispute moved</span>${moved}</div>
+<div><span class="jk">Settled with no one at the keyboard</span>
+<div class="jclock"><b>${span(p.filedAt, p.executed.at)}</b><span>from the dispute to <span class="mono">${esc(r.got.action)}</span> · HTTP ${esc(p.executed.httpStatus)}</span></div></div>
+<div><span class="jk">PayPal sandbox IDs</span><div class="jids">${ids.map(([k, x]) => `<div class="jid"><small>${k}</small><span>${esc(x)}</span></div>`).join('')}</div></div>
+<div><span class="jk">Sealed into the payment</span>
+<div class="jseal"><span class="chip ${bound ? 'ok' : 'bad'}">custom_id = record hash</span><span class="chip ${page.verification.ok ? 'ok' : 'bad'}">shop signature</span><span class="chip ${checks === RECORD_CHECKS.length ? 'ok' : 'bad'}">${checks} of ${RECORD_CHECKS.length} checks</span></div>
+<div class="jhash"><b>SHA-256</b> ${esc(r.c.hash)}</div></div>
+<details class="jtrail"><summary>The PayPal trail, minute by minute</summary><ol class="jtape">${tape}</ol></details>
+<div class="jacts">${labHref ? `<a class="jgo" href="${esc(run)}">Re-run the engine →<small>The lab decides it again from the sealed record, on the server, now</small></a>
 <a class="jalt" href="${esc(run)}&amp;t=edit-page">Change one letter of the page →</a>` : ''}
-<div class="jmore"><a href="/bench/${r.def.id}">The full replay</a>${ledger ? `<a href="${esc(ledger)}">The money, in the ledger</a>` : ''}<a href="/bench/${r.def.id}/report.pdf">The case report (PDF)</a></div>
+<div class="jmore"><a href="/bench/${r.def.id}">The full replay</a>${ledger ? `<a href="${esc(ledger)}">The ledger</a>` : ''}<a href="/bench/${r.def.id}/report.pdf">Case report (PDF)</a></div></div>
 </article>`;
 }
 
 export function judgePage(results) {
   const picked = JUDGE_CASES.map((s) => ({ s, r: results.find((r) => r.def.id === s.id) })).filter(({ r }) => r?.c.paypal?.executed);
-  return layout('Black Box · for judges', `<section class="hero"><div><div class="eyebrow"><b>●</b> For judges · 2 minutes</div>
+  return layout('Black Box · for judges', `<section class="jhero"><div><div class="eyebrow"><b>●</b> For judges · 2 minutes</div>
 <h1>Three disputes, <em>three outcomes</em></h1></div>
-<div><p>Each is a real dispute in the PayPal sandbox, settled by Black Box with no one at the keyboard. The IDs are PayPal's own.</p>
-<p>Press <b>Re-run the engine</b> to watch it decide again from the sealed record. No password and no PayPal calls.</p></div></section>
-<section class="sec"><div class="jcards">${picked.map(({ s, r }) => judgeCard(r, s)).join('')}</div>
+<p>Three real disputes in the PayPal sandbox, each settled by Black Box on its own. Press <b>Re-run the engine</b> to watch one decided again. No password, no PayPal calls.</p></section>
+<section class="sec" style="margin-top:28px"><div class="jcards">${picked.map(({ s, r }) => judgeCard(r, s)).join('')}</div>
 <p class="jnote" style="margin-top:22px">A live run from scratch takes about 15 minutes: the buyer signs in to the sandbox to pay and to dispute, and PayPal reports the dispute 3 to 12 minutes later. ${demoHref ? `The <a href="${esc(demoHref)}">live demo</a> runs it, with the operator password from the testing instructions.` : ''} Or check every verdict yourself: <span class="mono">npm run bench</span>.</p></section>`, { active: 'judge' });
 }
