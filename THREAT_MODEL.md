@@ -67,8 +67,15 @@ It ends with what Black Box has to trust, and what it does not cover.
 ### Black Box itself
 
 - **Acts only when told to:** dry run unless `AUTO_EXECUTE=on`.
-- **Acts once, and only when PayPal allows it:** a dispute is skipped unless PayPal currently
-  offers the planned action, and a logged success, or a lock, means it is never sent twice.
+- **Acts only when PayPal allows it, and never blindly twice:** it acts only on an open dispute
+  whose reason it answers, and only when PayPal currently offers the planned action. Each action
+  (escalate, accept-claim, make-offer, provide-evidence, a payout) is an attempt logged before the
+  call, with a stable action ID and the hash of its exact payload, and its result is logged after.
+  A logged success means done. An attempt with no known result is settled from what PayPal
+  reports on the next run: done if PayPal shows it, resent with the same payload only if PayPal
+  shows it did not happen and still offers it, otherwise held for a person. A different payload for
+  the same action is held. A payout batch is pending until its item is SUCCESS, no new batch is made
+  while one is pending or unknown, and only an item PayPal reports as failed gets a new one.
 - **Leaves a trail:** every PayPal call, request and response is appended to
   `records/executions/<dispute>.jsonl`.
 - **Fails closed without the flagger:** if the flagger errors, has no key or is turned off, no
@@ -122,10 +129,30 @@ It ends with what Black Box has to trust, and what it does not cover.
 - **Hiding methods code does not list** (a 1px screen-reader box, for one) are caught only by the
   flagger (F03, F04). The list grows as tricks are found; each one missed costs a review, not a
   wrong payment.
+- **The action lock is local, so the service must run as one instance.** The lock that keeps two
+  runs from sending the same action at once is a file created exclusively on the service's own
+  disk (`records/executions/<dispute>.lock`; in the hosted demo, the mounted Cloud Storage bucket,
+  where exclusive create is only as reliable as the mount). It works only among processes that
+  share that disk. The live service runs with
+  `--max-instances 1`; a second instance, or a second machine with its own disk, could send the
+  same action twice. A lock left by a run that died is taken over after five minutes.
+- **No proof of exactly-once.** The attempt log narrows a duplicate down to one case: the process
+  dies after PayPal accepted the call and before the result is logged. The next run then relies on
+  PayPal's dispute showing the action (a buyer credit, a seller offer, seller evidence, a claim
+  stage). Where PayPal shows neither that it happened nor that it did not, the dispute is held for a
+  person rather than resent. PayPal's dispute actions take no idempotency key here, and the tests
+  run against a scripted PayPal, so they show the logic, not PayPal's behaviour under failure.
+- **A payout whose response was lost is held.** Without the batch ID PayPal returned, Black Box
+  cannot look the batch up, so it holds rather than create another; the fixed `sender_batch_id`
+  also makes PayPal refuse a second batch for the same attempt.
+- **"Not offered yet" is re-checked, not held at once.** When PayPal does not yet offer the
+  planned action (evidence just after an inquiry was escalated, for one), nothing is sent and the
+  autopilot checks again, ten times at most, before leaving the dispute to a person.
 
 ## Not covered
 
-- Delivery problems ("not received"): the normal PayPal process applies (R05).
+- Delivery problems ("not received"): Black Box sends nothing and holds the dispute for a person;
+  the normal PayPal process applies (R05). Its evidence never speaks to delivery or condition.
 - Real money: everything runs in the PayPal sandbox.
 - Multi-item carts, shops that render with JavaScript, and agents that browse beyond one shop.
 - A general RFC 9421 implementation: the signature code covers only the profile Black Box uses.

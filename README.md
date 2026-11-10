@@ -31,7 +31,7 @@ real AI agent shops at a hosted demo shop, and Black Box settles the buyer's Pay
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
 **Submission state:** tag `v1.0-submission`, 8 November 2026: 62 bench cases (nine live disputes,
-10 attacks), 246 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
+10 attacks), 277 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
 Cloud Run revision `black-box-00076-55t`.
 
 ## The problem
@@ -217,11 +217,21 @@ approved with the buyer's passkey and handled by the autopilot with no one at th
    Without a flagger answer (an error, no key, or turned off) no money moves: the executor keeps
    code's verdict but holds every AGENT and MERCHANT refund or offer for a person. Evidence for an
    honest purchase (USER) moves no money and still goes.
-7. **PayPal carries it out,** at most once: `accept-claim` (a refund), a partial refund or
-   `make-offer` for the amount over budget, or `provide-evidence` to defend an honest purchase.
-   Before acting, Black Box checks that PayPal currently offers that action on the dispute; a lock
-   per dispute and its log mean a repeated webhook or check never sends it twice, and every PayPal
-   request and response is appended to `records/executions/<dispute>.jsonl`.
+7. **PayPal carries it out:** `accept-claim` (a refund), a partial refund or `make-offer` for the
+   amount over budget, or `provide-evidence` to defend an honest purchase. Before acting, Black Box
+   checks that the dispute is open and that PayPal currently offers that action; a dispute reason
+   it does not answer (non-receipt, for one) goes to a person. Every PayPal request and response is
+   appended to `records/executions/<dispute>.jsonl`, and each action is an *attempt*: logged before
+   the call with a stable action ID and a hash of the exact payload, and its result after. A
+   repeated webhook or check finds the result and sends nothing. An attempt whose result never
+   arrived (a crash, a timeout, a 5xx) is never resent blindly: the next run reads the dispute
+   PayPal reports, records the action as done if PayPal shows it, resends the same payload only if
+   PayPal shows it did not happen and still offers it, and otherwise holds the dispute for a person
+   ("outcome unknown"). A payload that differs from the earlier attempt's is held too. The case page
+   shows where the money stands (refund pending or done, the shopping app's repayment pending, done
+   or failed, outcome unknown) apart from the verdict. The lock that stops two runs sending at once
+   is a file on the service's disk, so the live service runs as one instance; see the
+   [threat model](https://github.com/4KInc/black-box/blob/main/THREAT_MODEL.md#known-limitations).
    PayPal takes evidence only on a claim, so an inquiry is escalated first. The evidence is a short note for the PayPal reviewer, the statements it was written from and
    the full record. Code writes the statements and an AI may reword them into the note. The check
    on that wording is code, not a model: every number, amount, date, SKU and hash in the note must
@@ -386,7 +396,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 246 tests
+npm test                    # 277 tests
 npm run bench               # 62 cases: every verdict and rule, nine live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
