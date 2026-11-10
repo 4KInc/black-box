@@ -9,7 +9,7 @@
   const money = (c) => (Number.isInteger(c) ? `$${(c / 100).toFixed(2)}` : '–');
   const signed = (c) => (Number.isInteger(c) ? `${c > 0 ? '+' : c < 0 ? '−' : ''}$${(Math.abs(c) / 100).toFixed(2)}` : '');
   const n = (x) => x.toLocaleString('en-US');
-  const LABEL = { MERCHANT: 'MERCHANT', AGENT: 'AGENT', USER: 'USER', NEEDS_A_HUMAN: 'NEEDS A HUMAN' };
+  const LABEL = { MERCHANT: 'Shop at fault', AGENT: 'Agent at fault', USER: 'Purchase stands', NEEDS_A_HUMAN: 'Needs a human' };
   const PICK = '<p class="hint">Pick a row to see its details.</p>';
   const VERDICT_TEXT = { MERCHANT: 'Shop at fault', AGENT: 'Agent at fault', USER: 'Purchase stands', NEEDS_A_HUMAN: 'Needs a human' };
   const FAMILY = { claude: 'Claude', gpt: 'GPT', gemini: 'Gemini', grok: 'Grok', muse: 'Muse', open: 'Open models' };
@@ -110,7 +110,7 @@ ${kv('PayPal action', r.outcome + (r.held ? ' (held until the AI check answers)'
 ${kv('Expected', r.expected)}
 ${kv('Dispute', r.disputeId ? `${r.disputeId}${r.live ? ' · live sandbox' : ' · simulated'}` : '')}
 ${kv('Order', r.orderId)}${kv('Capture', r.captureId)}
-${r.executed.map((e) => kv('Sent to PayPal', e)).join('')}
+${r.executed.map((e) => kv('Black Box', e)).join('')}
 ${kv('Payout', r.payout)}
 ${kv('custom_id', r.customId)}
 ${kv('Record hash', r.recordHash)}

@@ -6,7 +6,7 @@
 // The verdicts it shows are the bench's own results: AG Grid only displays them.
 
 import { decide, FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES } from '../engine/verdict.mjs';
-import { cellKind, decisionOf, FACT, failsText, label, layout, modelFamily, modelName, planPlain, reasonPlain, RULE_SHORT, SECTIONS, setupOf, studySummary } from '../replay/page.mjs';
+import { actionPlain, cellKind, triggerPlain, decisionOf, FACT, failsText, label, layout, modelFamily, modelName, planPlain, reasonPlain, RULE_SHORT, SECTIONS, setupOf, studySummary } from '../replay/page.mjs';
 
 export const AG_GRID = {
   version: '36.2.0',
@@ -16,6 +16,8 @@ export const AG_GRID = {
 // No 'unsafe-eval': the explorer gives AG Grid functions, never string expressions.
 export const EXPLORER_CSP = "default-src 'none'; script-src 'self' https://cdn.jsdelivr.net; style-src 'unsafe-inline'; img-src data:; font-src 'self'; base-uri 'none'; form-action 'none'";
 
+// What Black Box asks PayPal to do, as a ledger step.
+const ACTS = { 'accept-claim': 'accepts the claim', 'accept-claim-partial': 'accepts part of the claim', 'provide-evidence': 'sends PayPal the evidence', 'make-offer': 'offers the buyer a refund' };
 const live = (p) => Boolean(p?.disputeId) && !/^BENCH-/.test(p.disputeId);
 const GROUP = Object.fromEntries(SECTIONS.map(([kind, title]) => [kind, title]));
 const KIND_LABEL = { hit: 'the lie caused it', anyway: 'overspends anyway', clean: 'never fooled', mixed: 'the lie caused it', none: '' };
@@ -51,7 +53,7 @@ function scenarioRow(r) {
     captureId: p.captureId ?? null,
     customId: p.customId ?? null,
     recordHash: r.c.hash,
-    executed: [].concat(p.executed ?? []).map((e) => `${e.action} · HTTP ${e.httpStatus}`),
+    executed: [].concat(p.executed ?? []).map((e) => actionPlain(e.action)),
     payout: p.payout ? `${p.payout.from} → ${p.payout.to} · batch ${p.payout.batchId} ${p.payout.status}` : null,
     pageUrl: page.url ?? null,
     signatureInput: h['signature-input'] ?? null,
@@ -78,14 +80,14 @@ export function ledgerRows(bench) {
     const p = r.c.paypal;
     if (!live(p) || seen.has(p.disputeId)) continue;
     seen.add(p.disputeId);
-    const base = { caseId: r.def.id, disputeId: p.disputeId, verdict: r.got.verdict, rule: r.got.rule, orderId: p.orderId, captureId: p.captureId, trigger: p.trigger ?? null };
+    const base = { caseId: r.def.id, disputeId: p.disputeId, verdict: r.got.verdict, rule: r.got.rule, orderId: p.orderId, captureId: p.captureId, trigger: p.trigger ? triggerPlain(p.trigger) : null };
     const row = (o) => rows.push({ ...base, buyerCents: null, shopCents: null, appCents: null, http: null, ref: null, by: 'PayPal', ...o });
     const paid = p.captured?.cents ?? null;
     row({ at: p.orderCreatedAt, step: 'Buyer pays the shop (order captured)', buyerCents: -paid, shopCents: paid, ref: p.captureId });
     row({ at: p.filedAt, step: `Buyer disputes: ${reasonPlain(p.reason)}`, ref: p.disputeId, by: 'the buyer' });
     if (p.escalated?.at) row({ at: p.escalated.at, step: 'Black Box escalates the inquiry to a claim', http: 200, ref: p.escalated.debugId, by: 'Black Box' });
     if (p.executed) {
-      row({ at: p.executed.at, step: `Black Box sends ${p.executed.action}`, http: p.executed.httpStatus, ref: p.executed.debugId, by: 'Black Box' });
+      row({ at: p.executed.at, step: `Black Box ${ACTS[r.got.action] ?? ACTS[p.executed.action.split(' ')[0]] ?? actionPlain(p.executed.action)}`, http: p.executed.httpStatus, ref: p.executed.debugId, by: 'Black Box' });
     } else {
       row({ at: p.filedAt, step: 'Held: no money moves until a person decides', by: 'Black Box' });
     }
