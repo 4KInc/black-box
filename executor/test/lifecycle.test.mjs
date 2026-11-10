@@ -6,7 +6,8 @@ import assert from 'node:assert/strict';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { actionDone, attempts, executionLog, resolveDispute, STALE_LOCK_MS } from '../core.mjs';
+import { actionDone, attempts, executionLog, LONGEST_CALL_MS, resolveDispute, STALE_LOCK_MS } from '../core.mjs';
+import { createPayPal, PAYPAL_TIMEOUT_MS, UPLOAD_TIMEOUT_MS } from '../../lib/paypal.mjs';
 import { createAutopilot } from '../autopilot.mjs';
 import { payoutDue, reimburse } from '../payout.mjs';
 import { payoutAttempts } from '../../replay/cases.mjs';
@@ -378,4 +379,120 @@ test('an action PayPal does not offer yet sends nothing, and is checked again la
     assert.equal((await w.resolve()).status, 'executed');
     assert.equal(w.posts.length, 1);
   } finally { w.done(); }
+});
+
+// ---------- request timeouts ----------
+
+// PayPal over a scripted fetch, through the real client (lib/paypal.mjs) and its timeout. hang(path)
+// says which calls never answer: they end only when the client's timeout aborts them.
+function fetchWorld(w, { timeoutMs = 40 } = {}) {
+  const json = (data, status = 200) => new Response(JSON.stringify(data), { status, headers: { 'content-type': 'application/json', 'paypal-debug-id': 'dbg' } });
+  const real = w.client.paypal;
+  const f = { calls: [], hang: () => false, signals: 0 };
+  f.fetch = async (url, init) => {
+    const path = url.replace(/^https?:\/\/[^/]+/, '');
+    f.calls.push({ method: init.method, path });
+    if (init.signal) f.signals++;
+    if (f.hang(path, init.method)) {
+      if (init.method === 'POST') w.posts.push({ path, json: JSON.parse(init.body) });
+      return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+    }
+    if (path === '/v1/oauth2/token') return json({ access_token: 'T', expires_in: 3600 });
+    const r = await real(init.method, path, init.body ? JSON.parse(init.body) : undefined);
+    return json(r.data, r.status);
+  };
+  f.client = { ...createPayPal({ id: 'id', secret: 'secret' }, { timeoutMs, fetch: f.fetch }), evidence: w.client.evidence };
+  return f;
+}
+
+test('every PayPal call carries a timeout: 30 s, and 60 s for the evidence upload', async () => {
+  assert.equal(PAYPAL_TIMEOUT_MS, 30_000);
+  assert.equal(UPLOAD_TIMEOUT_MS, 60_000);
+  const w = world(MERCHANT_LIE);
+  try {
+    const f = fetchWorld(w);
+    assert.equal((await w.resolve({ client: f.client })).status, 'executed');
+    assert.ok(f.calls.length >= 5);
+    assert.equal(f.signals, f.calls.length, 'the token request and every API call are given a signal');
+  } finally { w.done(); }
+});
+
+test('a hung call times out and is recorded as an unknown outcome; the next run settles it from PayPal', async () => {
+  const w = world(MERCHANT_LIE);
+  try {
+    const f = fetchWorld(w);
+    // PayPal carries the refund out, but the answer never comes back.
+    f.hang = (path, method) => method === 'POST' && path.endsWith('/accept-claim');
+    const origPost = w.post;
+    const started = Date.now();
+    const first = await w.resolve({ client: f.client });
+    assert.ok(Date.now() - started < 2000, 'the client gave up instead of waiting');
+    assert.equal(first.status, 'outcome-unknown');
+    const result = w.log().findLast((e) => e.step === 'accept-claim REFUND');
+    assert.equal(result.status, null);
+    assert.match(result.error, /timeout|aborted/i);
+    assert.equal(attempts(w.log())[0].state, 'unknown');
+    // It had reached PayPal: the dispute now shows the refund.
+    w.carryOut('/accept-claim', w.posts[0].json);
+    f.hang = () => false;
+    w.post = origPost;
+    const second = await w.resolve({ client: f.client });
+    assert.equal(second.status, 'already-done');
+    assert.equal(w.posts.length, 1, 'not sent again');
+    assert.ok(w.log().some((e) => e.step === 'reconciled'));
+  } finally { w.done(); }
+});
+
+test('a hung call that never reached PayPal is sent again on the next run, same ID and payload', async () => {
+  const w = world(MERCHANT_LIE);
+  try {
+    const f = fetchWorld(w);
+    f.hang = (path, method) => method === 'POST' && path.endsWith('/accept-claim');
+    assert.equal((await w.resolve({ client: f.client })).status, 'outcome-unknown');
+    f.hang = () => false;
+    assert.equal((await w.resolve({ client: f.client })).status, 'executed');
+    const tries = w.log().filter((e) => e.step === 'attempt');
+    assert.deepEqual([tries.length, tries[0].payloadHash === tries[1].payloadHash], [2, true]);
+  } finally { w.done(); }
+});
+
+test('the stale-lock threshold is at least 5 minutes and well over the longest call', () => {
+  assert.ok(STALE_LOCK_MS >= 5 * 60_000);
+  assert.equal(LONGEST_CALL_MS, PAYPAL_TIMEOUT_MS + UPLOAD_TIMEOUT_MS);
+  assert.ok(STALE_LOCK_MS >= 3 * LONGEST_CALL_MS, `${STALE_LOCK_MS} vs ${LONGEST_CALL_MS}`);
+});
+
+test('a lock is never taken over before the threshold, however close to it', async () => {
+  const w = world(MERCHANT_LIE);
+  try {
+    w.post = async () => new Promise(() => {});
+    w.resolve();
+    await sleep(30);
+    w.post = async (path, json) => { w.carryOut(path, json); return { ok: true, status: 200, data: {} }; };
+    for (const age of [0, LONGEST_CALL_MS, STALE_LOCK_MS - 5000]) {
+      crashAfterAttempt(w, { lockAgeMs: age });
+      assert.equal((await w.resolve()).status, 'in-progress', `lock ${age} ms old`);
+      assert.equal(w.posts.length, 1);
+    }
+    crashAfterAttempt(w, { lockAgeMs: STALE_LOCK_MS + 1000 });
+    assert.equal((await w.resolve()).status, 'executed');
+  } finally { w.done(); }
+});
+
+test('a payout call that hangs times out and is held, with no second batch', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'bb-life-pay-'));
+  try {
+    const log = executionLog(root, 'PP-D-PAY');
+    for (const e of due) log.write(e);
+    let posts = 0;
+    const hung = async (url, init) => {
+      if (url.endsWith('/v1/oauth2/token')) return new Response(JSON.stringify({ access_token: 'T', expires_in: 3600 }), { status: 200 });
+      posts++;
+      return new Promise((_, reject) => init.signal.addEventListener('abort', () => reject(init.signal.reason)));
+    };
+    const client = createPayPal({ id: 'id', secret: 'secret' }, { timeoutMs: 40, fetch: hung });
+    assert.equal((await reimburse('PP-D-PAY', { root, client, execute: true })).status, 'outcome-unknown');
+    assert.equal((await reimburse('PP-D-PAY', { root, client, execute: true })).status, 'held-for-person');
+    assert.equal(posts, 1);
+  } finally { rmSync(root, { recursive: true, force: true }); }
 });

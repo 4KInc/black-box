@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createAutopilot, flaggerWarning, heldDelay } from '../autopilot.mjs';
+import { createAutopilot, flaggerWarning, heldDelay, MAX_RETRIES, RETRY_MS } from '../autopilot.mjs';
 import { executionLog } from '../core.mjs';
 import { createWebhookReceiver } from '../webhook.mjs';
 import { pollOnce } from '../watch.mjs';
@@ -104,6 +104,21 @@ test('an unknown outcome or a busy lock is checked again later; a hold for a per
   await sleep(30);
   assert.equal(person.calls.length, 1);
   assert.equal(ap2.status('PP-D-556'), 'held-for-person');
+});
+
+test('"not ready" re-checks are spaced by the retry interval, ten at most, never a tight loop', async () => {
+  assert.deepEqual([RETRY_MS, MAX_RETRIES], [60_000, 10]); // about ten minutes, then a person
+  const times = [];
+  const never = async () => { times.push(Date.now()); return { status: 'not-ready' }; };
+  const ap = createAutopilot({ root, execute: true, resolve: never, retryMs: 40, maxRetries: 4 });
+  await ap.handleWithRetry('PP-D-557', 'webhook');
+  await sleep(20);
+  assert.equal(times.length, 1, 'no re-check before the interval');
+  await until(() => times.length >= 4, 2000);
+  await sleep(60);
+  assert.equal(times.length, 4);
+  for (let i = 1; i < times.length; i++) assert.ok(times[i] - times[i - 1] >= 35, `re-check ${i} came ${times[i] - times[i - 1]} ms after the last`);
+  assert.equal(ap.status('PP-D-557'), 'gave-up');
 });
 
 test('an escalated inquiry is retried with a fresh count until the evidence is sent', async () => {

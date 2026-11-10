@@ -29,9 +29,15 @@ export function flaggerWarning(env = process.env) {
   return why && `WARNING: ${why}, so the AI flagger cannot run. Every money-moving verdict (AGENT or MERCHANT refunds and offers) will be HELD for a person; only USER evidence is sent.`;
 }
 
+// A dispute PayPal does not offer the action on yet is checked again RETRY_MS later, at most
+// MAX_RETRIES times (about ten minutes), then left to a person. The watcher's poll (every 30 s)
+// also looks at it, so it is never checked more often than that.
+export const RETRY_MS = 60_000;
+export const MAX_RETRIES = 10;
+
 export function createAutopilot({
   root, execute = false, resolve = resolveDispute,
-  retryMs = 60_000, maxRetries = 10, report = () => {},
+  retryMs = RETRY_MS, maxRetries = MAX_RETRIES, report = () => {},
   heldBaseMs = 60_000, heldMaxMs = 30 * 60_000, now = () => Date.now(),
 }) {
   const queue = new Map();    // disputeId -> promise of the handling in progress

@@ -135,19 +135,25 @@ It ends with what Black Box has to trust, and what it does not cover.
   where exclusive create is only as reliable as the mount). It works only among processes that
   share that disk. The live service runs with
   `--max-instances 1`; a second instance, or a second machine with its own disk, could send the
-  same action twice. A lock left by a run that died is taken over after five minutes.
+  same action twice. A lock left by a run that died is taken over after five minutes. That is over
+  three times the longest a call can take: every PayPal call gives up after 30 seconds, and the
+  evidence upload after 60, so no lock is taken over while its call may still be in flight.
 - **No proof of exactly-once.** The attempt log narrows a duplicate down to one case: the process
   dies after PayPal accepted the call and before the result is logged. The next run then relies on
   PayPal's dispute showing the action (a buyer credit, a seller offer, seller evidence, a claim
   stage). Where PayPal shows neither that it happened nor that it did not, the dispute is held for a
   person rather than resent. PayPal's dispute actions take no idempotency key here, and the tests
   run against a scripted PayPal, so they show the logic, not PayPal's behaviour under failure.
+- **A timeout is an unknown outcome, not a refusal.** A call that times out may still have reached
+  PayPal. It is logged with no result and settled from PayPal's dispute state on the next run, like
+  any other unknown outcome. If PayPal shows the action only after that run has read it, the
+  action could be sent twice.
 - **A payout whose response was lost is held.** Without the batch ID PayPal returned, Black Box
   cannot look the batch up, so it holds rather than create another; the fixed `sender_batch_id`
   also makes PayPal refuse a second batch for the same attempt.
 - **"Not offered yet" is re-checked, not held at once.** When PayPal does not yet offer the
   planned action (evidence just after an inquiry was escalated, for one), nothing is sent and the
-  autopilot checks again, ten times at most, before leaving the dispute to a person.
+  autopilot checks again a minute later, ten times at most, before leaving the dispute to a person.
 
 ## Not covered
 

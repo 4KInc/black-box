@@ -1,6 +1,6 @@
 # Hardening: the execution lifecycle, settlement state, and evidence by reason
 
-Branch `hardening`, from `main` at `e8505c3`. Four items, one commit each. No network calls: every
+Branch `hardening`, from `main` at `e8505c3`. Five items, one commit each. No network calls: every
 test runs against a scripted PayPal and the committed fixtures. No fixture, bench expectation,
 policy, verdict enum or record format changed.
 
@@ -9,7 +9,8 @@ policy, verdict enum or record format changed.
 | 1. Unknown outcomes are held, never blindly retried | `afe4c97` |
 | 2. Settlement state shown apart from the verdict | `8221991` |
 | 3. Evidence only where it fits the dispute reason | `ea10b3d` |
-| 4. Docs (README, THREAT_MODEL, SUBMISSION, this report) | this commit |
+| 4. Docs (README, THREAT_MODEL, SUBMISSION, this report) | `5441cfa` |
+| 5. A timeout on every PayPal call | this commit |
 
 ## Findings
 
@@ -44,6 +45,11 @@ any reason.
 
 **F7. Reasons Black Box does not answer were only "planned"** (`executor/core.mjs`). Non-receipt
 and unknown reasons ended as `planned`, with nothing logged to say a person must decide.
+
+**F9. PayPal calls had no timeout** (`lib/paypal.mjs`, `createPayPal`; `executor/core.mjs`,
+`uploadEvidence`; `killtest/kt.mjs`). A call that hung would hold its lock until the lock went
+stale. A later run could then take the lock over and resend, while the hung call might still land
+at PayPal.
 
 **F8. An inquiry PayPal would not let Black Box escalate was retried** (`executor/core.mjs`). It
 returned `not-ready`, so the autopilot retried it ten times and gave up silently, instead of
@@ -89,6 +95,22 @@ against the dispute PayPal reports now:
   (logged as `stale-lock`).
 - A fresh lock held by another run answers `in-progress`.
 
+**Timeouts** (item 5: `lib/paypal.mjs`, `executor/core.mjs`, `killtest/kt.mjs`).
+- Every PayPal HTTP call, including the OAuth token request, now gives up after
+  `PAYPAL_TIMEOUT_MS` (30 s), using `AbortSignal.timeout`.
+- The multipart evidence upload gives up after `UPLOAD_TIMEOUT_MS` (60 s).
+- `killtest/kt.mjs`, the one-off feasibility script, has the same limits.
+- A timeout is an unknown outcome. The attempt is logged with the error and no HTTP status, so
+  `attempts()` reads it as `unknown`, and the next run settles it from PayPal's dispute or batch
+  state, as for any other unknown outcome.
+- `STALE_LOCK_MS` stays at 5 minutes. A test asserts that it is at least 5 minutes and at least
+  three times `LONGEST_CALL_MS`, which is a token request plus the upload, 90 s. A lock is
+  therefore never taken over while its call can still be in flight.
+- **Re-checks of a "not offered yet" action:** the autopilot waits `RETRY_MS` (60 s) between them
+  and makes at most `MAX_RETRIES` (10). The watcher's poll also looks every 30 s, so a dispute is
+  never checked more often than that, never in a tight loop. This is a fixed interval, not the
+  doubling backoff, which applies to disputes held for the flagger.
+
 **New outcomes**, handled by `executor/autopilot.mjs` and explained by `executor/resolve.mjs`:
 - `in-progress` and `outcome-unknown` are re-checked later, like `not-ready`.
 - `held-for-person` is final.
@@ -127,9 +149,9 @@ against the dispute PayPal reports now:
 
 ## Tests
 
-The suite went from 246 to 277 tests. The bench is unchanged at 62 cases.
+The suite went from 246 to 284 tests. The bench is unchanged at 62 cases.
 
-**`executor/test/lifecycle.test.mjs`** (new, 21 tests, against a scripted PayPal whose dispute
+**`executor/test/lifecycle.test.mjs`** (new, 27 tests, against a scripted PayPal whose dispute
 state each test changes):
 - An attempt with its payload hash is logged before the result.
 - **Duplicate webhook:** two deliveries through the autopilot, then a run in another process:
@@ -159,9 +181,19 @@ state each test changes):
   only plans.
 - An inquiry that cannot be escalated is held.
 - An action PayPal does not offer yet sends nothing, and goes once offered.
+- **Timeouts** (item 5), through the real client in `lib/paypal.mjs` with a scripted `fetch`:
+  - *every PayPal call carries a timeout: 30 s, and 60 s for the evidence upload*
+  - *a hung call times out and is recorded as an unknown outcome; the next run settles it from
+    PayPal*
+  - *a hung call that never reached PayPal is sent again on the next run, same ID and payload*
+  - *the stale-lock threshold is at least 5 minutes and well over the longest call*
+  - *a lock is never taken over before the threshold, however close to it* (lock ages of 0, 90 s
+    and 4 min 55 s)
+  - *a payout call that hangs times out and is held, with no second batch*
 
-**`executor/test/autopilot.test.mjs`:** `outcome-unknown` and `in-progress` are re-checked, and
-`held-for-person` is final.
+**`executor/test/autopilot.test.mjs`:**
+- `outcome-unknown` and `in-progress` are re-checked, and `held-for-person` is final.
+- *"not ready" re-checks are spaced by the retry interval, ten at most, never a tight loop.*
 
 **`replay/test/settlement.test.mjs`** (new, 5 tests):
 - All 9 live fixtures are pinned to their settlement, and checked to cover every live bench case.
@@ -194,10 +226,11 @@ state each test changes):
   - If PayPal reports these differently, the dispute is held rather than resent, because the
     action would no longer be offered or the dispute would be closed. It could, however, be
     resent once if PayPal still offered the action after carrying it out.
-- **No request timeout on PayPal calls** (`lib/paypal.mjs`). A call that hangs for over 5 minutes
-  lets a later run take the stale lock and resend. If the hung call later lands, that is a
-  duplicate. A client timeout shorter than `STALE_LOCK_MS` would close this. It is outside this
-  scope.
+- **A timed-out call may still land.** A timeout means Black Box stopped waiting, not that PayPal
+  did not act. The next run reads PayPal's state before anything else. If PayPal has not shown the
+  action yet but carries it out a moment later, that one action can be sent twice. The stale-lock
+  threshold (5 minutes, over three times the longest call) keeps a second run from sending while
+  the first may still be in flight. It cannot prevent PayPal applying a request late.
 - **A payout whose response was lost is held, not looked up.** Without PayPal's batch ID, Black
   Box cannot read the batch, so a person checks it. The fixed `sender_batch_id` makes PayPal
   refuse a second batch for the same attempt.

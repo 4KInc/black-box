@@ -36,6 +36,7 @@ async function token() {
     method: "POST",
     headers: { Authorization: `Basic ${basic}`, "Content-Type": "application/x-www-form-urlencoded" },
     body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(30_000),
   });
   const j = await r.json();
   if (!r.ok) die(`OAuth failed (${r.status}): ${JSON.stringify(j)}`);
@@ -51,7 +52,7 @@ async function call(step, method, path, { json, form, headers = {} } = {}) {
   let body;
   if (json !== undefined) { h["Content-Type"] = "application/json"; body = JSON.stringify(json); }
   if (form) body = form; // fetch sets the multipart boundary itself
-  const r = await fetch(`${API}${path}`, { method, headers: h, body });
+  const r = await fetch(`${API}${path}`, { method, headers: h, body, signal: AbortSignal.timeout(form ? 60_000 : 30_000) });
   const text = await r.text();
   let data; try { data = text ? JSON.parse(text) : null; } catch { data = text; }
   log({ step, method, path, status: r.status, debug_id: r.headers.get("paypal-debug-id"), request: json ?? (form ? "[multipart]" : null), response: data });

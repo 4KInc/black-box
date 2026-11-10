@@ -22,7 +22,7 @@
 import { createHash } from 'node:crypto';
 import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { accessToken, API, paypal } from '../lib/paypal.mjs';
+import { accessToken, API, PAYPAL_TIMEOUT_MS, paypal, UPLOAD_TIMEOUT_MS } from '../lib/paypal.mjs';
 import { loadRecord } from '../recorder/recorder.mjs';
 import { evaluateCase } from '../engine/case.mjs';
 import { HELD_WHY, IN_SCOPE_REASONS, movesMoney, toValue } from '../engine/actions.mjs';
@@ -35,8 +35,11 @@ export { actionKind, attempts };
 
 const cents = (v) => Math.round(Number(v) * 100);
 
-// A lock older than this belonged to a run that died between its attempt and its result.
+// A lock older than this belonged to a run that died between its attempt and its result. It is well
+// above the longest a call can take (a token request, then the evidence upload, each with its
+// timeout), so a lock is never taken over while its call may still be in flight.
 export const STALE_LOCK_MS = 5 * 60_000;
+export const LONGEST_CALL_MS = PAYPAL_TIMEOUT_MS + UPLOAD_TIMEOUT_MS;
 // PayPal dispute statuses in which the seller may still act; any other status is held.
 export const ACTIONABLE_STATUS = new Set(['OPEN', 'WAITING_FOR_SELLER_RESPONSE', 'UNDER_REVIEW']);
 
@@ -130,7 +133,7 @@ export { HELD_WHY };
 
 // The evidence upload is multipart, so it does not go through lib/paypal.mjs's JSON client.
 async function uploadEvidence(disputeId, form) {
-  const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form });
+  const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form, signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS) });
   return { ok: r.ok, status: r.status, text: await r.text() };
 }
 
