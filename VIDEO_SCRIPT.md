@@ -81,18 +81,17 @@ $240.00 refund.
 
 ## 2:00 – 2:25 · Fair to both sides
 
-**On screen (2:00):** the judges' page (`/judge/`): the three cards side by side, red **The shop
-pays**, amber **The shopping app pays**, blue **The sale stands**. Move to card B: **AGENT · rule
-5**, then its PayPal tape: "PayPal refunds the buyer $90.00" and "Payouts: the shopping app repays
-the shop $90.00 · batch ZLR5F7QM5LBQ4 SUCCESS".
+**On screen (2:00):** the judges' page (`/judge/`): the three cards side by side, a red **$240**,
+an amber **$90** and a blue **$0**. Move to card B, **The shopping app pays**: "$90 back to the
+buyer, and the app repays the shop", and the bar with $90.00 over the $150.00 limit.
 
 **Voice-over:**
 > When nothing misled the agent, the app running it is at fault. The buyer gets the ninety dollars
 > over budget back, and the app repays the shop through PayPal Payouts.
 
-**On screen (2:13):** card C: **USER · rule 6**, "Black Box sends provide-evidence · HTTP 200",
-"PayPal has the checked note and the record; no money moved". Then up to card A's **Bound to the
-payment** block: the record SHA-256 and "PayPal order custom_id ✓ the same".
+**On screen (2:13):** card C, **The sale stands**: "$0 moved. Black Box sent PayPal the evidence
+instead". Then open card A's **+ Proof: PayPal's IDs and the seal**: the dispute, order and refund
+IDs, the record hash and "✓ equals the order's custom_id".
 
 **Voice-over:**
 > And when the agent did what it was told, the sale stands: Black Box sends PayPal the evidence.
@@ -100,7 +99,7 @@ payment** block: the record SHA-256 and "PayPal order custom_id ✓ the same".
 
 ## 2:25 – 2:40 · Why trust it
 
-**On screen:** on card A of the judges' page, click **Change one letter of the page →**. The hosted
+**On screen:** on card A of the judges' page, click **Try to tamper with it**. The hosted
 lab opens on P09 with that change made, and the banner reads: "Unchanged: MERCHANT · rule 2 …
 Now: NEEDS A HUMAN · rule 1", with the failed checks (hashesMatch, signaturesValid,
 signedBeforeOrder).
@@ -139,9 +138,9 @@ through "The shop pays", "The shopping app pays", "The sale stands"). Caption wi
    7. The buyer's sandbox Activity showing the refund.
 5. *(fallback only)* **Site, P09**: the PayPal panel with the refund.
 6. **Site, P08** (`/bench/P08/`): verdict, the case story, the PayPal panel.
-7. **Site, judges' page** (`/judge/`): the three cards together; card B's PayPal tape with the $90
-   refund and the payout; card C's evidence lines; card A's record hash and "custom_id ✓ the same".
-8. **Hosted lab**, from card A's **Change one letter of the page →**: the banner and the failed
+7. **Site, judges' page** (`/judge/`): the three cards together ($240, $90, $0); card B; card C;
+   then open card A's **Proof** for the PayPal IDs and "✓ equals the order's custom_id".
+8. **Hosted lab**, from card A's **Try to tamper with it**: the banner and the failed
    checks.
 9. **Site front page**, "How it works": one full cycle of the three panels (9 seconds), for the
     close.

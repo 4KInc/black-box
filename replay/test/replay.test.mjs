@@ -4,7 +4,7 @@ import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { paypalFromLog } from '../cases.mjs';
-import { highlight, setDemoHref, setLabHref, siteIntro } from '../page.mjs';
+import { disputeMoney, highlight, setDemoHref, setLabHref, siteIntro } from '../page.mjs';
 import { createReplay } from '../server.mjs';
 import { recordHash } from '../../recorder/recorder.mjs';
 import { runBench } from '../../bench/bench.mjs';
@@ -301,21 +301,21 @@ test('the judges\' page: the three outcomes, each a live dispute with PayPal\'s 
     const fixture = CASES.find((d) => d.id === id).paypal;
     const p = JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', fixture), 'utf8'));
     for (const v of [p.disputeId, p.orderId, p.captureId, p.customId]) assert.ok(card.includes(v), `${id} shows ${v}`);
-    assert.match(card, /<span class="chip ok">custom_id = record hash<\/span><span class="chip ok">shop signature<\/span><span class="chip ok">6 of 6 checks<\/span>/);
+    assert.match(card, /<dd class="ok">✓ equals the order’s custom_id · ✓ shop signature · 6 of 6 checks<\/dd>/);
     assert.match(card, new RegExp(`<a class="jgo" href="/lab/run\\?case=${id}">Re-run the engine`));
     assert.match(card, new RegExp(`href="/lab/run\\?case=${id}&amp;t=edit-page"`));
   }
-  // What each dispute moved, from PayPal's report: the shop refunds $240; the buyer gets $90 and
-  // the app repays the shop $90; nothing moves when the sale stands.
-  const moved = (card) => [...card.matchAll(/<div class="jrow"><span>(\w+)<\/span>.*?<b[^>]*>([^<]+)<\/b>/g)].map(([, who, c]) => `${who} ${c}`);
-  assert.deepEqual(moved(cards[0][3]), ['Buyer +$240.00', 'Shop −$240.00', 'App $0.00']);
-  assert.match(cards[0][3], /<small>Refund<\/small><span>6AV05849L1468224H<\/span>/);
-  assert.deepEqual(moved(cards[1][3]), ['Buyer +$90.00', 'Shop $0.00', 'App −$90.00']);
-  assert.match(cards[1][3], /<small>Payout batch<\/small><span>ZLR5F7QM5LBQ4 SUCCESS<\/span>/);
-  assert.deepEqual(moved(cards[2][3]), []);
-  assert.match(cards[2][3], /No money moved/);
+  // The headline number is what the dispute moved, from PayPal's own report.
+  const stat = (card) => card.match(/<div class="jstat"><b>([^<]+)<\/b>/)[1];
+  assert.deepEqual(cards.map(([, , , card]) => stat(card)), ['$240', '$90', '$0']);
+  const fixture = (id) => JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', CASES.find((d) => d.id === id).paypal), 'utf8'));
+  assert.deepEqual(disputeMoney(fixture('P09')), { buyer: 24000, shop: -24000, app: 0, refund: 24000, payout: 0 });
+  assert.deepEqual(disputeMoney(fixture('P06')), { buyer: 9000, shop: 0, app: -9000, refund: 9000, payout: 9000 });
+  assert.deepEqual(disputeMoney(fixture('P04')), { buyer: 0, shop: 0, app: 0, refund: 0, payout: 0 });
+  assert.match(cards[0][3], /<dt>Refund<\/dt><dd>6AV05849L1468224H<\/dd>/);
+  assert.match(cards[1][3], /<dt>Payout batch<\/dt><dd>ZLR5F7QM5LBQ4 SUCCESS<\/dd>/);
   assert.match(cards[2][3], /provide-evidence/);
-  assert.match(cards[0][3], /<b>3 min 54 s<\/b>/); // P09: dispute 23:10:19, refund sent 23:14:13
+  assert.match(cards[0][3], /Settled by itself 3 min 54 s after the dispute/); // P09: dispute 23:10:19, refund sent 23:14:13
   // The quoted note is the one the agent was given.
   const p09 = JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', CASES.find((d) => d.id === 'P09').record), 'utf8'));
   assert.ok(p09.model_inputs[0].text.includes('bringing the final total to $119.00.'));
