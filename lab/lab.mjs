@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildCase, CASES, ENROLMENT } from '../bench/cases.mjs';
 import { judge } from '../replay/cases.mjs';
-import { casePage, layout, RULE_SHORT, VERDICT_TAG } from '../replay/page.mjs';
+import { casePage, layout, planPlain, reasonPlain, RULE_SHORT, VERDICT_TAG } from '../replay/page.mjs';
 import { decide, FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES, VERDICT } from '../engine/verdict.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -139,14 +139,51 @@ export function labPage(query = new URLSearchParams()) {
 <section class="sec"><div class="eyebrow">Start from one of these, or pick any of the ${BASES.length} cases below</div>${picks(picked)}${labForm(new URLSearchParams({ case: picked }))}</section>`, { active: 'lab' });
 }
 
+// The record checks in plain words, for the banner's checklist.
+const CHECK_WORDS = {
+  hashesMatch: 'record matches the PayPal payment (custom_id)',
+  signaturesValid: 'shop signatures on every page',
+  keyOnShopDomain: "signing key on the shop's own site",
+  payeeMatches: 'PayPal paid the merchant the page names',
+  signedBeforeOrder: 'pages signed before the order',
+  mandateSigned: "buyer's passkey approval",
+};
+
 export function labResult(root, query) {
+  const started = performance.now();
   const { base, reason, chosen, before, noEffect, was, c, j } = runLab(root, query);
-  const verdictOf = (x) => `${label(x.verdict.verdict)} · rule ${x.verdict.rule} · ${x.plan.action}${x.plan.refundCents ? ` ${money(x.plan.refundCents)}` : ''}`;
-  const broken = RECORD_CHECKS.filter((k) => !j.facts[k]);
-  const banner = `<section class="sec labbar"><div class="panel"><div class="eyebrow"><b>●</b> Lab run</div>
-<p><b>${esc(base.id)}</b> ${esc(base.title)}, disputed as <span class="mono">${esc(reason)}</span>.
-${chosen.length ? `Changed: ${chosen.map((t) => esc(t.what.charAt(0).toLowerCase() + t.what.slice(1))).join('; ')}${before ? ' (before payment)' : ''}.` : 'Nothing changed.'}${noEffect.length ? ` No effect here: this record has nothing to ${noEffect.map((t) => esc(t.what.split(' ')[0].toLowerCase())).join(', ')} (it was placed before the buyer enrolled a passkey).` : ''}</p>
-<p>Unchanged: <b>${esc(verdictOf(was))}</b><br>Now: <b>${esc(verdictOf(j))}</b>${broken.length ? ` · failed checks: <span class="mono">${esc(broken.join(', '))}</span>` : ''}</p>
+  const ms = Math.max(1, Math.round(performance.now() - started));
+  const at = new Date().toISOString().slice(11, 19);
+  const verdictOf = (x) => `${VERDICT_TAG[x.verdict.verdict] ?? label(x.verdict.verdict)} · rule ${x.verdict.rule} · ${planPlain(x.plan)}`;
+  // What "now" is compared with: the bench's right answer, written down before the engine ran, or,
+  // after a change (or another dispute reason), the unchanged case.
+  const expected = !chosen.length && reason === base.reason;
+  const against = expected
+    ? ['The right answer, written down beforehand', `${VERDICT_TAG[base.expect.verdict] ?? label(base.expect.verdict)} · rule ${base.expect.rule} · ${planPlain(base.expect)}`]
+    : ['Before your change', verdictOf(was)];
+  const same = expected
+    ? base.expect.verdict === j.verdict.verdict && base.expect.rule === j.verdict.rule
+    : was.verdict.verdict === j.verdict.verdict && was.verdict.rule === j.verdict.rule;
+  const pages = c.record.fetches.length;
+  const check = (k) => {
+    const okk = Boolean(j.facts[k]);
+    const words = k === 'signaturesValid' ? `shop signatures on all ${pages} pages` : CHECK_WORDS[k];
+    return `<li class="${okk ? 'ok' : 'bad'}">${okk ? '✓' : '✗'} ${esc(words)}</li>`;
+  };
+  const changed = chosen.length
+    ? `With your change: ${chosen.map((t) => esc(t.what.charAt(0).toLowerCase() + t.what.slice(1))).join('; ')}${before ? ' (before payment)' : ''}.`
+    : 'Nothing changed.';
+  const headline = !chosen.length ? 'Decided again from the record, just now: the same verdict'
+    : same ? 'Decided again with your change: the verdict holds' : 'Decided again with your change: the verdict changed';
+  const banner = `<section class="sec labbar"><div class="panel"><div class="eyebrow"><b>●</b> Lab run · ${at} UTC · ${ms} ms</div>
+<h2>${headline}</h2>
+<p><b>${esc(base.id)}</b> ${esc(base.title)}. ${changed}${noEffect.length ? ` No effect here: this record has nothing to ${noEffect.map((t) => esc(t.what.split(' ')[0].toLowerCase())).join(', ')} (it was placed before the buyer enrolled a passkey).` : ''}
+The engine re-read the sealed record and PayPal's dispute data (disputed as “${esc(reasonPlain(reason))}”), ran every check, worked out the ${FACT_KEYS.length} facts and applied the ${RULES.length} rules.</p>
+<ul class="labchecks">${RECORD_CHECKS.map(check).join('')}</ul>
+<p class="labrule">${FACT_KEYS.length} facts → rule ${j.verdict.rule}: ${esc(RULE_SHORT[j.verdict.rule])}</p>
+<dl class="labvs"><dt>${against[0]}</dt><dd>${esc(against[1])}</dd><dt>Now</dt><dd class="${same ? 'same' : 'diff'}">${esc(verdictOf(j))}</dd></dl>
+${chosen.length ? '' : `<p><a class="go" href="/lab/run?case=${esc(base.id)}&amp;t=edit-page">Now try to break it: change one letter of the shop's page →</a></p>`}
+<p class="k">The shopping, the payment and the dispute are real events that already happened in the PayPal sandbox; re-deciding them takes milliseconds. To watch a new dispute happen, use the <a href="/demo">live demo</a>.</p>
 <details><summary>Change something else</summary>${labForm(query)}</details></div></section>`;
   return casePage({ ...c, source: `lab: ${c.source}`, recordHref: null, nav: 'lab', pageSrc: `/lab/page?${esc(query.toString())}` }, j).replace('<main id="main">', `<main id="main">${banner}`);
 }

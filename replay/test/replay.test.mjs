@@ -303,7 +303,7 @@ test('the judges\' page: the three outcomes, each a live dispute with PayPal\'s 
     const p = JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', fixture), 'utf8'));
     for (const v of [p.disputeId, p.orderId, p.captureId, p.customId]) assert.ok(card.includes(v), `${id} shows ${v}`);
     assert.match(card, /<dd class="ok">✓ equals the order’s custom_id · ✓ shop signature · 6 of 6 checks<\/dd>/);
-    assert.match(card, new RegExp(`<a class="jgo" href="/lab/run\\?case=${id}">Re-run the engine`));
+    assert.match(card, new RegExp(`<a class="jgo" href="/lab/run\\?case=${id}">Check the verdict yourself`));
     assert.match(card, new RegExp(`href="/lab/run\\?case=${id}&amp;t=edit-page"`));
   }
   // The headline number is what the dispute moved, from PayPal's own report.
@@ -322,5 +322,13 @@ test('the judges\' page: the three outcomes, each a live dispute with PayPal\'s 
   assert.ok(p09.model_inputs[0].text.includes('bringing the final total to $119.00.'));
   // Its re-run decides the same again.
   const rerun = await (await fetch(`${base}/lab/run?case=P09`)).text();
-  assert.match(rerun, /Unchanged: <b>MERCHANT · rule 2 · accept-claim \$240\.00<\/b><br>Now: <b>MERCHANT · rule 2 · accept-claim \$240\.00<\/b>/);
+  assert.match(rerun, /Decided again from the record, just now: the same verdict/);
+  assert.match(rerun, /<dt>The right answer, written down beforehand<\/dt><dd>Shop at fault · rule 2 · refund \$240\.00<\/dd><dt>Now<\/dt><dd class="same">Shop at fault · rule 2 · refund \$240\.00<\/dd>/);
+  assert.match(rerun, /<li class="ok">✓ record matches the PayPal payment \(custom_id\)<\/li>/);
+  assert.match(rerun, /href="\/lab\/run\?case=P09&amp;t=edit-page">Now try to break it/);
+  // Breaking it: the checks that fail turn red, and the verdict changes.
+  const broken = await (await fetch(`${base}/lab/run?case=P09&t=edit-page`)).text();
+  assert.match(broken, /Decided again with your change: the verdict changed/);
+  assert.match(broken, /<li class="bad">✗ record matches the PayPal payment \(custom_id\)<\/li>/);
+  assert.match(broken, /<dt>Before your change<\/dt><dd>Shop at fault · rule 2 · refund \$240\.00<\/dd><dt>Now<\/dt><dd class="diff">Needs a human · rule 1 · a person decides<\/dd>/);
 });

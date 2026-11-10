@@ -383,6 +383,15 @@ ol.demo{list-style:none;margin:0;padding:0;display:grid;gap:12px}
 ol.demo p{margin:6px 0 0;color:var(--ink-2)}
 a.go{font:700 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:var(--orange);text-decoration:none}
 .labbar details{margin-top:10px}.labbar summary{cursor:pointer;color:var(--ink-2)}
+.labbar h2{margin:8px 0 6px;font:700 clamp(24px,3vw,32px)/1.05 var(--display);text-transform:uppercase}
+.labchecks{list-style:none;margin:12px 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
+.labchecks li{font:400 12px/1 var(--mono);padding:7px 9px;border:1px solid var(--rule-2);border-radius:3px}
+.labchecks li.ok{color:var(--green);border-color:oklch(.80 .17 150 / .4)}.labchecks li.bad{color:var(--red);border-color:oklch(.66 .21 27 / .6)}
+.labrule{margin:0 0 10px;color:var(--ink)}
+.labvs{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;margin:0 0 12px}
+.labvs dt{font:400 11px/1.6 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
+.labvs dd{margin:0;font-weight:700}.labvs dd.same{color:var(--green)}.labvs dd.diff{color:var(--amber)}
+.labbar .go{font:700 15px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--orange);text-decoration:none}
 ol.ladder{list-style:none;margin:0;padding:0;display:grid;gap:6px}
 ol.ladder li{display:grid;grid-template-columns:44px 150px minmax(0,1fr);align-items:center;gap:14px;padding:11px 14px;border:1px solid var(--rule);border-radius:3px;color:var(--ink-3);background:var(--bg-1)}
 ol.ladder li .n{font:700 22px/1 var(--display);color:var(--ink-3)}
@@ -1449,7 +1458,7 @@ function judgeCard(r, { letter, head, stat, what }) {
 <p class="jwhy">${what({ model: modelName(decisionOf(rec).model) })}</p>
 <div><div class="jgauge" role="img" aria-label="Paid ${money(paid)} on a ${money(cap)} limit"><i style="width:${pct(Math.min(paid, cap))}"></i>${paid > cap ? `<u style="left:${pct(cap)};width:${pct(paid - cap)}"></u>` : ''}<s style="left:${pct(cap)}"></s></div>
 <div class="jgl">Paid <b>${money(paid)}</b> on a <b>${money(cap)}</b> limit${paid > cap ? ` · <span class="over">${money(paid - cap)} over</span>` : ''}. Settled by itself ${minutes(p.filedAt, p.executed.at)} after the dispute.</div></div>
-<div class="jacts">${labHref ? `<a class="jgo" href="${esc(`${labHref}/run?case=${r.def.id}`)}">Re-run the engine →</a>` : ''}
+<div class="jacts">${labHref ? `<a class="jgo" href="${esc(`${labHref}/run?case=${r.def.id}`)}">Check the verdict yourself →</a>` : ''}
 <div class="jmore"><a href="/bench/${r.def.id}">Replay the case</a>${labHref ? `<a href="${esc(`${labHref}/run?case=${r.def.id}`)}&amp;t=edit-page">Try to tamper with it</a>` : ''}</div>
 <details class="jproof"><summary>Proof: PayPal's IDs and the seal</summary><dl>
 ${ids.map(([k, x]) => `<dt>${k}</dt><dd>${esc(x)}</dd>`).join('')}
@@ -1464,7 +1473,7 @@ ${ids.map(([k, x]) => `<dt>${k}</dt><dd>${esc(x)}</dd>`).join('')}
 export function judgePage(results) {
   const picked = JUDGE_CASES.map((s) => ({ s, r: results.find((r) => r.def.id === s.id) })).filter(({ r }) => r?.c.paypal?.executed);
   return layout('Black Box · for judges', `<section class="jhero"><div><h1>Three disputes, <em>three outcomes</em></h1></div>
-<p>Three real disputes in the PayPal sandbox. Black Box settled each one on its own. Press <b>Re-run the engine</b> to watch it decide again.</p></section>
+<p>Three real disputes in the PayPal sandbox. Black Box settled each one on its own. Press <b>Check the verdict yourself</b>: the engine decides it again from the sealed record, in milliseconds.</p></section>
 <section class="sec" style="margin-top:28px"><div class="jcards">${picked.map(({ s, r }) => judgeCard(r, s)).join('')}</div></section>`, { active: 'judge' });
 }
 
