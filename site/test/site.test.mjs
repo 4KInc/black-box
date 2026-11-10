@@ -14,7 +14,7 @@ test('links become relative to the page, with directory slashes', () => {
   assert.equal(relativise('<a href="/bench">x</a>', 0), '<a href="./bench/">x</a>');
   assert.equal(relativise('<a href="/case/ab/record.json" download="x.json">x</a>', 2), '<a href="../../case/ab/record.json" download="x.json">x</a>');
   assert.equal(relativise('<a href="/case/ab#hidden">x</a><iframe src="/case/ab/page">', 2), '<a href="../../case/ab/#hidden">x</a><iframe src="../../case/ab/page/">');
-  assert.equal(relativise('<a href="#hidden">x</a><a href="https://github.com/x">y</a>', 2), '<a href="#hidden">x</a><a href="https://github.com/x">y</a>');
+  assert.equal(relativise('<a href="#hidden">x</a><a href="https://github.com/x">y</a>', 2), '<a href="#hidden">x</a><a href="https://github.com/x">y</a>');  assert.equal(relativise('<a href="/bench/P09/report.pdf">x</a>', 1), '<a href="../bench/P09/report.pdf">x</a>'); // a file, not a directory
 });
 
 test('the CSP meta goes first in <head>', () => {

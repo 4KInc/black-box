@@ -17,6 +17,11 @@ PayPal dispute action that follows.
 - **Anything it cannot prove,** such as a tampered record or a lie in someone else's review →
   no money moves and a person decides.
 
+**Judges, start here:** [the judges' page](https://4kinc.github.io/black-box/judge/) has the three
+outcomes as three live sandbox disputes, each with PayPal's order, capture, dispute and refund or
+payout IDs, the record hash that equals the order's `custom_id`, and one button that re-runs the
+engine on the sealed record.
+
 **Try it, no keys needed:** [4kinc.github.io/black-box](https://4kinc.github.io/black-box/) shows
 every recorded run replayed (purchases, and runs where the agent bought nothing), the study, the case bench, and an [AG Grid explorer](https://4kinc.github.io/black-box/explorer/) of all of them. **[The lab](https://black-box-342881585799.us-central1.run.app/lab)**
 adds the live part: tamper with a real case and the engine runs again on the server. **[The live
@@ -26,7 +31,7 @@ real AI agent shops at a hosted demo shop, and Black Box settles the buyer's Pay
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
 **Submission state:** tag `v1.0-submission`, 8 November 2026: 62 bench cases (nine live disputes,
-10 attacks), 245 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
+10 attacks), 246 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
 Cloud Run revision `black-box-00070-dh2`.
 
 ## The problem
@@ -381,7 +386,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 245 tests
+npm test                    # 246 tests
 npm run bench               # 62 cases: every verdict and rule, nine live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)

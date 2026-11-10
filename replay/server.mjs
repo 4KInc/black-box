@@ -8,7 +8,7 @@ import { createServer } from 'node:http';
 import { join } from 'node:path';
 import { judge, loadCases } from './cases.mjs';
 import { runBench } from '../bench/bench.mjs';
-import { benchPage, casePage, indexPage, pageHtml, recordJson, siteIntro, studyPage } from './page.mjs';
+import { benchPage, casePage, indexPage, judgePage, pageHtml, recordJson, siteIntro, studyPage } from './page.mjs';
 import { latestStudies } from './cases.mjs';
 import { caseReport, reportName } from './report.mjs';
 import { factsPage, labPage, labResult, runLab } from '../lab/lab.mjs';
@@ -74,6 +74,7 @@ export function createReplay({ root = ROOT, intro = '', live = false } = {}) {
       if (pathname === '/lab/page') { res.writeHead(200, RECORDED); return res.end(pageHtml(runLab(root, searchParams).c.record)); }
       if (pathname === '/lab/facts') return send(200, factsPage(searchParams));
       if (pathname === '/bench') return send(200, benchPage(runBench(root)));
+      if (pathname === '/judge') return send(200, judgePage(runBench(root)));
       if (pathname === '/study') { const st = latestStudies(root); return st.length ? send(200, studyPage(st)) : send(404, 'No study yet: node study/run.mjs'); }
       const b = pathname.match(/^\/bench\/([A-Z]\d{2})(\/page|\/record\.json|\/report\.pdf)?$/);
       const br = b && runBench(root).find((r) => r.def.id === b[1]);

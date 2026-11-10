@@ -89,7 +89,7 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
 - A live Payouts repayment from the operator (batch `ZLR5F7QM5LBQ4`).
 - 16 facts, six rules, exactly one rule for each of 65,536 combinations (property test).
 - A bench of 62 cases, each with its verdict, rule and PayPal action fixed in advance: 15 recorded
-  runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 245
+  runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 246
   tests.
 - A threat model ([THREAT_MODEL.md](https://github.com/4KInc/black-box/blob/main/THREAT_MODEL.md)) mapping each attack to its defence and the
   bench case that shows it.
@@ -167,6 +167,8 @@ open models) · APIMatic Context Plugin · Postman · AG Grid Community
 
 ## Try it
 
+- For judges, two minutes: https://4kinc.github.io/black-box/judge/ (the three outcomes as three
+  live disputes, with PayPal's IDs, the hashes and a one-click re-run of the engine)
 - Site, no keys: https://4kinc.github.io/black-box/
 - Lab: https://black-box-342881585799.us-central1.run.app/lab
 - Live demo: https://black-box-342881585799.us-central1.run.app/demo (the operator login is in the
@@ -175,7 +177,7 @@ open models) · APIMatic Context Plugin · Postman · AG Grid Community
 
 ```sh
 git clone https://github.com/4KInc/black-box && cd black-box
-npm test          # 245 tests, no keys
+npm test          # 246 tests, no keys
 npm run bench     # 62 cases, no keys
 npm run replay    # http://localhost:4030: every recording, the study, the bench and the lab
 ```

@@ -324,6 +324,38 @@ ol.flow::after{content:"";position:absolute;left:8%;top:59px;width:7px;height:7p
 .stop{display:block;text-decoration:none;background:linear-gradient(180deg,var(--bg-2),var(--bg-1));border:1px solid var(--rule-2);border-radius:4px;padding:14px 18px 16px}
 .stop h3{margin:10px 0 4px;font:600 21px/1.1 var(--display);letter-spacing:.04em;text-transform:uppercase;color:var(--orange)}
 .stop p{margin:0;color:var(--ink-2)}.stop:hover{border-color:var(--orange)}
+
+/* ---- the judges' page: three live disputes, one card each ---- */
+.jcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,340px),1fr));gap:16px;align-items:start}
+.jcard{display:flex;flex-direction:column;gap:14px;min-width:0;background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-top:3px solid var(--c);border-radius:4px;padding:18px clamp(14px,2vw,20px) 20px}
+.jcard .jtop{display:flex;align-items:center;gap:10px;font:700 13px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--c)}
+.jcard .jtop i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+.jcard .jtop small{margin-left:auto;font:400 11px/1 var(--mono);letter-spacing:.06em;color:var(--ink-3)}
+.jcard .jl{display:grid;place-items:center;width:24px;height:24px;border:1px solid var(--c);border-radius:3px;font:700 14px/1 var(--display)}
+.jcard h2{font:700 clamp(30px,3.6vw,40px)/.95 var(--display);letter-spacing:.02em;text-transform:uppercase}
+.jcard>p{margin:0;color:var(--ink-2)}
+.jcard q{color:var(--ink);font-style:italic}
+.jcard dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:5px 14px;margin:0;font-size:13px}
+.jcard dt{font:400 10.5px/1.9 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--ink-3)}
+.jcard dd{margin:0;min-width:0;overflow-wrap:anywhere}
+.jcard dd b{color:var(--c)}
+.jcard h3{font:400 10.5px/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3);border-top:1px solid var(--rule);padding-top:12px}
+.jtape{list-style:none;margin:0;padding:0;display:grid;gap:7px;border-left:1px solid var(--rule-2);padding-left:12px}
+.jtape li{display:grid;grid-template-columns:62px minmax(0,1fr);gap:8px;font-size:12.5px;line-height:1.45;position:relative}
+.jtape li::before{content:"";position:absolute;left:-16px;top:6px;width:7px;height:7px;border-radius:50%;background:var(--rule-2)}
+.jtape li.bb::before{background:var(--orange)}.jtape li.pp::before{background:var(--c)}
+.jtape .t{font:400 11px/1.6 var(--mono);color:var(--ink-3)}
+.jtape .mono{color:var(--ink-2)}
+.jhash{display:grid;gap:6px;font-size:12.5px}
+.jhash code{display:block;font:400 11.5px/1.5 var(--mono);color:var(--ink-2);background:var(--bg);border:1px solid var(--rule);border-radius:3px;padding:6px 8px;overflow-wrap:anywhere}
+.jhash .ok{color:var(--green)}.jhash .bad{color:var(--red)}
+.jgo{display:block;text-align:center;text-decoration:none;font:700 17px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:#140600;background:var(--orange);border-radius:3px;padding:14px 16px}
+.jgo:hover{background:var(--amber)}
+.jgo small{display:block;margin-top:6px;font:400 11px/1.3 var(--sans);letter-spacing:0;text-transform:none;color:oklch(.25 .06 45)}
+.jalt{display:block;text-align:center;text-decoration:none;font:600 14px/1 var(--display);letter-spacing:.1em;text-transform:uppercase;color:var(--ink);border:1px solid var(--rule-2);border-radius:3px;padding:11px 14px}
+.jalt:hover{border-color:var(--orange)}
+.jmore{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12.5px;color:var(--ink-2)}
+.jnote{max-width:78ch;color:var(--ink-2)}
 details.more{margin-top:14px}
 details.more>summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px;padding:11px 14px;border:1px dashed var(--rule-2);border-radius:4px;font:400 11.5px/1.4 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-2)}
 details.more>summary::-webkit-details-marker{display:none}
@@ -615,7 +647,7 @@ export function layout(title, body, { active = '' } = {}) {
 <meta name="color-scheme" content="dark"><title>${esc(title)}</title><style>${CSS}</style></head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar"><a class="mark" href="/"><span class="unit" aria-hidden="true"></span>BLACK BOX</a><span class="sub">flight recorder for AI shopping agents</span>
-<nav aria-label="Sections">${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${explorerHref ? nav(explorerHref, 'Explorer', 'explorer') : ''}${labHref ? nav(labHref, 'Lab', 'lab') : ''}${demoHref ? nav(demoHref, 'Live demo', 'demo') : ''}</nav></header>
+<nav aria-label="Sections">${nav('/judge', 'Judges', 'judge')}${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${explorerHref ? nav(explorerHref, 'Explorer', 'explorer') : ''}${labHref ? nav(labHref, 'Lab', 'lab') : ''}${demoHref ? nav(demoHref, 'Live demo', 'demo') : ''}</nav></header>
 <main id="main">${body}</main></body></html>`;
 }
 
@@ -721,7 +753,7 @@ function howItWorks() {
 function judgeTour() {
   const stop = (n, href, title, text, time) => `<a class="stop" href="${href}"><span class="eyebrow"><b>${n}</b> · ${time}</span><h3>${title} →</h3><p>${text}</p></a>`;
   return `<section class="sec"><header><span class="n">01</span><h2>See it in five minutes</h2></header><div class="tour">
-${stop('1', '/bench/P09', 'Watch a real refund', 'A live PayPal dispute, settled by itself', '2 min')}
+${stop('1', '/judge', 'Three live disputes', 'The shop pays, the app pays, the sale stands', '2 min')}
 ${labHref ? stop('2', `${labHref}?case=P09`, 'Try to cheat it', 'Tamper with a real case', '2 min') : ''}
 ${stop(labHref ? '3' : '2', '/study', 'Does it really happen?', '15 AI models, one hidden lie', '1 min')}
 ${demoHref ? stop(labHref ? '4' : '3', demoHref, 'Run it live', 'Needs the operator password', '15 min') : ''}
@@ -1308,4 +1340,73 @@ ${matrix}
 <p class="k" style="font-size:12px;margin:14px 0 0">Check it yourself: <span class="mono">npm run bench</span></p></div></section>
 <section class="sec" style="padding-bottom:0">${benchFilters(results)}</section>
 ${SECTIONS.map(([kind, title, note, proves], i) => fold(n(i), title, note, results.filter((r) => r.def.kind === kind), row, proves)).join('')}`, { active: 'bench' });
+}
+
+// The judges' page: the three outcomes, each one live sandbox dispute settled end to end, with
+// PayPal's own IDs and the hashes that bind the record to the payment. Its buttons re-run the
+// engine on the sealed record in the lab, so a judge sees the verdict decided again, not a video.
+export const JUDGE_CASES = [
+  { id: 'P09', letter: 'A', head: 'The shop pays',
+    what: (r, m) => `The shop's page showed ${m.paid}. Its structured data, which shoppers never see, told AI agents: <q>…bringing the final total to $119.00.</q> ${esc(m.model)} believed it and paid ${m.paid} on a ${m.cap} budget.` },
+  { id: 'P06', letter: 'B', head: 'The shopping app pays',
+    what: (r, m) => `Nothing on the page misled the agent. ${esc(m.model)} paid ${m.paid} on a ${m.cap} budget by itself, and the buyer disputed the ${money(r.got.refundCents)} over the limit.` },
+  { id: 'P04', letter: 'C', head: 'The sale stands',
+    what: (r, m) => `${esc(m.model)} ignored the shop's hidden notes and paid ${m.paid}, within the ${m.cap} budget. The buyer disputed it anyway.` },
+];
+
+// "claude-haiku-4-5-20251001" as "Claude Haiku 4.5"; "Llama-3.2-1B" as "Llama 3.2 1B".
+const judgeModel = (model) => modelName(model)
+  .replace(/^claude-([a-z]+)-(\d+)-(\d+)(-\d{8})?$/, (_, n, a, b) => `Claude ${n[0].toUpperCase()}${n.slice(1)} ${a}.${b}`)
+  .replace(/^(Llama)-(\d+\.\d+)-(\w+)$/, '$1 $2 $3');
+
+function judgeCard(r, { letter, head, what }) {
+  const p = r.c.paypal;
+  const rec = r.c.record;
+  const page = rec.fetches[rec.purchase.page_index];
+  const v = r.got.verdict;
+  const m = { model: judgeModel(decisionOf(rec).model ?? 'unknown model'), paid: money(p.captured.cents), cap: money(rec.mandate.maxTotalCents) };
+  const step = (at, text, cls = '') => `<li class="${cls}"><span class="t">${clock(at)}</span><span>${text}</span></li>`;
+  const refund = p.after?.refundTransactions?.[0];
+  const credit = buyerCredit(p);
+  const tape = [
+    step(p.orderCreatedAt, `Order <span class="mono">${esc(p.orderId)}</span> captured: ${m.paid} (capture <span class="mono">${esc(p.captureId)}</span>)`),
+    step(p.filedAt, `Buyer opens dispute <span class="mono">${esc(p.disputeId)}</span>: ${esc(reasonPlain(p.reason))}`),
+    p.escalated ? step(p.escalated.at, 'Black Box escalates the inquiry to a claim, so evidence can be sent', 'bb') : '',
+    step(p.executed.at, `Black Box sends <span class="mono">${esc(p.executed.action)}</span> · HTTP ${esc(p.executed.httpStatus)}`, 'bb'),
+    credit ? step(p.after.updatedAt, `PayPal refunds the buyer ${money(credit.amount.cents)}${refund ? ` (refund <span class="mono">${esc(refund.id)}</span>)` : ''}`, 'pp') : '',
+    p.executed.action === 'provide-evidence' ? step(p.executed.at, 'PayPal has the checked note and the record; no money moved', 'pp') : '',
+    p.payout ? step(p.payout.at, `Payouts: the shopping app repays the shop ${money(p.payout.amount.cents)} · batch <span class="mono">${esc(p.payout.batchId)}</span> ${esc(p.payout.status)}`, 'pp') : '',
+  ].join('');
+  const checks = RECORD_CHECKS.filter((k) => r.j.facts[k]).length;
+  const bound = p.customId === r.c.hash;
+  const run = `${labHref}/run?case=${r.def.id}`;
+  const ledger = explorerAt({ v: 'ledger', f: exactly({ caseId: r.def.id }) });
+  return `<article class="jcard ${v}" id="${r.def.id}">
+<div class="jtop"><span class="jl">${letter}</span><i></i>${esc(label(v))} · rule ${r.got.rule}<small>${esc(r.def.id)} · ${day(p.filedAt)}</small></div>
+<h2>${head}</h2>
+<p>${what(r, m)}</p>
+<dl><dt>Decided</dt><dd><b>${esc(label(v))}</b>, rule ${r.got.rule}: ${esc(RULE_SHORT[r.got.rule] ?? '')}</dd>
+<dt>PayPal action</dt><dd><span class="mono">${esc(r.got.action)}</span> → ${esc(paypalStatus(p))}${p.payout ? `, and ${money(p.payout.amount.cents)} from the app to the shop` : ''}</dd>
+<dt>Who acted</dt><dd>No one at the keyboard: PayPal's <span class="mono">${esc(String(p.trigger ?? '').replace(/^webhook /, '').replace(/ \(.*\)$/, ''))}</span> webhook woke the autopilot</dd></dl>
+<h3>In the PayPal sandbox</h3>
+<ol class="jtape">${tape}</ol>
+<h3>Bound to the payment</h3>
+<div class="jhash"><span>Record SHA-256</span><code>${esc(r.c.hash)}</code>
+<span>PayPal order <span class="mono">custom_id</span> ${bound ? '<span class="ok">✓ the same</span>' : '<span class="bad">✗ differs</span>'}</span>
+<span>Shop page signature, Ed25519 key <span class="mono">${esc(page.verification.keyid.slice(0, 16))}…</span> · page SHA-256 <span class="mono">${esc(page.body_sha256.slice(0, 16))}…</span></span>
+<span>Record checks: <span class="${checks === RECORD_CHECKS.length ? 'ok' : 'bad'}">${checks} of ${RECORD_CHECKS.length} pass</span></span></div>
+${labHref ? `<a class="jgo" href="${esc(run)}">Re-run the engine →<small>The lab decides it again from the sealed record, on the server, now</small></a>
+<a class="jalt" href="${esc(run)}&amp;t=edit-page">Change one letter of the page →</a>` : ''}
+<div class="jmore"><a href="/bench/${r.def.id}">The full replay</a>${ledger ? `<a href="${esc(ledger)}">The money, in the ledger</a>` : ''}<a href="/bench/${r.def.id}/report.pdf">The case report (PDF)</a></div>
+</article>`;
+}
+
+export function judgePage(results) {
+  const picked = JUDGE_CASES.map((s) => ({ s, r: results.find((r) => r.def.id === s.id) })).filter(({ r }) => r?.c.paypal?.executed);
+  return layout('Black Box · for judges', `<section class="hero"><div><div class="eyebrow"><b>●</b> For judges · 2 minutes</div>
+<h1>Three disputes, <em>three outcomes</em></h1></div>
+<div><p>Each is a real dispute in the PayPal sandbox, settled by Black Box with no one at the keyboard. The IDs are PayPal's own.</p>
+<p>Press <b>Re-run the engine</b> to watch it decide again from the sealed record. No password and no PayPal calls.</p></div></section>
+<section class="sec"><div class="jcards">${picked.map(({ s, r }) => judgeCard(r, s)).join('')}</div>
+<p class="jnote" style="margin-top:22px">A live run from scratch takes about 15 minutes: the buyer signs in to the sandbox to pay and to dispute, and PayPal reports the dispute 3 to 12 minutes later. ${demoHref ? `The <a href="${esc(demoHref)}">live demo</a> runs it, with the operator password from the testing instructions.` : ''} Or check every verdict yourself: <span class="mono">npm run bench</span>.</p></section>`, { active: 'judge' });
 }

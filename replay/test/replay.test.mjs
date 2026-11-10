@@ -8,6 +8,7 @@ import { highlight, setDemoHref, setLabHref, siteIntro } from '../page.mjs';
 import { createReplay } from '../server.mjs';
 import { recordHash } from '../../recorder/recorder.mjs';
 import { runBench } from '../../bench/bench.mjs';
+import { CASES } from '../../bench/cases.mjs';
 import { runAgent } from '../../agent/agent.mjs';
 import { saveRecord } from '../../recorder/recorder.mjs';
 import { startDemo } from '../../shop/testing.mjs';
@@ -282,11 +283,36 @@ test('the front page explains it in three plain steps and offers a short tour, w
     setLabHref('https://lab.example/lab'); setDemoHref('https://lab.example/demo');
     const full = siteIntro();
     assert.match(full, /How it works/);
-    for (const href of ['/bench/P09', '/study', 'https://lab.example/lab?case=P09', 'https://lab.example/demo']) assert.ok(full.includes(`href="${href}"`), href);
+    for (const href of ['/judge', '/study', 'https://lab.example/lab?case=P09', 'https://lab.example/demo']) assert.ok(full.includes(`href="${href}"`), href);
     assert.doesNotMatch(full, /mandate|custom_id|flagger/i);
     setLabHref(null); setDemoHref(null);
     const bare = siteIntro();
     assert.doesNotMatch(bare, /lab\.example|\?case=|Run it live/);
     assert.match(bare, /<b>2<\/b> · 1 min/);
   } finally { setLabHref('/lab'); setDemoHref(null); }
+});
+
+test('the judges\' page: the three outcomes, each a live dispute with PayPal\'s IDs, the hashes and a one-click re-run', async () => {
+  const html = await (await fetch(`${base}/judge`)).text();
+  assert.match(html, /aria-current="page">Judges</);
+  const cards = [...html.matchAll(/<article class="jcard (\w+)" id="(\w+)">([\s\S]*?)<\/article>/g)];
+  assert.deepEqual(cards.map(([, v, id]) => [id, v]), [['P09', 'MERCHANT'], ['P06', 'AGENT'], ['P04', 'USER']]);
+  for (const [, , id, card] of cards) {
+    const fixture = CASES.find((d) => d.id === id).paypal;
+    const p = JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', fixture), 'utf8'));
+    for (const v of [p.disputeId, p.orderId, p.captureId, p.customId]) assert.ok(card.includes(v), `${id} shows ${v}`);
+    assert.match(card, /custom_id<\/span> <span class="ok">✓ the same/);
+    assert.match(card, /Record checks: <span class="ok">6 of 6 pass/);
+    assert.match(card, new RegExp(`<a class="jgo" href="/lab/run\\?case=${id}">Re-run the engine`));
+    assert.match(card, new RegExp(`href="/lab/run\\?case=${id}&amp;t=edit-page"`));
+  }
+  assert.match(cards[0][3], /6AV05849L1468224H/); // P09's refund
+  assert.match(cards[1][3], /batch <span class="mono">ZLR5F7QM5LBQ4<\/span> SUCCESS/); // P06's payout
+  assert.match(cards[2][3], /provide-evidence/);
+  // The quoted note is the one the agent was given.
+  const p09 = JSON.parse(readFileSync(join(REPO, 'fixtures', 'recorded', CASES.find((d) => d.id === 'P09').record), 'utf8'));
+  assert.ok(p09.model_inputs[0].text.includes('bringing the final total to $119.00.'));
+  // Its re-run decides the same again.
+  const rerun = await (await fetch(`${base}/lab/run?case=P09`)).text();
+  assert.match(rerun, /Unchanged: <b>MERCHANT · rule 2 · accept-claim \$240\.00<\/b><br>Now: <b>MERCHANT · rule 2 · accept-claim \$240\.00<\/b>/);
 });
