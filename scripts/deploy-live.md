@@ -140,7 +140,7 @@ node scripts/live.mjs preflight   # preflight ok: Anthropic key answers, PayPal 
 ```
 
 That made revision `black-box-00063-752`. The front-page change after it was deployed with the
-same command and no flags (every setting above is kept), as revision `black-box-00064-4mh`, the animated front page after it as `black-box-00065-cfc`, the "shopping app" wording as `black-box-00066-z6h`, the shorter pages as `black-box-00067-pkd`, the data plate as `black-box-00068-7qv`, the nav link to the AG Grid explorer as `black-box-00069-f4r`, the links into its ledger and fact tables as `black-box-00070-dh2`, the judges' page as `black-box-00071-hpc`, its visual cards as `black-box-00072-b8r`, the simpler cards as `black-box-00073-xfw`, and the page-wide polish as `black-box-00074-cnl`. The
+same command and no flags (every setting above is kept), as revision `black-box-00064-4mh`, the animated front page after it as `black-box-00065-cfc`, the "shopping app" wording as `black-box-00066-z6h`, the shorter pages as `black-box-00067-pkd`, the data plate as `black-box-00068-7qv`, the nav link to the AG Grid explorer as `black-box-00069-f4r`, the links into its ledger and fact tables as `black-box-00070-dh2`, the judges' page as `black-box-00071-hpc`, its visual cards as `black-box-00072-b8r`, the simpler cards as `black-box-00073-xfw`, the page-wide polish as `black-box-00074-cnl`, and the plainer pages as `black-box-00075-6xj`. The
 shops were not redeployed: their code did not change. Checked:
 `/demo`, `/lab`, `/bench` and `/lab/facts` return 200; `/operator` and `/mandate/` return 401
 without the password; `/bench` reads 62 of 62; `/operator` shows "25 of 25 runs left today" and
