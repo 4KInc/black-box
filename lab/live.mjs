@@ -221,8 +221,8 @@ const WALLET_CSP = HEADERS['content-security-policy'].replace("form-action 'self
 export function demoPage({ shopUrl }) {
   const step = (n, title, text, href, link) => `<li class="panel"><div class="eyebrow"><b>${n}</b> ${title}</div><p>${text}</p>${href ? `<p><a class="go" href="${esc(href)}">${link} →</a></p>` : ''}</li>`;
   return layout('Black Box · live demo', `<section class="hero"><div><h1>Watch an agent <em>get fooled.</em></h1></div>
-<div><p>A real AI agent shops at a real (sandbox) store that hides a note only AI agents read. The buyer disputes the purchase in PayPal, and Black Box settles it by itself.</p>
-<p>Steps 1 to 3 need the operator password, because they spend model credit and create PayPal orders.</p></div></section>
+<div><p>An AI agent shops at a store with a hidden note for AI shoppers. The buyer disputes the charge in PayPal, and Black Box settles it.</p>
+<p>Steps 1 to 3 need the operator password.</p></div></section>
 <section class="sec"><div class="panel shortcut"><div class="eyebrow"><b>●</b> Short on time?</div>
 <p>This whole chain has already run live nine times. <a class="go" href="/bench/P09">Replay one →</a></p>
 <p>No Touch ID or other passkey device? Skip step 1: a limit our team approved with a passkey, valid through judging, is already offered on the next page.</p></div>
