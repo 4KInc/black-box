@@ -21,6 +21,8 @@ const clock = (iso) => (iso ? esc(String(iso).slice(11, 19)) : '––:––:�
 const day = (iso) => (iso ? esc(String(iso).slice(0, 10)) : '');
 const short = (h, n = 12) => `${esc(String(h).slice(0, n))}…`;
 export const label = (v) => (v === VERDICT.HUMAN ? 'NEEDS A HUMAN' : v);
+// The verdict as a short tag people read at a glance, on cards and filters.
+export const VERDICT_TAG = { [VERDICT.MERCHANT]: 'Shop at fault', [VERDICT.AGENT]: 'Agent at fault', [VERDICT.USER]: 'Purchase stands', [VERDICT.HUMAN]: 'Needs a human' };
 const vtName = (hash) => `r${String(hash).slice(0, 12)}`;
 
 export const WHO = {
@@ -126,6 +128,11 @@ h1,h2,h3{text-wrap:balance;margin:0}p{text-wrap:pretty}
 @media (max-width:640px){.sub{display:none}.bar{gap:10px}.bar nav{min-width:0;overflow-x:auto;scrollbar-width:none}.bar nav a{padding:8px 8px;white-space:nowrap}}
 
 main{max-width:1240px;margin:0 auto;padding:clamp(18px,3vw,34px) var(--pad) 96px}
+footer.site{width:calc(100% - 2 * var(--pad));max-width:calc(1240px - 2 * var(--pad));margin:0 auto;padding:28px 0 40px;border-top:1px solid var(--rule);display:flex;flex-wrap:wrap;justify-content:space-between;gap:18px 40px;color:var(--ink-3);font-size:13px}
+footer.site>div{display:grid;gap:10px;max-width:60ch}footer.site p{margin:0}
+footer.site .mark{font-size:15px;view-transition-name:none}
+footer.site nav{display:flex;flex-wrap:wrap;align-content:start;gap:8px 20px}
+footer.site nav a{color:var(--ink-2);text-decoration:none}footer.site nav a:hover{color:var(--ink)}
 
 /* ---- placards and sections ---- */
 .eyebrow{font:400 11px/1.4 var(--mono);letter-spacing:.16em;text-transform:uppercase;color:var(--ink-3)}
@@ -310,7 +317,7 @@ ol.flow::after{content:"";position:absolute;left:8%;top:59px;width:7px;height:7p
 .gz i{position:absolute;left:0;top:0;bottom:0;width:52%;border-radius:5px;background:var(--green)}
 .gz s{position:absolute;left:62.5%;top:-6px;bottom:-6px;width:2px;background:var(--ink);box-shadow:0 0 8px var(--ink)}
 .gzl{display:flex;justify-content:space-between;font:400 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);padding-right:30%}
-.seal{justify-self:start;font:700 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--green);border:1px solid var(--green);border-radius:3px;padding:5px 8px}
+.tid{justify-self:start;font:700 12px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--green);border:1px solid var(--green);border-radius:3px;padding:5px 8px}
 .pg{display:flex;gap:6px}
 .pg b{font:400 10.5px/1 var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-2);background:var(--bg-3);border:1px solid var(--rule-2);border-radius:3px;padding:5px 7px}
 .order{font:600 17px/1.1 var(--display);letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--orange);border-radius:4px;padding:8px 10px;color:var(--ink)}
@@ -331,8 +338,9 @@ ol.flow::after{content:"";position:absolute;left:8%;top:59px;width:7px;height:7p
 .jhero h1{font:700 clamp(38px,5.4vw,64px)/.9 var(--display);text-transform:uppercase}
 .jhero h1 em{font-style:normal;color:var(--orange)}
 .jhero p{margin:0;max-width:46ch;color:var(--ink-2)}
-.jcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:16px;align-items:start}
-.jcard{display:flex;flex-direction:column;gap:20px;min-width:0;background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-top:3px solid var(--c);border-radius:4px;padding:20px clamp(16px,2vw,24px) 22px}
+/* the cards share one set of rows (subgrid), so each line sits level with its neighbours */
+.jcards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,320px),1fr));gap:20px 16px}
+.jcard{display:grid;grid-row:span 6;grid-template-rows:subgrid;align-content:start;min-width:0;background:linear-gradient(180deg,var(--bg-1),oklch(.17 .006 250));border:1px solid var(--rule);border-top:3px solid var(--c);border-radius:4px;padding:20px clamp(16px,2vw,24px) 22px}
 .jtop{display:flex;align-items:center;gap:10px;font:700 13px/1 var(--display);letter-spacing:.14em;text-transform:uppercase;color:var(--c)}
 .jtop i{width:9px;height:9px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
 .jcard h2{font:700 clamp(28px,3vw,34px)/.95 var(--display);text-transform:uppercase}
@@ -348,7 +356,7 @@ ol.flow::after{content:"";position:absolute;left:8%;top:59px;width:7px;height:7p
 .jgauge s{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
 .jgl{margin-top:8px;font-size:13px;color:var(--ink-3)}
 .jgl b{color:var(--ink);font-weight:400}.jgl .over{color:var(--red)}
-.jacts{display:grid;gap:10px}
+.jacts{display:grid;gap:10px;align-content:start}
 .jgo{display:block;text-align:center;text-decoration:none;font:700 17px/1 var(--display);letter-spacing:.12em;text-transform:uppercase;color:#140600;background:var(--orange);border-radius:3px;padding:15px 16px}
 .jgo:hover{background:var(--amber)}
 .jmore{display:flex;flex-wrap:wrap;justify-content:center;gap:6px 18px;font-size:13px;color:var(--ink-2)}
@@ -457,9 +465,11 @@ ol.tape li.hot .ev{color:var(--orange)}
 .rec .mini i{position:absolute;top:0;bottom:0;left:0;background:var(--ink-3)}
 .rec .mini u{position:absolute;top:0;bottom:0;background:var(--red)}
 .rec .mini s{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--amber)}
-.rec .foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;border-top:1px dashed var(--rule);padding-top:10px;font:400 11px/1.4 var(--mono);color:var(--ink-3)}
-.rec .foot b{color:var(--green);font-weight:400}
-.rec .foot .live{color:var(--orange)}
+.rec .foot{display:flex;justify-content:space-between;align-items:baseline;gap:4px 10px;flex-wrap:wrap;margin-top:auto;border-top:1px solid var(--rule);padding-top:10px;font-size:12.5px;line-height:1.4;color:var(--ink-3)}
+.rec .foot b{color:var(--ink);font-weight:400}
+.rec .foot .live{display:inline-flex;align-items:center;gap:6px;color:var(--ink-2)}
+.rec .foot .live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--orange)}
+.rec .foot .id{font:400 11px/1.4 var(--mono);color:var(--ink-3)}
 .rec .top .lv{font:400 10px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--orange);border:1px solid var(--orange);border-radius:2px;padding:3px 6px}
 .rec .foot b.if{color:var(--ink-2)}
 
@@ -495,7 +505,7 @@ ol.tape li.hot .ev{color:var(--orange)}
 /* ---- bench ---- */
 .vkey{display:flex;flex-wrap:wrap;gap:6px 16px;margin-top:14px;font:400 11px/1.4 var(--mono);letter-spacing:.06em;color:var(--ink-2)}
 .vkey span{display:inline-flex;align-items:center;gap:7px}.vkey i{width:22px;height:4px;background:var(--c);box-shadow:0 0 8px var(--c);border-radius:1px}
-.matrix{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px;margin-top:18px}
+.matrix{display:grid;grid-template-columns:repeat(auto-fill,minmax(64px,1fr));gap:6px}
 .matrix a{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:9px 8px;border:1px solid var(--rule);border-radius:3px;text-decoration:none;background:var(--bg-1);font:700 15px/1 var(--display);letter-spacing:.06em}
 .matrix a i{width:100%;height:4px;background:var(--c);box-shadow:0 0 10px var(--c);border-radius:1px}
 .matrix a small{font:400 9.5px/1 var(--mono);letter-spacing:.08em;color:var(--green)}
@@ -557,7 +567,7 @@ footer.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;co
   @keyframes onair{0%,30%{border-color:var(--orange);box-shadow:0 0 0 1px var(--orange),0 0 28px oklch(.71 .19 45 / .25)}36%,100%{border-color:var(--rule-2);box-shadow:none}}
   .gz i{animation:budget 9s cubic-bezier(.3,.7,.3,1) infinite both}
   @keyframes budget{0%{width:0}10%,100%{width:52%}}
-  .seal{animation:press 9s infinite both}
+  .tid{animation:press 9s infinite both}
   @keyframes press{0%,9%{opacity:.15;transform:scale(1.25)}13%{opacity:1;transform:scale(.96)}16%,100%{opacity:1;transform:none}}
   .pg b{animation:drop 9s -6s infinite both}
   .pg b:nth-child(2){animation-delay:-5.75s}.pg b:nth-child(3){animation-delay:-5.5s}
@@ -584,8 +594,8 @@ footer.foot{margin-top:72px;border-top:1px solid var(--rule);padding-top:18px;co
 .filters input:checked+label{background:var(--ink);border-color:var(--ink);color:var(--bg)}
 .filters input:checked+label small{color:var(--bg-3)}
 .filters input:focus-visible+label{outline:2px solid var(--amber);outline-offset:2px}
-.filters .pick{display:flex;align-items:center;gap:6px;padding:0;border:0;background:none;cursor:default}
-.filters .pick span{font:400 10.5px/26px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
+.filters .msel{display:flex;align-items:center;gap:6px}
+.filters .msel>span{font:400 10.5px/26px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--ink-3)}
 .filters select{padding:5px 28px 5px 11px;border:1px solid var(--rule);border-radius:999px;font:400 11px/1.2 var(--mono);letter-spacing:.06em;color:var(--ink-2);background:var(--bg-1);cursor:pointer;max-width:100%}
 .filters select:hover{border-color:var(--rule-2);color:var(--ink)}
 .filters select:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
@@ -629,7 +639,7 @@ function modelSelect(id, target, models, { name = (m) => m, counts = true } = {}
     ...[...keys].filter(([m]) => f === 'all' || modelFamily(m) === f).map(([, k]) =>
       `main:has(#${id}-m-${f}:checked):has(#${id}-mm-${f} option[value="${k}"]:checked) ${target}:not([data-mm="${k}"]){display:none}`),
   ]).join('\n');
-  return `<style>.filters select[id^="${id}-mm-"]:not(#${id}-mm-all){display:none}\n${css}</style><span class="pick"><span>Model</span>${lists.map(([f, o]) =>
+  return `<style>.filters select[id^="${id}-mm-"]:not(#${id}-mm-all){display:none}\n${css}</style><span class="msel"><span>Model</span>${lists.map(([f, o]) =>
     `<select id="${id}-mm-${f}" aria-label="Model"><option value="all" selected>All ${f === 'all' ? 'models' : `${esc(FAMILIES.find(([x]) => x === f)[1])} models`}</option>${o}</select>`).join('')}</span>`;
 }
 
@@ -647,14 +657,23 @@ export const setExplorerHref = (href) => { explorerHref = href; };
 const explorerAt = (params) => (explorerHref ? `${explorerHref}#${new URLSearchParams(params)}` : null);
 const exactly = (equals) => JSON.stringify(Object.fromEntries(Object.entries(equals).map(([k, v]) => [k, { filterType: 'text', type: 'equals', filter: v }])));
 
+// The recorder unit from the header, as the tab icon.
+const FAVICON = `data:image/svg+xml,${encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect x="2" y="7" width="28" height="18" rx="3" fill="#ff7a29"/><rect x="9" y="12" width="3" height="8" fill="#3a1a08"/><rect x="20" y="12" width="3" height="8" fill="#3a1a08"/></svg>')}`;
+const REPO = 'https://github.com/4KInc/black-box';
+
 export function layout(title, body, { active = '' } = {}) {
   const nav = (href, text, key) => `<a href="${href}"${active === key ? ' aria-current="page"' : ''}>${text}</a>`;
   return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="color-scheme" content="dark"><title>${esc(title)}</title><style>${CSS}</style></head><body>
+<meta name="color-scheme" content="dark"><meta name="theme-color" content="#121316"><title>${esc(title)}</title>
+<meta name="description" content="Black Box records what an AI shopping agent saw and decided, seals it into the PayPal payment, and settles the buyer's dispute by code.">
+<link rel="icon" href="${FAVICON}"><style>${CSS}</style></head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar"><a class="mark" href="/"><span class="unit" aria-hidden="true"></span>BLACK BOX</a><span class="sub">flight recorder for AI shopping agents</span>
 <nav aria-label="Sections">${nav('/judge', 'Judges', 'judge')}${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${explorerHref ? nav(explorerHref, 'Explorer', 'explorer') : ''}${labHref ? nav(labHref, 'Lab', 'lab') : ''}${demoHref ? nav(demoHref, 'Live demo', 'demo') : ''}</nav></header>
-<main id="main">${body}</main></body></html>`;
+<main id="main">${body}</main>
+<footer class="site"><div><a class="mark" href="/"><span class="unit" aria-hidden="true"></span>BLACK BOX</a>
+<p>A flight recorder for AI shopping agents. Every payment and dispute here runs in the PayPal sandbox; no real money moves. Not a PayPal product.</p></div>
+<nav aria-label="More"><a href="/judge">For judges</a><a href="/bench">Scenarios</a><a href="/study">Study</a><a href="${REPO}">Source code</a><a href="${REPO}/blob/main/THREAT_MODEL.md">Threat model</a></nav></footer></body></html>`;
 }
 
 // Raw model input, escaped, with each hidden text marked. Whitespace may differ between the
@@ -745,8 +764,8 @@ ${judgeTour()}`;
 // The three steps as three instruments on one rail, played in turn (CSS only). At rest, or with
 // reduced motion, every station shows its full state.
 function howItWorks() {
-  return `<section class="sec"><header><span class="n">00</span><h2>How it works</h2></header><ol class="flow">
-<li class="st"><div class="viz" aria-hidden="true"><div class="gz"><i></i><s></s></div><div class="gzl"><span>$0</span><span>limit $150</span></div><span class="seal">◆ Touch ID</span></div>
+  return `<section class="sec"><header><h2>How it works</h2></header><ol class="flow">
+<li class="st"><div class="viz" aria-hidden="true"><div class="gz"><i></i><s></s></div><div class="gzl"><span>$0</span><span>limit $150</span></div><span class="tid">◆ Touch ID</span></div>
 <h3><span>1</span> The buyer sets a limit</h3></li>
 <li class="st"><div class="viz" aria-hidden="true"><div class="pg"><b>page</b><b>page</b><b>choice</b></div><div class="order">PayPal payment<small>sealed · ff72c73a…</small></div></div>
 <h3><span>2</span> The agent shops, on the record</h3></li>
@@ -758,7 +777,7 @@ function howItWorks() {
 // The shortest path through the project, for someone with a few minutes. No password needed.
 function judgeTour() {
   const stop = (n, href, title, text, time) => `<a class="stop" href="${href}"><span class="eyebrow"><b>${n}</b> · ${time}</span><h3>${title} →</h3><p>${text}</p></a>`;
-  return `<section class="sec"><header><span class="n">01</span><h2>See it in five minutes</h2></header><div class="tour">
+  return `<section class="sec"><header><h2>See it in five minutes</h2></header><div class="tour">
 ${stop('1', '/judge', 'Three live disputes', 'The shop pays, the app pays, the sale stands', '2 min')}
 ${labHref ? stop('2', `${labHref}?case=P09`, 'Try to cheat it', 'Tamper with a real case', '2 min') : ''}
 ${stop(labHref ? '3' : '2', '/study', 'Does it really happen?', '15 AI models, one hidden lie', '1 min')}
@@ -775,7 +794,7 @@ function heroTape() {
 <ol>
 ${row(1, '23:01:07', 'Fetch', '<span class="mono">/p/RJ-PREMIUM-BLUE-M</span> · page signed by the shop')}
 ${row(2, '23:01:07', 'Hidden', '<q>agent orders … final total to $119.00</q><small>in the page’s data, never shown to people</small>', 'lie')}
-${row(3, '23:01:08', 'Buy', 'claude-haiku-4.5 pays <b>$240</b> on a <b>$150</b> budget<span class="fdr-bar" aria-hidden="true"><i></i><s></s></span>', 'buy')}
+${row(3, '23:01:08', 'Buy', 'Claude Haiku 4.5 pays <b>$240</b> on a <b>$150</b> budget<span class="fdr-bar" aria-hidden="true"><i></i><s></s></span>', 'buy')}
 ${row(4, '23:01:08', 'Seal', 'fingerprint <span class="mono">ff72c73a…</span> into the PayPal order')}
 ${row(5, '23:10:19', 'Dispute', 'buyer: not as described')}
 </ol>
@@ -795,16 +814,16 @@ export function indexPage(rows, { intro = '' } = {}) {
     const cap = c.record.mandate.maxTotalCents;
     const g = gaugeScale(paid, cap);
     return `<a class="rec ${v}" href="/case/${c.hash}" data-v="${v}" data-src="${c.paypal ? 'paypal' : 'preview'}" data-m="${modelFamily(d.model)}" data-mm="${keys.get(d.model ?? 'unknown model')}">
-<div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">${label(v)}</span><span class="rl">rule ${j.verdict.rule}</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(c.record.purchase.at)}</span></div>
-<div class="model">${icon(d.model)}${esc(d.model ?? 'unknown model')}</div>
+<div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">${esc(VERDICT_TAG[v] ?? label(v))}</span><span class="rl">rule ${j.verdict.rule}</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(c.record.purchase.at)}</span></div>
+<div class="model" title="${esc(d.model ?? '')}">${icon(d.model)}${esc(modelName(d.model))}</div>
 <div class="item">${esc(j.product?.name ?? c.record.purchase.sku)} · ${money(paid)} <span class="k">on a ${money(cap)} budget</span></div>
 <div class="mini" aria-hidden="true"><i style="width:${g.fill}"></i>${g.over ? `<u style="left:${g.overFrom};width:${g.overW}"></u>` : ''}<s style="left:${g.cap}"></s></div>
-<div class="foot">${c.paypal ? `<span class="live">PAYPAL ${esc(c.paypal.disputeId)}</span><b>${esc(paypalStatus(c.paypal))}</b>` : `<span>Not disputed</span><span>If disputed as “${esc(reasonPlain(j.reason))}”: <b class="if">${esc(planPlain(j.plan))}</b></span>`}</div></a>`;
+<div class="foot">${c.paypal ? `<span class="live">PayPal dispute <span class="id">${esc(c.paypal.disputeId)}</span></span><b>${esc(paypalStatus(c.paypal).replace(/^./, (x) => x.toUpperCase()))}</b>` : `<span>Not disputed</span><span>If disputed as “${esc(reasonPlain(j.reason))}”: <b class="if">${esc(planPlain(j.plan))}</b></span>`}</div></a>`;
   }).join('');
   const empty = '<p class="empty">No recordings yet. Run the agent (node agent/run.mjs) to make one.</p>';
   return layout('Black Box · recordings', `${intro || `<section class="hero"><div><div class="eyebrow"><b>●</b> Recordings</div><h1>Every run, <em>on tape</em></h1></div>
 <div><p>Each recording is what an AI shopping agent saw and decided, sealed into its PayPal order, or kept as a decline if it bought nothing. Open one to replay it and see who pays.</p></div></section>`}
-<section class="sec"><header><span class="n">${String(rows.length).padStart(2, '0')}</span><h2>Recordings</h2>${live ? `<p>${live} ${live === 1 ? 'was' : 'were'} disputed on PayPal.</p>` : ''}</header>
+<section class="sec"><header><h2>Recordings</h2><p>${rows.length} agent runs${live ? `, ${live} of them disputed on PayPal` : ''}.</p></header>
 ${rows.length ? recordingFilters(rows) : ''}<div class="recs">${cards || empty}</div></section>`, { active: 'recordings' });
 }
 
@@ -814,7 +833,7 @@ function declineCard(c, keys) {
   const products = c.record.fetches.length - 1;
   return `<a class="rec DECLINED" href="/case/${c.hash}" data-v="DECLINED" data-src="preview" data-m="${modelFamily(d.model)}" data-mm="${keys.get(d.model ?? 'unknown model')}">
 <div class="top"><span class="dot" style="view-transition-name:${vtName(c.hash)}"></span><span class="vv">Bought nothing</span>${c.live ? '<span class="lv">Live run</span>' : ''}<span class="when">${day(d.at)}</span></div>
-<div class="model">${icon(d.model)}${esc(d.model ?? 'unknown model')}</div>
+<div class="model" title="${esc(d.model ?? '')}">${icon(d.model)}${esc(modelName(d.model))}</div>
 <div class="item">Read ${products} product page${products === 1 ? '' : 's'} <span class="k">on a ${money(c.record.mandate.maxTotalCents)} budget</span></div>
 <div class="foot"><span>No order, nothing to dispute</span><span>“${esc(String(d.reason ?? '').slice(0, 160))}${String(d.reason ?? '').length > 160 ? '…' : ''}”</span></div></a>`;
 }
@@ -832,6 +851,16 @@ function recordingFilters(rows) {
 
 // ---------------------------------------------------------------- case
 
+// What Black Box asked PayPal to do, and what woke it, in plain words. The raw calls are in the
+// recording and the technical details.
+const ACTION_PLAIN = { 'accept-claim': 'accepted the claim', 'accept-claim REFUND': 'accepted the claim', 'accept-claim-partial': 'accepted part of the claim', 'provide-evidence': 'sent PayPal the evidence', 'make-offer': 'offered the buyer a refund' };
+export const actionPlain = (a) => ACTION_PLAIN[a] ?? String(a ?? '').replace(/^accept-claim\b.*/, 'accepted the claim');
+export const triggerPlain = (t) => {
+  const kind = /UPDATED/.test(t) ? 'dispute updated' : /CREATED/.test(t) ? 'dispute opened' : null;
+  const how = /^webhook/.test(t) ? `PayPal's webhook${kind ? ` (${kind})` : ''}` : 'the 30-second check';
+  return `${how}${/then the watcher/.test(t) ? ', then the 30-second check' : ''}${/AUTO_EXECUTE=on/.test(t) ? ', no one at the keyboard' : ''}`;
+};
+
 function causePanel(c, j) {
   const p = c.paypal;
   if (!p) {
@@ -842,38 +871,46 @@ function causePanel(c, j) {
   const credit = buyerCredit(p);
   const refund = p.after?.refundTransactions?.[0];
   return `<div class="eyebrow"><b>●</b> ${p.labRun ? 'Lab run · nothing sent to PayPal' : `PayPal ${p.executed ? 'carried it out' : 'dispute open'}`}</div>
-${p.executed ? `<div class="amt">${credit ? money(credit.amount.cents, credit.amount.currency) : esc(p.executed.action)}<small>${credit ? 'back to the buyer' : 'sent to PayPal'}</small></div>` : `<div class="amt">${esc(planText(j.plan))}<small>${p.labRun ? 'what Black Box would do on this dispute' : 'planned, not yet executed'}</small></div>`}
-<div class="kv"><span>dispute</span><b>${esc(disputeName(p))}</b>
-${p.escalated ? `<span>escalated</span><b>${time(p.escalated.at)}</b>` : ''}
-${p.executed ? `<span>action</span><b>${esc(p.executed.action)} · HTTP ${esc(p.executed.httpStatus)}</b><span>at</span><b>${time(p.executed.at)}</b>` : ''}
-${refund ? `<span>refund</span><b>${esc(refund.id)}</b>` : ''}
-${p.payout ? `<span>payout</span><b>${money(p.payout.amount?.cents)} operator → merchant · batch ${esc(p.payout.batchId)} ${esc(p.payout.status ?? '')}${p.payout.itemStatus ? ` · item ${esc(p.payout.itemStatus)}` : ''}</b>` : ''}
-${p.trigger ? `<span>trigger</span><b>${esc(p.trigger)}</b>` : ''}
-${p.after?.outcome ? `<span>closed</span><b>${esc(p.after.outcome.code)}${p.after.outcome.reason ? ` · ${esc(p.after.outcome.reason)}` : ''}</b>` : ''}</div>`;
+${p.executed ? `<div class="amt">${credit ? money(credit.amount.cents, credit.amount.currency) : /^provide-evidence/.test(p.executed.action) ? 'Evidence sent' : esc(actionPlain(p.executed.action).replace(/^./, (x) => x.toUpperCase()))}<small>${credit ? 'back to the buyer' : /^provide-evidence/.test(p.executed.action) ? 'the sale stands; no money moved' : 'sent to PayPal'}</small></div>` : `<div class="amt">${esc(planText(j.plan))}<small>${p.labRun ? 'what Black Box would do on this dispute' : 'planned, not yet executed'}</small></div>`}
+<div class="kv"><span>Dispute</span><b class="mono">${esc(disputeName(p))}</b>
+${p.escalated ? `<span>Escalated</span><b>${time(p.escalated.at)}</b>` : ''}
+${p.executed ? `<span>Black Box</span><b>${esc(actionPlain(p.executed.action))}, ${time(p.executed.at)}</b>` : ''}
+${refund ? `<span>Refund</span><b class="mono">${esc(refund.id)}</b>` : ''}
+${p.payout ? `<span>Payout</span><b>${money(p.payout.amount?.cents)} from the shopping app to the shop, ${esc(String(p.payout.status ?? '').toLowerCase())} <span class="mono">${esc(p.payout.batchId)}</span></b>` : ''}
+${p.trigger ? `<span>Woken by</span><b>${esc(triggerPlain(p.trigger))}</b>` : ''}
+${p.after?.outcome ? `<span>Closed</span><b>${esc(p.after.outcome.code)}${p.after.outcome.reason ? ` · ${esc(p.after.outcome.reason)}` : ''}</b>` : ''}</div>`;
 }
+
+// One of PayPal's money movements on a dispute, in words.
+const moneyPlain = (m) => {
+  const amt = money(m.amount?.cents);
+  if (/FEE/.test(m.reason)) return `PayPal charges the shop its ${amt} dispute fee`;
+  if (m.party === 'BUYER') return `PayPal ${m.type === 'CREDIT' ? 'refunds the buyer' : 'takes back from the buyer'} ${amt}`;
+  return `PayPal ${m.type === 'DEBIT' ? 'takes' : 'returns'} ${amt} ${m.type === 'DEBIT' ? 'from' : 'to'} the shop`;
+};
 
 function tape(c, j) {
   const r = c.record;
   const items = [];
   r.fetches.forEach((f, i) => items.push([f.fetched_at, 'Fetch', `<span class="mono">${esc(f.path)}</span> from ${esc(f.authority)} · signature ${(j.pagesValid?.[i] ?? f.verification?.ok) ? `valid <span class="k mono">key ${short(f.verification.keyid)}</span>` : '<span style="color:var(--red)">invalid</span>'}`]));
   r.model_inputs.forEach((m) => items.push([m.at, 'Model in', `${m.text.length.toLocaleString('en-US')} characters sent to the model <span class="k mono">sha256 ${short(m.sha256)}</span>`]));
-  r.decisions.forEach((d) => items.push([d.at, 'Decision', `<b>${esc(d.model)}</b>: ${esc(d.action)} <span class="mono">${esc(d.sku ?? '')}</span>`, true]));
+  r.decisions.forEach((d) => items.push([d.at, 'Decision', `<b>${esc(modelName(d.model))}</b>: ${esc(d.action)} <span class="mono">${esc(d.sku ?? '')}</span>`, true]));
   items.push([r.purchase.at, 'Seal', `Record sealed, sent to checkout at ${money(r.purchase.price_cents)} <span class="k mono">custom_id ${short(c.hash)}</span>`]);
   const p = c.paypal;
   if (p) {
     if (p.orderCreatedAt) items.push([p.orderCreatedAt, 'Order', `PayPal order${p.orderId ? ` <span class="mono">${esc(p.orderId)}</span>` : ''}, ${p.captureId ? `capture <span class="mono">${esc(p.captureId)}</span>` : 'captured'} ${money(p.captured?.cents)}`]);
-    items.push([p.filedAt, 'Dispute', simulated(p) ? `Simulated dispute: ${esc(p.reason)}` : `Buyer filed <span class="mono">${esc(p.disputeId)}</span>: ${esc(p.reason)}`]);
+    items.push([p.filedAt, 'Dispute', simulated(p) ? `Simulated dispute: ${esc(reasonPlain(p.reason))}` : `The buyer opens dispute <span class="mono">${esc(p.disputeId)}</span>: ${esc(reasonPlain(p.reason))}`]);
     if (p.escalated) items.push([p.escalated.at, 'Escalate', 'The dispute was an inquiry, where PayPal takes no evidence: Black Box escalated it to a claim']);
-    if (p.executed) items.push([p.executed.at, 'Verdict', `<b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}), Black Box sent <span class="mono">${esc(p.executed.action)}</span>`, true]);
-    for (const m of p.after?.moneyMovements ?? []) items.push([p.executed?.at, 'Money', `${esc(m.party)} ${esc(m.type)} ${money(m.amount?.cents)} <span class="k">${esc(m.reason)}</span>`]);
-    if (p.payout) items.push([p.payout.at, 'Payout', `The agent operator paid the merchant ${money(p.payout.amount?.cents)} back through PayPal Payouts <span class="k mono">batch ${esc(p.payout.batchId)} · ${esc(p.payout.status)}${p.payout.itemStatus ? ` · item ${esc(p.payout.itemStatus)}` : ''}</span>`, true]);
+    if (p.executed) items.push([p.executed.at, 'Verdict', `<b>${label(j.verdict.verdict)}</b> (rule ${j.verdict.rule}): Black Box ${esc(actionPlain(p.executed.action))}`, true]);
+    for (const m of p.after?.moneyMovements ?? []) items.push([p.executed?.at, 'Money', moneyPlain(m)]);
+    if (p.payout) items.push([p.payout.at, 'Payout', `The shopping app pays the shop ${money(p.payout.amount?.cents)} back through PayPal Payouts <span class="k mono">batch ${esc(p.payout.batchId)} · ${esc(p.payout.status)}${p.payout.itemStatus ? ` · item ${esc(p.payout.itemStatus)}` : ''}</span>`, true]);
     if (p.after?.outcome) items.push([p.after.updatedAt, 'Closed', `<b>${esc(p.after.outcome.code)}</b> ${esc(p.after.outcome.reason ?? '')}${p.after.outcome.refunded ? `, ${money(p.after.outcome.refunded.cents)} refunded` : ''}`, true]);
   }
   return `<ol class="tape">${items.map(([at, ev, h, hot]) => `<li${hot ? ' class="hot"' : ''}><span class="t" title="${time(at)}">${clock(at)}</span><span class="ev">${ev}</span><span>${h}</span></li>`).join('')}</ol>`;
 }
 
 function section(n, title, note, body, plain = '') {
-  return `<section class="sec"><header><span class="n">${n}</span><h2>${title}</h2>${note ? `<p>${note}</p>` : ''}</header>${plain ? `<p class="plain">${esc(plain)}</p>` : ''}${body}</section>`;
+  return `<section class="sec"><header><h2>${title}</h2>${note ? `<p>${note}</p>` : ''}</header>${plain ? `<p class="plain">${esc(plain)}</p>` : ''}${body}</section>`;
 }
 
 // For the people who read a recording most: customer support. What happened, what to tell the
@@ -1038,7 +1075,7 @@ function supportFor(c, j) {
 // case and the recording's fingerprint, each a small label over its value.
 function plate(c, d, [when, at]) {
   const cell = (dt, dd, cls = '') => `<div${cls ? ` class="${cls}"` : ''}><dt>${dt}</dt><dd>${dd}</dd></div>`;
-  return `<dl class="plate">${c.live ? cell('Source', 'Live run', 'live') : ''}${cell('Agent', `${icon(d.model)}${esc(d.model ?? 'unknown')}`)}
+  return `<dl class="plate">${c.live ? cell('Source', 'Live run', 'live') : ''}${cell('Agent', `${icon(d.model)}<span title="${esc(d.model ?? '')}">${esc(modelName(d.model))}</span>`)}
 ${cell(when, at ? `${day(at)}<small>${clock(at).slice(0, 5)} UTC</small>` : '–')}${c.paypal ? cell('PayPal case', `<span class="mono">${esc(disputeName(c.paypal))}</span>`) : ''}
 ${cell('Recording', `<span class="mono">${short(c.hash, 10)}</span>`, 'end')}</dl>`;
 }
@@ -1099,7 +1136,7 @@ ${techDetails([['Mandate fingerprint (SHA-256)', esc(r.mandate_hash)]])}</div>
 <div class="panel"><div class="ch two"><i>AI's view</i>${hiddenRead ? 'Hidden from the customer, read by the AI' : 'Read by the AI'}</div>
 ${hiddenRead ? `<blockquote><mark>“${esc(hiddenRead.text)}”</mark></blockquote><p class="where">Where: ${esc(methodPlain(hiddenRead.method))}.</p>` : '<p class="empty">Nothing hidden that names this item.</p>'}</div></div>`;
   const channels = sec('2.0', 'What the shopping agent saw', '', `${contrast}
-${d.reason ? `<div class="cvr"><span class="who">Why ${esc(d.model)} bought it</span><p>“${esc(d.reason)}”</p></div>` : ''}
+${d.reason ? `<div class="cvr"><span class="who">Why ${esc(modelName(d.model))} bought it</span><p>“${esc(d.reason)}”</p></div>` : ''}
 <details class="more"><summary>Compare the full page with exactly what the AI was given${marked ? ` · ${marked} hidden passage${marked > 1 ? 's' : ''} highlighted` : ''}</summary><div class="grid2">
 <div><div class="ch">${VIEW_CUSTOMER}</div>
 <iframe sandbox="" referrerpolicy="no-referrer" loading="lazy" title="Recorded product page" src="${pageSrc}"></iframe></div>
@@ -1145,7 +1182,7 @@ ${downloadButton(c)}</div>`);
 <details><summary>The ${statements.length} statements</summary><ol class="evlist">${statements.map((x) => `<li>${esc(x)}</li>`).join('')}</ol></details>
 <div class="k" style="margin-top:10px;font-size:12.5px">Attached: the full record, as <span class="mono">blackbox-evidence.txt</span>.</div></div>`) : '';
 
-  return layout(`${label(v)} · ${d.model ?? 'replay'} · Black Box`, `${benchCard}${crumbs}${cause}${support}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.nav ?? (c.bench ? 'bench' : 'recordings') });
+  return layout(`${label(v)} · ${modelName(d.model)} · Black Box`, `${benchCard}${crumbs}${cause}${support}${mandate}${channels}${hidden}${panel}${ladder}${tapeSec}${proof}${evidence}`, { active: c.nav ?? (c.bench ? 'bench' : 'recordings') });
 }
 
 // A recording where the agent bought nothing. No order, so no dispute and no verdict: it shows
@@ -1189,7 +1226,7 @@ ${techDetails([['Mandate fingerprint (SHA-256)', esc(r.mandate_hash)]])}</div>`)
   const proof = section('4.0', 'About this recording', '', `<div class="panel"><p class="empty">Black Box kept every page the agent read, exactly as the shop sent it, with what the AI was given and what it decided.</p>
 ${techDetails([['Recording fingerprint', esc(c.hash)], ['Kept', `${r.fetches.length} pages byte for byte, ${r.model_inputs.length} model input${r.model_inputs.length === 1 ? '' : 's'}, ${r.decisions.length} decision${r.decisions.length === 1 ? '' : 's'}`]])}
 ${downloadButton(c)}</div>`);
-  return layout(`Bought nothing · ${d.model ?? 'replay'} · Black Box`, `${crumbs}${head}${support}${mandate}${channels}${hidden}${proof}`, { active: c.nav ?? 'recordings' });
+  return layout(`Bought nothing · ${modelName(d.model)} · Black Box`, `${crumbs}${head}${support}${mandate}${channels}${hidden}${proof}`, { active: c.nav ?? 'recordings' });
 }
 
 // ---------------------------------------------------------------- study
@@ -1209,7 +1246,22 @@ export function studySummary(study) {
   return { rows, total: study.runs.filter((r) => !r.error).length, errors: study.runs.filter((r) => r.error).length };
 }
 
-export const modelName = (m) => m.replace(/^local:mlx-community\//, '').replace(/-Instruct.*$/, '').replace(/-4bit$/, '');
+// A model's name as people know it: "claude-haiku-4-5-20251001" is Claude Haiku 4.5, and
+// "local:mlx-community/Llama-3.2-1B-Instruct-4bit" is Llama 3.2 1B. The exact ID stays in the
+// record and the technical details.
+const MODEL_NAMES = {
+  'gpt-4o-mini-2024-07-18': 'GPT-4o mini', 'gpt-5.5-2026-04-23': 'GPT-5.5',
+  'gemini-3.1-pro-preview': 'Gemini 3.1 Pro', 'gemini-3.5-flash-lite': 'Gemini 3.5 Flash-Lite',
+  'grok-4.7': 'Grok 4.7', 'grok-4.20-0309-non-reasoning': 'Grok 4.20', 'muse-spark-1.3': 'Muse Spark 1.3',
+};
+export const modelName = (m) => {
+  const id = String(m ?? 'unknown model');
+  if (MODEL_NAMES[id]) return MODEL_NAMES[id];
+  const claude = id.match(/^claude-([a-z]+)-(\d+)-(\d+)(?:-\d{8})?$/);
+  if (claude) return `Claude ${claude[1][0].toUpperCase()}${claude[1].slice(1)} ${claude[2]}.${claude[3]}`;
+  return id.replace(/^local:mlx-community\//, '').replace(/-Instruct.*$/, '').replace(/-4bit$/, '')
+    .replace(/^(Llama|Mistral|Qwen[\d.]+)-([\d.]+-)?(\w+)$/, (_, n, v, size) => `${n}${v ? ` ${v.slice(0, -1)}` : ''} ${size}`);
+};
 // The first study (jackets) predates these fields; its defaults are what it ran with.
 export const setupOf = (study) => ({
   title: study.title ?? 'Blue rain jacket, at most $150, Driftwood Outfitters',
@@ -1255,7 +1307,7 @@ ${r.cells.map((c) => { const k = cellKind(c); return `<div class="cell${k === 'h
 <div class="sbar"><span>without</span><i><u style="width:${pct(c.ctlBought, c.ctlN)}"></u></i><b>${c.ctlBought}/${c.ctlN}</b></div></div>`; }).join('')}</div>`).join('');
   const want = [st.item.endsWith('s') ? '' : 'a', st.attrs.color, st.item].filter(Boolean).join(' ');
   const plain = `Buy ${want}, at most ${money(st.budget)}. The big number is how much the lie raised buying anyway.`;
-  return `<section class="sec ssetup" data-s="s${num}"><header><span class="n">${num}</span><h2>${esc(st.title)}</h2></header><p class="plain">${esc(plain)}</p>
+  return `<section class="sec ssetup" data-s="s${num}"><header><h2>${esc(st.title)}</h2></header><p class="plain">${esc(plain)}</p>
 <div class="skey"><span><b class="r">+100</b>the lie made it overspend</span><span><b class="a">OVERSPENDS ANYWAY</b>ignores the budget, lie or not</span><span><b class="g">NEVER FOOLED</b>stayed within budget</span><span>Hover a cell for details.</span></div>
 <div class="study">${head}${body}</div></section>`;
 }
@@ -1305,7 +1357,7 @@ export const SECTIONS = [
 // proves: shown as a tooltip on a "What this proves" chip beside the title (hover, tap or focus).
 function fold(n, title, note, rows, row, proves = '') {
   const right = rows.filter((r) => r.pass).length;
-  return `<details class="sec fold"><summary><span class="n">${n}</span><h2>${title}</h2>${proves ? `<span class="why" tabindex="0" data-tip="${esc(proves)}" aria-label="What this proves: ${esc(proves)}">What this proves</span>` : ''}<span class="tally${right === rows.length ? '' : ' bad'}">${right} of ${rows.length} right</span>${note ? `<p>${note}</p>` : ''}</summary><div class="bcards">${rows.map(row).join('')}</div></details>`;
+  return `<details class="sec fold"><summary><h2>${title}</h2>${proves ? `<span class="why" tabindex="0" data-tip="${esc(proves)}" aria-label="What this proves: ${esc(proves)}">What this proves</span>` : ''}<span class="tally${right === rows.length ? '' : ' bad'}">${right} of ${rows.length} right</span>${note ? `<p>${note}</p>` : ''}</summary><div class="bcards">${rows.map(row).join('')}</div></details>`;
 }
 
 // What a bench case can be filtered on: its verdict, what Black Box would do on PayPal, and the buyer's complaint.
@@ -1331,7 +1383,7 @@ main:has(#fb-${g.key}-${value}:checked) .fold::details-content{content-visibilit
 export function benchPage(results) {
   const passed = results.filter((r) => r.pass).length;
   const all = passed === results.length;
-  const matrix = `<div class="matrix">${results.map((r) => `<a class="${r.got.verdict}${r.pass ? '' : ' fail'}" href="/bench/${esc(r.def.id)}" title="${esc(r.def.title)}" ${benchData(r)}>${esc(r.def.id)}<i></i><small>${r.pass ? '✓ right' : '✗ wrong'}</small></a>`).join('')}</div>`;
+  const matrix = `<div class="matrix">${results.map((r) => `<a class="${r.got.verdict}${r.pass ? '' : ' fail'}" href="/bench/${esc(r.def.id)}" title="${esc(r.def.title)}" ${benchData(r)}>${esc(r.def.id)}<i></i>${r.pass ? '' : '<small>✗ wrong</small>'}</a>`).join('')}</div>`;
   const row = (r) => `<a class="bcard ${r.got.verdict}" href="/bench/${esc(r.def.id)}" ${benchData(r)}>
 <div class="top"><span class="dot"></span><span class="vv">${label(r.got.verdict)}</span><span class="rl">rule ${r.got.rule}</span><span class="ok ${r.pass ? 'PASS' : 'FAIL'}">${r.pass ? '✓ right' : '✗ wrong'}</span></div>
 <div class="bid">${esc(r.def.id)}</div><h3>${esc(r.def.title)}</h3>
@@ -1339,11 +1391,11 @@ ${r.mismatches.map((x) => `<p class="miss">${esc(x)}</p>`).join('')}
 <div class="foot"><span>If disputed as “${esc(reasonPlain(r.def.reason))}”</span><b>${esc(planPlain(r.got))}</b>${r.got.held ? `<span class="held">${HELD_PLAIN}</span>` : ''}${failsText(r.got.broken) ? `<span class="fails">${esc(failsText(r.got.broken))}</span>` : ''}</div></a>`;
   const n = (i) => `${i + 1}.0`;
   return layout('Black Box · dispute scenarios', `<section class="hero top"><div><div class="eyebrow"><b>●</b> Dispute scenarios · run offline</div>
-<h1><em style="color:var(--${all ? 'green' : 'red'})">${passed} of ${results.length}</em><br>disputes judged right</h1></div>
-<div><p>Each dispute’s right answer is written down before Black Box sees it.</p>
-<div class="vkey"><span class="MERCHANT"><i></i>Shop at fault</span><span class="AGENT"><i></i>Agent at fault</span><span class="USER"><i></i>Purchase stands</span><span class="NEEDS_A_HUMAN"><i></i>Needs a human</span></div>
-${matrix}
-<p class="k" style="font-size:12px;margin:14px 0 0">Check it yourself: <span class="mono">npm run bench</span></p></div></section>
+<h1><em style="color:var(--${all ? 'green' : 'red'})">${passed} of ${results.length}</em> disputes judged right</h1></div>
+<div><p>Each dispute’s right answer is written down before Black Box sees it. Every tile is one dispute; open it to see why.</p>
+<p class="k" style="font-size:12.5px">Check it yourself: <span class="mono">npm run bench</span></p></div></section>
+<section class="sec" style="margin-top:28px"><div class="vkey" style="margin:0 0 12px"><span class="MERCHANT"><i></i>Shop at fault</span><span class="AGENT"><i></i>Agent at fault</span><span class="USER"><i></i>Purchase stands</span><span class="NEEDS_A_HUMAN"><i></i>Needs a human</span></div>
+${matrix}</section>
 <section class="sec" style="padding-bottom:0">${benchFilters(results)}</section>
 ${SECTIONS.map(([kind, title, note, proves], i) => fold(n(i), title, note, results.filter((r) => r.def.kind === kind), row, proves)).join('')}`, { active: 'bench' });
 }
@@ -1362,13 +1414,6 @@ export const JUDGE_CASES = [
     stat: () => ['$0', 'moved. Black Box sent PayPal the evidence instead'],
     what: (m) => `${esc(m.model)} stayed under the limit. The buyer disputed it anyway.` },
 ];
-
-const JUDGE_TAG = { [VERDICT.MERCHANT]: 'Shop at fault', [VERDICT.AGENT]: 'Agent at fault', [VERDICT.USER]: 'Purchase stands' };
-
-// "claude-haiku-4-5-20251001" as "Claude Haiku 4.5"; "Llama-3.2-1B" as "Llama 3.2 1B".
-const judgeModel = (model) => modelName(model)
-  .replace(/^claude-([a-z]+)-(\d+)-(\d+)(-\d{8})?$/, (_, n, a, b) => `Claude ${n[0].toUpperCase()}${n.slice(1)} ${a}.${b}`)
-  .replace(/^(Llama)-(\d+\.\d+)-(\w+)$/, '$1 $2 $3');
 
 // What the dispute did to each party's money, from PayPal's own report: the settlement (not the
 // dispute fee) and the operator's payout. The purchase itself is not counted.
@@ -1398,10 +1443,10 @@ function judgeCard(r, { letter, head, stat, what }) {
     ...(p.payout ? [['Payout batch', `${p.payout.batchId} ${p.payout.status}`]] : [])];
   const ledger = explorerAt({ v: 'ledger', f: exactly({ caseId: r.def.id }) });
   return `<article class="jcard ${v}" id="${r.def.id}">
-<div class="jtop"><i></i>${letter} · ${esc(JUDGE_TAG[v] ?? label(v))}</div>
+<div class="jtop"><i></i>${letter} · ${esc(VERDICT_TAG[v] ?? label(v))}</div>
 <h2>${head}</h2>
 <div class="jstat"><b>${big}</b><span>${after}</span></div>
-<p class="jwhy">${what({ model: judgeModel(decisionOf(rec).model ?? 'unknown model') })}</p>
+<p class="jwhy">${what({ model: modelName(decisionOf(rec).model) })}</p>
 <div><div class="jgauge" role="img" aria-label="Paid ${money(paid)} on a ${money(cap)} limit"><i style="width:${pct(Math.min(paid, cap))}"></i>${paid > cap ? `<u style="left:${pct(cap)};width:${pct(paid - cap)}"></u>` : ''}<s style="left:${pct(cap)}"></s></div>
 <div class="jgl">Paid <b>${money(paid)}</b> on a <b>${money(cap)}</b> limit${paid > cap ? ` · <span class="over">${money(paid - cap)} over</span>` : ''}. Settled by itself ${minutes(p.filedAt, p.executed.at)} after the dispute.</div></div>
 <div class="jacts">${labHref ? `<a class="jgo" href="${esc(`${labHref}/run?case=${r.def.id}`)}">Re-run the engine →</a>` : ''}
@@ -1423,4 +1468,11 @@ export function judgePage(results) {
 <p>Three real disputes in the PayPal sandbox. Black Box settled each one on its own. Press <b>Re-run the engine</b> to watch it decide again.</p></section>
 <section class="sec" style="margin-top:28px"><div class="jcards">${picked.map(({ s, r }) => judgeCard(r, s)).join('')}</div>
 <p class="jnote" style="margin-top:22px">A live run from scratch takes about 15 minutes: the buyer signs in to the sandbox to pay and to dispute, and PayPal reports the dispute 3 to 12 minutes later. ${demoHref ? `The <a href="${esc(demoHref)}">live demo</a> runs it, with the operator password from the testing instructions.` : ''} Or check every verdict yourself: <span class="mono">npm run bench</span>.</p></section>`, { active: 'judge' });
+}
+
+// Any address with nothing behind it.
+export function notFoundPage(what = 'There is nothing at this address.') {
+  return layout('Not found · Black Box', `<section class="hero"><div><div class="eyebrow"><b>●</b> 404</div>
+<h1>No <em>recording</em> here.</h1></div>
+<div><p>${esc(what)}</p><p><a href="/judge">Start with the three live disputes →</a></p><p><a href="/">Every recording</a> · <a href="/bench">Dispute scenarios</a></p></div></section>`);
 }

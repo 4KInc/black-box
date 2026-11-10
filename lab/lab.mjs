@@ -10,7 +10,7 @@ import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { buildCase, CASES, ENROLMENT } from '../bench/cases.mjs';
 import { judge } from '../replay/cases.mjs';
-import { casePage, layout, RULE_SHORT } from '../replay/page.mjs';
+import { casePage, layout, RULE_SHORT, VERDICT_TAG } from '../replay/page.mjs';
 import { decide, FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, RULES, VERDICT } from '../engine/verdict.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
@@ -128,7 +128,7 @@ export function labForm(query = new URLSearchParams()) {
 
 function picks(picked) {
   return `<nav class="picks" aria-label="Start from a case">${PICKS.map(({ d, head, sub }) => `<a class="pick ${d.expect.verdict}" href="/lab?case=${d.id}"${d.id === picked ? ' aria-current="true"' : ''}>
-<span class="top"><i></i>${esc(label(d.expect.verdict))}<small>${d.id}</small></span><b>${esc(head)}</b><span>${esc(sub)}</span></a>`).join('')}</nav>`;
+<span class="top"><i></i>${esc(VERDICT_TAG[d.expect.verdict] ?? label(d.expect.verdict))}<small>${d.id}</small></span><b>${esc(head)}</b><span>${esc(sub)}</span></a>`).join('')}</nav>`;
 }
 
 export function labPage(query = new URLSearchParams()) {

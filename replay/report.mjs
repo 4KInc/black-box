@@ -6,7 +6,7 @@
 import { FACT_KEYS, MERCHANT_CONDITIONS, RECORD_CHECKS, VERDICT } from '../engine/verdict.mjs';
 import { statementsFor } from '../evidence/evidence.mjs';
 import { boxHeight, measure, PdfDoc } from '../lib/pdf.mjs';
-import { FACT, methodPlain } from './page.mjs';
+import { FACT, methodPlain, modelName } from './page.mjs';
 
 const money = (c) => (Number.isInteger(c) ? `$${(c / 100).toFixed(2)}` : '–');
 const when = (iso) => (iso ? String(iso).replace('T', ' ').replace(/\.\d+Z$|Z$/, '').slice(0, 16) + ' UTC' : '–');
@@ -58,7 +58,7 @@ export function caseReport(c, j, { caseUrl = null } = {}) {
 
   if (!j) {
     const d = r.decisions?.at(-1);
-    verdictCard(doc, { accent: C.muted, bg: C.panel, who: 'The agent bought nothing' }, 'DECLINED', `${d?.model ?? 'The agent'}: “${clip(d?.reason ?? '', 400)}”`, null);
+    verdictCard(doc, { accent: C.muted, bg: C.panel, who: 'The agent bought nothing' }, 'DECLINED', `${d?.model ? modelName(d.model) : 'The agent'}: “${clip(d?.reason ?? '', 400)}”`, null);
     return doc.bytes();
   }
 
@@ -85,7 +85,7 @@ export function caseReport(c, j, { caseUrl = null } = {}) {
   const events = [
     [m.notBefore, 'The buyer set the limit', `${[a.color, m.item?.category].filter(Boolean).join(' ')}${a.size ? `, size ${a.size}` : ''}, at most ${money(m.maxTotalCents)}${j.mandateAuth?.ok && !j.mandateAuth.legacy ? ', approved with their passkey' : ''}.${j.buyerRequest ? ` In their words: “${clip(j.buyerRequest.text, 160)}”` : ''}`],
     [r.fetches[0]?.fetched_at, 'The AI agent read the shop', `${r.fetches.length} page${r.fetches.length === 1 ? '' : 's'}, ${r.fetches.every((f) => f.verification?.ok) ? 'all signed by the shop' : 'not all validly signed'}.${j.facts.inModelInput && j.facts.namesPurchasedItem ? ' One held text hidden from people, about this item.' : ''}`],
-    [d?.at, `${d?.model ?? 'The agent'} decided to buy`, `${item}: “${clip(d?.reason ?? '', 180)}”`],
+    [d?.at, `${d?.model ? modelName(d.model) : 'The agent'} decided to buy`, `${item}: “${clip(d?.reason ?? '', 180)}”`],
     [live ? p.orderCreatedAt : r.purchase.at, 'The buyer was charged', `${money(charged)} on a ${money(m.maxTotalCents)} limit.${live ? ` PayPal order ${p.orderId ?? ''}.` : ''}`],
     ...(live ? [
       [p.filedAt, 'The buyer disputed it', `${p.reason.replace(/_/g, ' ').toLowerCase()}.`],
@@ -113,10 +113,10 @@ export function caseReport(c, j, { caseUrl = null } = {}) {
   }
   if (hidden.length > 4) note(doc, `${hidden.length - 4} more hidden texts are in the record.`);
   const flagged = (j.flaggedPassages ?? []).filter((q) => q.namesPurchasedItem);
-  if (flagged.length) note(doc, `A separate AI check (${j.flagger?.model ?? 'the flagger'}) also quoted text aimed at AI shoppers about this item. It can only send a case to a person, never decide one.`);
+  if (flagged.length) note(doc, `A separate AI check (${j.flagger?.model ? modelName(j.flagger.model) : 'the flagger'}) also quoted text aimed at AI shoppers about this item. It can only send a case to a person, never decide one.`);
 
   sectionTitle(doc, 'What the AI decided');
-  quote(doc, `${d?.model ?? 'The agent'} · bought ${item}`, `“${clip(d?.reason ?? '', 700)}”`, C.off);
+  quote(doc, `${d?.model ? modelName(d.model) : 'The agent'} · bought ${item}`, `“${clip(d?.reason ?? '', 700)}”`, C.off);
 
   sectionTitle(doc, `The ${FACT_KEYS.length} checks behind the verdict`);
   checks(doc, j.facts);

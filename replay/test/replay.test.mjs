@@ -135,7 +135,7 @@ test('each model has its own small face, coloured by its provider, on cards, cas
   assert.notEqual(modelIcon('claude-sonnet-5-5', 'claude'), modelIcon('claude-haiku-5-5', 'claude'));
   assert.match(modelIcon('muse-spark-1.3', 'muse'), /^<svg class="mi" viewBox="0 0 32 32"[^>]*aria-hidden="true"/);
   const index = await (await fetch(base + '/')).text();
-  assert.match(index, /<div class="model"><svg class="mi"[\s\S]*?<\/svg>claude-opus-5-5<\/div>/);
+  assert.match(index, /<div class="model" title="claude-opus-5-5"><svg class="mi"[\s\S]*?<\/svg>Claude Opus 5\.5<\/div>/);
   assert.match(await (await fetch(`${base}/case/${LIVE}`)).text(), /<dt>Agent<\/dt><dd><svg class="mi"/);
   assert.match(await (await fetch(`${base}/study`)).text(), /<div class="sm"><b><svg class="mi"/);
 });
@@ -256,7 +256,7 @@ test('the recorded page is served sandboxed, and unknown cases are 404', async (
 
 test('a fixture with third-party hidden text is NEEDS A HUMAN', async () => {
   const html = await (await fetch(base + '/')).text();
-  assert.match(html, /<span class="vv">NEEDS A HUMAN<\/span><span class="rl">rule 4/);
+  assert.match(html, /<span class="vv">Needs a human<\/span><span class="rl">rule 4/);
 });
 
 test('an exported live payout shows on the AGENT case it repaid, and its verdict stays the same', async () => {
@@ -271,8 +271,8 @@ test('an exported live payout shows on the AGENT case it repaid, and its verdict
   await new Promise((r) => s.listen(0, '127.0.0.1', r));
   try {
     const html = await (await fetch(`http://127.0.0.1:${s.address().port}/case/${hash}`)).text();
-    assert.match(html, /operator → merchant · batch BATCH123 SUCCESS · item SUCCESS/);
-    assert.match(html, /paid the merchant \$90\.00 back through PayPal Payouts/);
+    assert.match(html, /\$90\.00 from the shopping app to the shop, success <span class="mono">BATCH123<\/span>/);
+    assert.match(html, /The shopping app pays the shop \$90\.00 back through PayPal Payouts/);
     const p06 = runBench(dir).find((r) => r.def.id === 'P06');
     assert.deepEqual([p06.pass, p06.got.verdict, p06.got.rule, p06.got.action, p06.got.refundCents], [true, 'AGENT', 5, 'accept-claim-partial', 9000]);
   } finally { s.close(); rmSync(dir, { recursive: true, force: true }); }

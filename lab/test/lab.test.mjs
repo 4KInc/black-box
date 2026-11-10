@@ -119,7 +119,7 @@ test('a changed case says it is a lab run, not that the real PayPal dispute is o
   assert.match(html, /Lab run · nothing sent to PayPal/);
   assert.match(html, /Lab run: nothing is sent to PayPal\. On a real dispute like PP-R-XXC-10197051, Black Box would take no automatic action/);
   assert.doesNotMatch(html, /dispute open|still open|planned, not yet executed|AUTO_EXECUTE/);
-  assert.match(html, /Buyer filed <span class="mono">PP-R-XXC-10197051<\/span>/);
+  assert.match(html, /The buyer opens dispute <span class="mono">PP-R-XXC-10197051<\/span>/);
   const p06 = labResult(ROOT, new URLSearchParams('case=P06&t=raise-cap'));
   assert.match(p06, /Lab run · nothing sent to PayPal/);
   assert.doesNotMatch(p06, /ZLR5F7QM5LBQ4|operator → merchant|Payout/, 'the real case\'s payout is not shown on a lab run');
@@ -128,6 +128,6 @@ test('a changed case says it is a lab run, not that the real PayPal dispute is o
 test('a lab run on a bench case calls its dispute simulated, never by the stand-in id', () => {
   const html = labResult(ROOT, new URLSearchParams('case=R06&t=edit-page'));
   assert.match(html, /Lab run: nothing is sent to PayPal\. On a real dispute, Black Box would take no automatic action/);
-  assert.match(html, /<span>dispute<\/span><b>simulated dispute<\/b>/);
+  assert.match(html, /<span>Dispute<\/span><b class="mono">simulated dispute<\/b>/);
   assert.doesNotMatch(html, /BENCH-/);
 });

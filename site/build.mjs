@@ -10,7 +10,7 @@ import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { runBench } from '../bench/bench.mjs';
 import { judge, latestStudies, loadCases } from '../replay/cases.mjs';
-import { benchPage, casePage, indexPage, judgePage, pageHtml, recordJson, setDemoHref, setExplorerHref, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
+import { benchPage, casePage, indexPage, judgePage, notFoundPage, pageHtml, recordJson, setDemoHref, setExplorerHref, setLabHref, siteIntro, studyPage } from '../replay/page.mjs';
 import { caseReport } from '../replay/report.mjs';
 import { EXPLORER_CSP, explorerData, explorerPage } from './explorer.mjs';
 
@@ -39,6 +39,17 @@ export function relativise(html, depth) {
       return `${attr}="${up}${dir}${frag ? '#' + frag : ''}"`;
     })
     .replace(/url\(\/fonts\//g, `url(${up}fonts/`);
+}
+
+// For a page GitHub Pages serves at any address (404.html): links from the site's root path.
+export function absolutise(html, base) {
+  return html
+    .replace(/(href|src)="\/([^"]*)"/g, (_, attr, path) => {
+      const [p, frag = ''] = path.split('#');
+      const dir = p === '' || p.endsWith('/') || /\.(json|pdf)$/.test(p) ? p : `${p}/`;
+      return `${attr}="${base}/${dir}${frag ? '#' + frag : ''}"`;
+    })
+    .replace(/url\(\/fonts\//g, `url(${base}/fonts/`);
 }
 
 // Puts a CSP <meta> first in <head>, before anything the page itself contains.
@@ -86,6 +97,7 @@ try {
   const bench = runBench(root);
   write('bench', benchPage(bench), 1);
   write('judge', judgePage(bench), 1);
+  writeFileSync(join(OUT, '404.html'), withCsp(absolutise(notFoundPage('There is no recording or page at this address.'), new URL(SITE_URL).pathname.replace(/\/$/, '')), PAGE_CSP));
   for (const r of bench) {
     write(`bench/${r.def.id}`, casePage({ ...r.c, benchResult: r }, r.j), 2);
     write(`bench/${r.def.id}/page`, pageHtml(r.c.record), 3, RECORDED_CSP);

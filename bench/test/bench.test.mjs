@@ -57,7 +57,7 @@ test('a ProductGroup note is judged against the purchased variant\'s signed pric
 test('the bench page says each result in plain words, with a colour key', async () => {
   const { benchPage } = await import('../../replay/page.mjs');
   const html = benchPage(runBench());
-  assert.match(html, /class="vkey"><span class="MERCHANT"><i><\/i>Shop at fault<\/span>/);
+  assert.match(html, /class="vkey"[^>]*><span class="MERCHANT"><i><\/i>Shop at fault<\/span>/);
   assert.match(html, /If disputed as “wrong amount”<\/span><b>refund \$90\.00<\/b>/);
   assert.match(html, /<span class="fails">fails: [a-z' ,]+<\/span>/);
   assert.doesNotMatch(html, /accept-claim|breaks /);
@@ -67,7 +67,7 @@ test('the bench page reads as dispute scenarios, in groups that fold away', asyn
   const { benchPage } = await import('../../replay/page.mjs');
   const results = runBench();
   const html = benchPage(results);
-  assert.match(html, new RegExp(`${results.length} of ${results.length}</em><br>disputes judged right`));
+  assert.match(html, new RegExp(`${results.length} of ${results.length}</em> disputes judged right`));
   assert.equal((html.match(/<details class="sec fold">/g) ?? []).length, 6);
   assert.match(html, /<h2>Attacks on the record<\/h2><span class="why"[^>]*>What this proves<\/span><span class="tally">10 of 10 right<\/span>/);
   assert.doesNotMatch(html, />PASS<|exactly as expected/);
