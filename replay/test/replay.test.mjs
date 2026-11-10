@@ -336,3 +336,26 @@ test('the judges\' page: the three outcomes, each a live dispute with PayPal\'s 
   assert.match(broken, /2 of 6 trust checks failed\. Over budget\. All 5 shop checks are on, but the record is broken, so a person decides\./);
   assert.match(broken, /<dt>Before your change<\/dt><dd>Shop at fault · rule 2 · refund \$240\.00<\/dd><dt>Now<\/dt><dd class="diff">Needs a human · rule 1 · a person decides<\/dd>/);
 });
+
+test('the hosted app serves the explorer under its own script policy; every other page keeps none', async () => {
+  const redirect = await fetch(`${base}/explorer`, { redirect: 'manual' });
+  assert.deepEqual([redirect.status, redirect.headers.get('location')], [308, '/explorer/']);
+  const page = await fetch(`${base}/explorer/`);
+  assert.equal(page.status, 200);
+  const csp = page.headers.get('content-security-policy');
+  assert.match(csp, /script-src 'self' https:\/\/cdn\.jsdelivr\.net;/);
+  assert.doesNotMatch(csp, /unsafe-eval|script-src[^;]*unsafe-inline/);
+  const html = await page.text();
+  const scripts = [...html.matchAll(/<script\b([^>]*)>/g)].map((m) => m[1].trim());
+  assert.equal(scripts.length, 3);
+  assert.match(scripts[1], /integrity="sha384-/);
+  assert.equal(scripts[2], 'src="app.js"');
+  const js = await fetch(`${base}/explorer/app.js`);
+  assert.equal(js.status, 200);
+  assert.match(js.headers.get('content-type'), /javascript/);
+  assert.match(await js.text(), /function countFacets/);
+  for (const path of ['/', '/judge', '/bench/P09', '/lab']) {
+    assert.match((await fetch(base + path)).headers.get('content-security-policy'), /default-src 'none'; style-src/, path);
+    assert.doesNotMatch((await fetch(base + path)).headers.get('content-security-policy'), /script-src/, path);
+  }
+});

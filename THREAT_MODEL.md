@@ -3,7 +3,7 @@
 Black Box decides who is responsible, under its responsibility policy, when an AI agent's purchase
 is disputed (see [the policy](README.md#the-responsibility-policy)). Every party to that decision
 has a reason to cheat, so this document lists who could cheat, how, what stops them, and which
-bench case shows it (`npm run bench`, or [the bench online](https://4kinc.github.io/black-box/bench/)).
+bench case shows it (`npm run bench`, or [the bench online](https://black-box-342881585799.us-central1.run.app/bench)).
 It ends with what Black Box has to trust, and what it does not cover.
 
 ## What is being protected

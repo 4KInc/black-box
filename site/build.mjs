@@ -20,7 +20,7 @@ const ROOT = join(import.meta.dirname, '..');
 setLabHref(process.env.LAB_URL ? new URL('/lab', process.env.LAB_URL).href : null);
 // The hosted app that serves the lab also serves the live demo.
 setDemoHref(process.env.LAB_URL ? new URL('/demo', process.env.LAB_URL).href : null);
-// The AG Grid explorer is built only here: the replay server sends script-src 'none'.
+// The AG Grid explorer: the hosted app serves it too, at /explorer/ (replay/server.mjs).
 setExplorerHref('/explorer');
 const OUT = process.argv[2] ?? join(ROOT, '_site');
 

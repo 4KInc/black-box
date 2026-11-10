@@ -89,7 +89,7 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
 - A live Payouts repayment from the operator (batch `ZLR5F7QM5LBQ4`).
 - 16 facts, six rules, exactly one rule for each of 65,536 combinations (property test).
 - A bench of 62 cases, each with its verdict, rule and PayPal action fixed in advance: 15 recorded
-  runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 284
+  runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 285
   tests.
 - A threat model ([THREAT_MODEL.md](https://github.com/4KInc/black-box/blob/main/THREAT_MODEL.md)) mapping each attack to its defence and the
   bench case that shows it.
@@ -131,7 +131,7 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
   `user_action: SETUP_NOW`, and a wallet was saved this way in the sandbox and paid from on 8
   November 2026. The plugin does not cover Disputes, Payouts or Webhooks, so those calls were not
   checked this way; the nine live disputes cover them.
-- **AG Grid:** [the explorer](https://4kinc.github.io/black-box/explorer/) has five AG Grid
+- **AG Grid:** [the explorer](https://black-box-342881585799.us-central1.run.app/explorer/) has five AG Grid
   Community tables:
   - a **PayPal ledger** of the nine live disputes, with each side's money from PayPal's own figures
     and a pinned net row
@@ -167,9 +167,10 @@ open models) · APIMatic Context Plugin · Postman · AG Grid Community
 
 ## Try it
 
-- For judges, two minutes: https://4kinc.github.io/black-box/judge/ (the three outcomes as three
-  live disputes, with PayPal's IDs, the hashes and a one-click re-run of the engine)
-- Site, no keys: https://4kinc.github.io/black-box/
+- For judges, two minutes: https://black-box-342881585799.us-central1.run.app/judge (the three outcomes as three
+  live disputes, with PayPal's IDs, the hashes, and "Check the verdict yourself")
+- The app, no keys: https://black-box-342881585799.us-central1.run.app/ (recordings, the study, the scenarios, the
+  explorer)
 - Lab: https://black-box-342881585799.us-central1.run.app/lab
 - Live demo: https://black-box-342881585799.us-central1.run.app/demo (the operator login is in the
   testing instructions)
@@ -177,7 +178,7 @@ open models) · APIMatic Context Plugin · Postman · AG Grid Community
 
 ```sh
 git clone https://github.com/4KInc/black-box && cd black-box
-npm test          # 284 tests, no keys
+npm test          # 285 tests, no keys
 npm run bench     # 62 cases, no keys
 npm run replay    # http://localhost:4030: every recording, the study, the bench and the lab
 ```

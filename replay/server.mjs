@@ -12,6 +12,7 @@ import { benchPage, casePage, indexPage, judgePage, notFoundPage, pageHtml, reco
 import { latestStudies } from './cases.mjs';
 import { caseReport, reportName } from './report.mjs';
 import { factsPage, labPage, labResult, runLab } from '../lab/lab.mjs';
+import { EXPLORER_CSP, explorerData, explorerPage } from '../site/explorer.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const PORT = Number(process.env.PORT ?? process.env.REPLAY_PORT ?? 4030);
@@ -54,10 +55,18 @@ const HEADERS = {
   'referrer-policy': 'no-referrer',
 };
 
+// The AG Grid explorer: the one page with scripts. It gets its own policy (AG Grid from jsDelivr,
+// pinned with its integrity hash, and its own script from here); every other page keeps
+// script-src 'none'. Its data is the bench and the study, both from the committed fixtures, so it
+// is built once.
+const EXPLORER_HEADERS = { ...HEADERS, 'content-security-policy': EXPLORER_CSP };
+const EXPLORER_JS = join(import.meta.dirname, '..', 'site', 'explorer.js');
+
 // live: the hosted app with live runs. Recordings it made itself (records/, not the committed
 // fixtures) are tagged as live runs.
 export function createReplay({ root = ROOT, intro = '', live = false } = {}) {
   const cases = () => loadCases(root).map((c) => (live && c.source.startsWith('records/') ? { ...c, live: true } : c));
+  let explorer = null;
   return createServer((req, res) => {
     const send = (status, html) => { res.writeHead(status, HEADERS); res.end(html); };
     try {
@@ -69,6 +78,16 @@ export function createReplay({ root = ROOT, intro = '', live = false } = {}) {
         return res.end(readFileSync(join(FONTS, font[1])));
       }
       if (pathname === '/') return send(200, indexPage(cases().map((c) => ({ c, j: judge(c, { root }) })), { intro }));
+      if (pathname === '/explorer') { res.writeHead(308, { location: '/explorer/' }); return res.end(); }
+      if (pathname === '/explorer/') {
+        explorer ??= explorerPage(explorerData(runBench(root), latestStudies(root)));
+        res.writeHead(200, EXPLORER_HEADERS);
+        return res.end(explorer);
+      }
+      if (pathname === '/explorer/app.js') {
+        res.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'public, max-age=300', 'x-content-type-options': 'nosniff' });
+        return res.end(readFileSync(EXPLORER_JS));
+      }
       if (pathname === '/lab') return send(200, labPage(searchParams));
       if (pathname === '/lab/run') return send(200, labResult(root, searchParams));
       if (pathname === '/lab/page') { res.writeHead(200, RECORDED); return res.end(pageHtml(runLab(root, searchParams).c.record)); }
