@@ -88,6 +88,24 @@ test('"not ready" is retried until PayPal allows the action, and gives up after 
   assert.equal(ap2.status('PP-D-444'), 'gave-up');
 });
 
+test('an unknown outcome or a busy lock is checked again later; a hold for a person is final', async () => {
+  const later = fakeResolve('outcome-unknown', 'in-progress', 'already-done');
+  const ap = createAutopilot({ root, execute: true, resolve: later, retryMs: 5 });
+  await ap.handleWithRetry('PP-D-555', 'webhook');
+  await until(() => later.calls.length >= 3);
+  await sleep(20);
+  assert.equal(later.calls.length, 3);
+  assert.equal(ap.status('PP-D-555'), 'already-done');
+
+  const person = fakeResolve('held-for-person');
+  const ap2 = createAutopilot({ root, execute: true, resolve: person, retryMs: 2 });
+  await ap2.handleWithRetry('PP-D-556', 'webhook');
+  await ap2.handleWithRetry('PP-D-556', 'poll');
+  await sleep(30);
+  assert.equal(person.calls.length, 1);
+  assert.equal(ap2.status('PP-D-556'), 'held-for-person');
+});
+
 test('an escalated inquiry is retried with a fresh count until the evidence is sent', async () => {
   const resolve = fakeResolve('not-ready', 'escalated', 'not-ready', 'not-ready', 'executed');
   const ap = createAutopilot({ root, execute: true, resolve, retryMs: 2, maxRetries: 3 });
@@ -175,7 +193,7 @@ test('execution logs only accept real dispute IDs, and an executed action counts
   assert.equal(log.alreadyExecuted(), true);
 });
 
-test('the action lock is exclusive across callers and released only on a definite refusal', () => {
+test('the action lock is exclusive across callers on this machine', () => {
   const a = executionLog(root, 'PP-D-888');
   const b = executionLog(root, 'PP-D-888');
   assert.equal(a.lock(), true);

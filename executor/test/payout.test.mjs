@@ -15,12 +15,13 @@ test('a payout is due only after an AGENT verdict whose refund PayPal accepted, 
   assert.deepEqual(payoutDue([dispute, verdict(true), refund(200)]), { amountCents: 9000, currency: 'USD', merchantId: 'MERCH1' });
   assert.match(payoutDue([dispute, verdict(false), refund(200)]).why, /no payout/);
   assert.match(payoutDue([dispute, verdict(true), refund(400)]).why, /not been refunded/);
-  assert.match(payoutDue([dispute, verdict(true), refund(200), { step: 'payout', status: 201 }]).why, /already paid/);
-  // A payout whose item PayPal failed paid nothing, so it is still due; a pending one is not.
+  assert.match(payoutDue([dispute, verdict(true), refund(200), { step: 'payout', status: 201 }]).why, /pending/);
+  // A payout whose item PayPal failed paid nothing, so it is still due; a pending one is not, and
+  // no new batch is made while it is pending.
   const sent = { step: 'payout', status: 201, response: { batch_header: { payout_batch_id: 'B1' } } };
   const looked = (item) => ({ step: 'get payout', status: 200, response: { batch_header: { payout_batch_id: 'B1' }, items: [{ transaction_status: item }] } });
   assert.equal(payoutDue([dispute, verdict(true), refund(200), sent, looked('FAILED')]).amountCents, 9000);
-  assert.match(payoutDue([dispute, verdict(true), refund(200), sent, looked('PENDING')]).why, /already paid/);
+  assert.match(payoutDue([dispute, verdict(true), refund(200), sent, looked('PENDING')]).why, /pending/);
   assert.match(payoutDue([dispute, verdict(true), refund(200), sent, looked('FAILED'), looked('SUCCESS')]).why, /already paid/);
 });
 

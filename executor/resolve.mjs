@@ -36,6 +36,9 @@ const said = {
   'not-ready': '\nPayPal does not offer this action on the dispute yet; try again in a minute',
   held: `\nheld for a person: the flagger gave no answer, and without it no money moves (code verdict ${result.verdict.verdict}, rule ${result.verdict.rule}); nothing was sent to PayPal`,
   escalated: '\nthe dispute was an inquiry, which takes no evidence: escalated it to a claim; run again in a few minutes to send the evidence',
+  'in-progress': '\nanother run holds the action lock; run again in a minute',
+  'outcome-unknown': '\nthe action was sent but its result is not known; nothing more was sent. Run again: it reads the dispute PayPal reports and settles the attempt from it',
+  'held-for-person': `\nheld for a person: ${out.why}; nothing was sent to PayPal`,
   executed: `\n✓ executed ${result.plan.action}\ndispute    now ${out.after?.status}  outcome=${out.after?.dispute_outcome?.outcome_code ?? '-'}`,
 };
 console.log(said[out.status]);

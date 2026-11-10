@@ -18,30 +18,49 @@ const amount = (a) => (a ? { cents: cents(a.value), currency: a.currency_code } 
 // A payout item in one of these states paid nothing; the operator may try again.
 export const PAYOUT_FAILED = new Set(['FAILED', 'DENIED', 'RETURNED', 'BLOCKED']);
 
-// Every payout PayPal accepted, oldest first, each with the latest logged look at its batch.
-// failed: the item is known to have paid nothing. An unknown or pending status is not failed.
+// Every payout attempt, oldest first, each with its result and the latest logged look at its batch.
+// state:
+//   'unknown'    the attempt was logged but no result was (a crash or a timeout), or a 5xx
+//   'refused'    PayPal answered 4xx: no batch was created
+//   'pending'    PayPal created the batch; its item is not yet SUCCESS or failed
+//   'succeeded'  the item is SUCCESS
+//   'failed'     the item is known to have paid nothing (FAILED, DENIED, RETURNED, BLOCKED)
+// Payouts logged before attempts were (a result with no actionId) are read the same way.
 export function payoutAttempts(entries) {
-  return entries.filter((e) => e.step === 'payout' && e.status < 300).map((entry) => {
-    const batchId = entry.response?.batch_header?.payout_batch_id ?? null;
-    const after = entries.findLast((e) => e.step === 'get payout' && e.status < 300 && batchId && e.response?.batch_header?.payout_batch_id === batchId)?.response ?? null;
+  const ok = (e) => e.status >= 200 && e.status < 300;
+  const results = entries.filter((e) => e.step === 'payout');
+  const list = [
+    ...entries.filter((e) => e.step === 'payout-attempt').map((attempt) => ({ attempt, entry: results.find((r) => r.actionId === attempt.actionId && r.payloadHash === attempt.payloadHash && r.at >= attempt.at) ?? null })),
+    ...results.filter((r) => !r.actionId && ok(r)).map((entry) => ({ attempt: null, entry })),
+  ].sort((x, y) => String((x.attempt ?? x.entry).at).localeCompare(String((y.attempt ?? y.entry).at)));
+  return list.map(({ attempt, entry }) => {
+    const batchId = entry && ok(entry) ? entry.response?.batch_header?.payout_batch_id ?? null : null;
+    const after = entries.findLast((e) => e.step === 'get payout' && ok(e) && batchId && e.response?.batch_header?.payout_batch_id === batchId)?.response ?? null;
     const itemStatus = after?.items?.[0]?.transaction_status ?? null;
-    return { entry, batchId, after, itemStatus, failed: PAYOUT_FAILED.has(itemStatus) };
+    const state = !entry || (!ok(entry) && !(entry.status >= 400 && entry.status < 500)) ? 'unknown'
+      : !ok(entry) ? 'refused'
+        : itemStatus === 'SUCCESS' ? 'succeeded' : PAYOUT_FAILED.has(itemStatus) ? 'failed' : 'pending';
+    return { attempt, entry, actionId: attempt?.actionId ?? null, payloadHash: attempt?.payloadHash ?? null, batchId, after, itemStatus, state, failed: state === 'failed' };
   });
 }
 
 // The PayPal facts the replay needs, taken from an executor log. Only IDs, amounts, times and
 // statuses are kept: no buyer or seller names or emails.
 export function paypalFromLog(entries) {
-  const ok = (step) => entries.filter((e) => e.step === step && e.status < 300).map((e) => e.response);
+  const ok = (step) => entries.filter((e) => e.step === step && e.status >= 200 && e.status < 300).map((e) => e.response);
   const dispute = ok('get dispute').at(-1);
   if (!dispute) return null;
   const txn = dispute.disputed_transactions?.[0] ?? {};
   const order = ok('get order').at(-1);
   const capture = ok('get capture').at(-1);
-  const executed = entries.find((e) => /^(accept-claim|make-offer|provide-evidence)/.test(e.step) && e.status < 300);
-  const escalated = entries.find((e) => e.step === 'escalate' && e.status < 300);
+  // An action PayPal accepted, or one a later run found PayPal had carried out (reconciled).
+  const done = (e) => e.status >= 200 && e.status < 300;
+  const reconciled = (kind) => entries.find((e) => e.step === 'reconciled' && e.kind === kind);
+  const executed = entries.find((e) => /^(accept-claim|make-offer|provide-evidence)/.test(e.step) && done(e))
+    ?? (() => { const r = ['accept-claim', 'make-offer', 'provide-evidence'].map(reconciled).find(Boolean); return r && { step: r.kind, status: null, at: r.at, debug_id: null }; })();
+  const escalated = entries.find((e) => e.step === 'escalate' && done(e)) ?? reconciled('escalate');
   // The payout that counts: the latest one not known to have failed.
-  const attempt = payoutAttempts(entries).findLast((a) => !a.failed);
+  const attempt = payoutAttempts(entries).findLast((a) => a.state === 'pending' || a.state === 'succeeded');
   const payout = attempt?.entry;
   const payoutAfter = attempt?.after;
   const after = ok('get dispute (after)').at(-1);

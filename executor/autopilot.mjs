@@ -6,6 +6,10 @@
 //   - "not ready" (PayPal does not offer the action yet) is retried later, a bounded number of times
 //   - "escalated" (an inquiry was escalated so evidence can follow) is retried the same way, with the
 //     count starting again
+//   - "in-progress" (another run holds the action lock) and "outcome-unknown" (an action was sent
+//     but its result is not known) are re-checked later, like "not ready": the next run reads
+//     PayPal's dispute and settles the earlier attempt from it, never by sending blindly
+//   - "held-for-person" is final: nothing more is sent without a person
 //   - "held" (the flagger gave no answer, so nothing was sent) is retried with exponential backoff
 //     (heldBaseMs, doubling, capped at heldMaxMs), never given up on. Until its next step comes,
 //     every trigger for it (webhook, watcher poll) is answered from memory, so the hold is resolved,
@@ -60,7 +64,7 @@ export function createAutopilot({
     report({ disputeId, source, status: out.status, verdict: out.result?.verdict?.verdict, rule: out.result?.verdict?.rule, action: out.result?.plan?.action });
     if (out.status === 'escalated') {
       tries.set(disputeId, 0);
-    } else if (out.status === 'not-ready') {
+    } else if (['not-ready', 'in-progress', 'outcome-unknown'].includes(out.status)) {
       const n = (tries.get(disputeId) ?? 0) + 1;
       tries.set(disputeId, n);
       if (n >= maxRetries) settled.set(disputeId, 'gave-up');
@@ -82,7 +86,7 @@ export function createAutopilot({
   async function handleWithRetry(disputeId, source, { retry = false } = {}) {
     const out = await handle(disputeId, source, { retry });
     if (out.status === 'held' && out.cached) return out; // a retry for it is already scheduled
-    if (['not-ready', 'escalated', 'held'].includes(out.status) && !settled.has(disputeId)) {
+    if (['not-ready', 'escalated', 'held', 'in-progress', 'outcome-unknown'].includes(out.status) && !settled.has(disputeId)) {
       const wait = out.status === 'held' ? out.retryInMs : retryMs;
       const t = setTimeout(() => { timers.delete(t); handleWithRetry(disputeId, `${source} (retry)`, { retry: out.status === 'held' }); }, wait);
       t.unref?.();

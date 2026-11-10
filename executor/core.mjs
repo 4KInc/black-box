@@ -6,11 +6,21 @@
 //   4. with execute: true, carries out the planned PayPal action and records the response
 // Every PayPal call is appended to records/executions/<dispute>.jsonl.
 //
-// Safe to call repeatedly for the same dispute: it acts at most once (a logged, successful action
-// means "done"), only when PayPal currently offers that action, and only for orders that carry
-// a Black Box record.
+// Safe to call repeatedly for the same dispute. Every money-moving or evidence call (escalate,
+// accept-claim, make-offer, provide-evidence) is an attempt with a stable action ID and a hash of its
+// exact payload: the attempt is logged before the call and its result after. A later run that finds
+// an attempt with no known result (a crash, a timeout, a 5xx) does not send it again blindly: it
+// reads the dispute PayPal reports now and
+//   - records the action as done when PayPal shows it happened,
+//   - sends it again, same action ID and payload, only when PayPal shows it did not happen and still
+//     offers the action,
+//   - otherwise holds the dispute for a person ("outcome unknown").
+// It acts only when the dispute is open and PayPal offers the action, and only for orders that
+// carry a Black Box record. The lock that keeps two runs from sending at once is a file on this
+// machine: the service must run as one instance.
 
-import { appendFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { appendFileSync, existsSync, mkdirSync, readFileSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { accessToken, API, paypal } from '../lib/paypal.mjs';
 import { loadRecord } from '../recorder/recorder.mjs';
@@ -22,6 +32,56 @@ import { evidenceFile, evidenceNote, statementsFor, templateNote } from '../evid
 
 const cents = (v) => Math.round(Number(v) * 100);
 const ACTION_STEP = /^(accept-claim|make-offer|provide-evidence)/;
+const ok = (e) => e.status >= 200 && e.status < 300;
+const refused = (e) => e.status >= 400 && e.status < 500;
+
+// A lock older than this belonged to a run that died between its attempt and its result.
+export const STALE_LOCK_MS = 5 * 60_000;
+// PayPal dispute statuses in which the seller may still act; any other status is held.
+export const ACTIONABLE_STATUS = new Set(['OPEN', 'WAITING_FOR_SELLER_RESPONSE', 'UNDER_REVIEW']);
+
+export const payloadHash = (payload) => createHash('sha256').update(typeof payload === 'string' ? payload : JSON.stringify(payload)).digest('hex');
+// One action ID per kind of action on a dispute; a partial accept-claim is the same endpoint.
+export const actionKind = (step) => (step === 'escalate' ? 'escalate' : String(step).match(ACTION_STEP)?.[1] ?? step);
+export const actionId = (disputeId, kind) => `${disputeId}:${kind}`;
+
+// What PayPal's current dispute says about an action: true (it happened), false (it clearly did
+// not), or null (it cannot tell).
+export function actionDone(kind, dispute) {
+  const closed = !ACTIONABLE_STATUS.has(dispute?.status);
+  if (kind === 'accept-claim') {
+    const credited = (dispute?.money_movements ?? []).some((m) => m.affected_party === 'BUYER' && m.type === 'CREDIT');
+    if (credited || (dispute?.refund_details?.transactions ?? []).length || Number(dispute?.dispute_outcome?.amount_refunded?.value) > 0) return true;
+    return closed ? null : false;
+  }
+  if (kind === 'make-offer') return dispute?.offer?.seller_offered_amount ? true : closed ? null : false;
+  if (kind === 'provide-evidence') return (dispute?.evidences ?? []).some((e) => e.source === 'SUBMITTED_BY_SELLER') ? true : closed ? null : false;
+  if (kind === 'escalate') {
+    const stage = dispute?.dispute_life_cycle_stage;
+    return !stage ? null : stage !== 'INQUIRY' ? true : closed ? null : false;
+  }
+  return null;
+}
+
+// The latest attempt at each action, with what became of it:
+//   'succeeded'  PayPal accepted it, or PayPal later showed it had happened (reconciled)
+//   'refused'    PayPal answered 4xx: it did not happen
+//   'unknown'    no result logged (a crash or a timeout), a 5xx, or a network error
+// Entries from before attempts were logged (a result with no actionId) count as succeeded or refused.
+export function attempts(entries) {
+  const out = new Map();
+  for (const e of entries) {
+    if (e.step === 'attempt') out.set(e.actionId, { actionId: e.actionId, kind: e.kind, step: e.action, payloadHash: e.payloadHash, at: e.at, state: 'unknown' });
+    else if (e.step === 'reconciled' && out.has(e.actionId)) out.get(e.actionId).state = 'succeeded';
+    else if ((ACTION_STEP.test(e.step ?? '') || e.step === 'escalate') && e.actionId && out.has(e.actionId)) {
+      out.get(e.actionId).state = ok(e) ? 'succeeded' : refused(e) ? 'refused' : 'unknown';
+    } else if ((ACTION_STEP.test(e.step ?? '') || e.step === 'escalate') && !e.actionId && (ok(e) || refused(e))) {
+      const kind = actionKind(e.step);
+      out.set(`legacy:${kind}`, { actionId: null, kind, step: e.step, at: e.at, state: ok(e) ? 'succeeded' : 'refused' });
+    }
+  }
+  return [...out.values()];
+}
 
 // The dispute link PayPal shows when an action is currently allowed.
 const LINK_FOR = {
@@ -49,12 +109,13 @@ export function executionLog(root, disputeId) {
   return {
     path,
     read,
-    // Taken just before an action is sent; exclusive across processes. Released only when PayPal
-    // definitely refused the action; after a success, or an unknown outcome, it stays.
+    // Held from an action's attempt to its result; exclusive across processes on this machine.
+    // A lock left by a run that died is stale after STALE_LOCK_MS and may be taken over.
     lock: () => { try { writeFileSync(lockPath, `${process.pid} ${new Date().toISOString()}\n`, { flag: 'wx' }); return true; } catch { return false; } },
+    lockAge: (now = Date.now()) => { try { return now - statSync(lockPath).mtimeMs; } catch { return null; } },
     unlock: () => { try { unlinkSync(lockPath); } catch { /* already gone */ } },
     write: (entry) => appendFileSync(path, JSON.stringify({ at: new Date().toISOString(), ...entry }) + '\n'),
-    alreadyExecuted: () => read().some((e) => ACTION_STEP.test(e.step ?? '') && e.status >= 200 && e.status < 300),
+    alreadyExecuted: () => attempts(read()).some((a) => a.kind !== 'escalate' && a.state === 'succeeded'),
   };
 }
 
@@ -70,6 +131,12 @@ export function executionLog(root, disputeId) {
 //   'held'           the flagger gave no answer and the plan moves money (an AGENT or MERCHANT
 //                    refund or offer): nothing sent, the code verdict kept, plan.heldWithoutFlagger
 //                    set (try again once the flagger works)
+//   'in-progress'    another run holds the action lock (try again later)
+//   'outcome-unknown' the action was sent but its result is not known (a timeout, a 5xx): nothing
+//                    more is sent; the next run reads PayPal's dispute to settle it
+//   'held-for-person' nothing sent, and nothing will be without a person: the dispute is closed or
+//                    in a state Black Box does not act in, an earlier attempt's outcome cannot be
+//                    told from PayPal, or the payload differs from that attempt's (why says which)
 // The flagger runs when an Anthropic key is set and FLAGGER is not "off". It is the only check for
 // agent-directed lies code cannot see, so it fails closed: with no flagger answer, no money moves.
 // A hiding method code does not list leaves no finding at all, so code alone would make the agent's
@@ -151,24 +218,71 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
 
   const p = result.plan;
   if (!execute || p.action === 'none') return { ...out, status: 'planned' };
+  const hold = (why, extra = {}) => { log.write({ step: 'hold', source, why, ...extra }); return { ...out, status: 'held-for-person', why }; };
+
+  // Earlier attempts at the planned action (and at escalating, for evidence) come first: one that
+  // succeeded means done; one whose outcome is unknown is settled from what PayPal shows now.
+  const kind = p.action === 'accept-claim-partial' ? 'accept-claim' : p.action;
+  for (const k of kind === 'provide-evidence' ? ['escalate', kind] : [kind]) {
+    const last = attempts(log.read()).findLast((a) => a.kind === k);
+    if (!last || last.state === 'succeeded' || !last.actionId) continue;
+    const done = actionDone(k, dispute);
+    if (done === true) log.write({ step: 'reconciled', source, actionId: last.actionId, kind: k, result: 'succeeded', why: 'PayPal shows it happened' });
+    else if (last.state === 'unknown' && !(done === false && links.includes(LINK_FOR[k] ?? k))) {
+      return hold('outcome unknown', { actionId: last.actionId, paypalStatus: dispute.status ?? null });
+    }
+  }
   if (log.alreadyExecuted()) return { ...out, status: 'already-done' };
+  if (!ACTIONABLE_STATUS.has(dispute.status)) return hold(`the dispute is ${dispute.status ?? 'in an unknown state'}; Black Box acts only on an open dispute`);
+
   if (!links.includes(LINK_FOR[p.action])) {
     // An honest purchase is defended with evidence, and PayPal takes evidence only on a claim. An
-    // inquiry is escalated once, by the same rule; the evidence goes on a later run.
-    const escalated = log.read().some((e) => e.step === 'escalate' && e.status >= 200 && e.status < 300);
-    if (p.action !== 'provide-evidence' || escalated || !links.includes('escalate')) return { ...out, status: 'not-ready' };
-    await must('escalate', 'POST', `/v1/customer/disputes/${disputeId}/escalate`, { note: `Black Box verdict ${result.verdict.verdict} (rule ${result.verdict.rule}): the purchase was within the buyer's mandate. Escalating so PayPal can review the evidence. Record ${txn.custom}.` });
-    return { ...out, status: 'escalated' };
+    // inquiry is escalated once, by the same rule; the evidence goes on a later run, once PayPal
+    // offers it. Until PayPal offers an action, nothing is sent ('not-ready', re-checked a bounded
+    // number of times, then left to a person).
+    const escalated = attempts(log.read()).some((a) => a.kind === 'escalate' && a.state === 'succeeded');
+    if (p.action !== 'provide-evidence' || escalated) return { ...out, status: 'not-ready' };
+    if (dispute.dispute_life_cycle_stage === 'INQUIRY' && !links.includes('escalate')) return hold('an inquiry PayPal does not let Black Box escalate, so it cannot take evidence');
+    if (!links.includes('escalate')) return { ...out, status: 'not-ready' };
+    const note = `Black Box verdict ${result.verdict.verdict} (rule ${result.verdict.rule}): the purchase was within the buyer's mandate. Escalating so PayPal can review the evidence. Record ${txn.custom}.`;
+    const sent = await send('escalate', 'escalate', { note }, () => client.paypal('POST', `/v1/customer/disputes/${disputeId}/escalate`, { note }));
+    return sent.status === 'sent' ? { ...out, status: 'escalated' } : sent.result;
   }
-  if (!log.lock()) return { ...out, status: 'already-done' };
-  try {
-    await act();
-  } catch (e) {
-    if (e.refused) log.unlock();
-    throw e;
-  }
+
+  const sent = await act();
+  if (sent.status !== 'sent') return sent.result;
   const after = await must('get dispute (after)', 'GET', `/v1/customer/disputes/${disputeId}`);
   return { ...out, status: 'executed', after };
+
+  // One attempt at an action: the payload's hash is checked against the last attempt's, the attempt
+  // is logged, the call made, and its result logged, all under the lock.
+  async function send(k, step, payload, call) {
+    const id = actionId(disputeId, k);
+    const hash = payloadHash(payload);
+    if (!log.lock()) {
+      const age = log.lockAge();
+      if (age !== null && age < STALE_LOCK_MS) return { status: 'busy', result: { ...out, status: 'in-progress' } };
+      log.write({ step: 'stale-lock', source, actionId: id, ageMs: age });
+      log.unlock();
+      if (!log.lock()) return { status: 'busy', result: { ...out, status: 'in-progress' } };
+    }
+    try {
+      // Re-read under the lock: another run may have finished it since.
+      const last = attempts(log.read()).findLast((a) => a.actionId === id);
+      if (last?.state === 'succeeded') return { status: 'done', result: { ...out, status: 'already-done' } };
+      if (last && last.payloadHash !== hash) return { status: 'held', result: hold('the payload differs from the earlier attempt at this action', { actionId: id, earlier: last.payloadHash, now: hash }) };
+      log.write({ step: 'attempt', source, actionId: id, kind: k, action: step, payloadHash: hash });
+      let r;
+      try { r = await call(); } catch (e) { r = { ok: false, status: null, error: e.message }; }
+      log.write({ step, source, actionId: id, payloadHash: hash, status: r.status ?? null, debug_id: r.debugId ?? null, request: typeof payload === 'string' ? null : payload, response: r.data ?? r.text ?? null, ...(r.error ? { error: r.error } : {}) });
+      if (r.ok) return { status: 'sent' };
+      if (r.status >= 400 && r.status < 500) throw Object.assign(new Error(`${step} failed (${r.status}, debug ${r.debugId}): ${JSON.stringify(r.data ?? r.text).slice(0, 400)}`), { refused: true });
+      log.write({ step: 'hold', source, why: 'outcome unknown', actionId: id, status: r.status ?? null, error: r.error ?? null });
+      return { status: 'unknown', result: { ...out, status: 'outcome-unknown', why: 'outcome unknown' } };
+    } finally {
+      log.unlock();
+    }
+  }
 
   // The one PayPal call the plan allows. Hoisted, so it reads in plan order above.
   async function act() {
@@ -177,24 +291,29 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
 
     if (p.action === 'accept-claim' || p.action === 'accept-claim-partial') {
       const { type, refundCents } = claimAcceptance(p, cents(dispute.dispute_amount?.value ?? txn.gross_amount.value));
-      await must(`accept-claim ${type}`, 'POST', `/v1/customer/disputes/${disputeId}/accept-claim`, { note, accept_claim_type: type, refund_amount: amount(refundCents) });
-    } else if (p.action === 'make-offer') {
-      await must('make-offer REFUND', 'POST', `/v1/customer/disputes/${disputeId}/make-offer`, { note, offer_type: 'REFUND', offer_amount: amount(p.refundCents) });
-    } else if (p.action === 'provide-evidence') {
-      const statements = statementsFor({ record, j: { ...result, order: { capturedCents: cents(txn.gross_amount.value) } }, hash: txn.custom, reason: dispute.reason });
-      // One note per record, like the flagger: a retry sends the note already logged.
-      let evidence = log.read().findLast((e) => e.step === 'evidence-note' && e.custom === txn.custom)?.note ?? null;
-      if (!evidence) {
-        evidence = await narrate(statements);
-        log.write({ step: 'evidence-note', source, custom: txn.custom, statements, note: evidence });
-      }
-      const form = new FormData();
-      form.append('input', new Blob([JSON.stringify({ evidences: [{ evidence_type: 'OTHER', notes: `${evidence.text}\n\n${note}`, documents: [{ name: 'blackbox-evidence.txt' }] }] })], { type: 'application/json' }));
-      // PayPal accepts JPG, GIF, PNG, PDF or TXT evidence, so the note, statements and record go up as text.
-      form.append('file1', new Blob([evidenceFile({ note: evidence, statements, record })], { type: 'text/plain' }), 'blackbox-evidence.txt');
-      const r = await (client.evidence ?? uploadEvidence)(disputeId, form);
-      log.write({ step: 'provide-evidence', source, status: r.status, response: r.text });
-      if (!r.ok) throw Object.assign(new Error(`provide-evidence failed (${r.status})`), { refused: true });
+      const body = { note, accept_claim_type: type, refund_amount: amount(refundCents) };
+      return send('accept-claim', `accept-claim ${type}`, body, () => client.paypal('POST', `/v1/customer/disputes/${disputeId}/accept-claim`, body));
     }
+    if (p.action === 'make-offer') {
+      const body = { note, offer_type: 'REFUND', offer_amount: amount(p.refundCents) };
+      return send('make-offer', 'make-offer REFUND', body, () => client.paypal('POST', `/v1/customer/disputes/${disputeId}/make-offer`, body));
+    }
+    // provide-evidence
+    const statements = statementsFor({ record, j: { ...result, order: { capturedCents: cents(txn.gross_amount.value) } }, hash: txn.custom, reason: dispute.reason });
+    // One note per record, like the flagger: a retry sends the note already logged.
+    let evidence = log.read().findLast((e) => e.step === 'evidence-note' && e.custom === txn.custom)?.note ?? null;
+    if (!evidence) {
+      evidence = await narrate(statements);
+      log.write({ step: 'evidence-note', source, custom: txn.custom, statements, note: evidence });
+    }
+    const input = JSON.stringify({ evidences: [{ evidence_type: 'OTHER', notes: `${evidence.text}\n\n${note}`, documents: [{ name: 'blackbox-evidence.txt' }] }] });
+    // PayPal accepts JPG, GIF, PNG, PDF or TXT evidence, so the note, statements and record go up as text.
+    const file = evidenceFile({ note: evidence, statements, record });
+    return send('provide-evidence', 'provide-evidence', input + '\n' + file, () => {
+      const form = new FormData();
+      form.append('input', new Blob([input], { type: 'application/json' }));
+      form.append('file1', new Blob([file], { type: 'text/plain' }), 'blackbox-evidence.txt');
+      return (client.evidence ?? uploadEvidence)(disputeId, form);
+    });
   }
 }
