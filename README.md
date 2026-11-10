@@ -32,7 +32,7 @@ real AI agent shops at a hosted demo shop, and Black Box settles the buyer's Pay
 
 **Submission state:** tag `v1.0-submission`, 8 November 2026: 62 bench cases (nine live disputes,
 10 attacks), 246 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
-Cloud Run revision `black-box-00071-hpc`.
+Cloud Run revision `black-box-00072-b8r`.
 
 ## The problem
 
