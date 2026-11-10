@@ -166,6 +166,9 @@ export function labResult(root, query) {
     : was.verdict.verdict === j.verdict.verdict && was.verdict.rule === j.verdict.rule;
   const pages = c.record.fetches.length;
   const check = (k) => {
+    // Whether pages were signed before the order can only be checked on valid signatures; the case
+    // page counts it the same way.
+    if (k === 'signedBeforeOrder' && !j.facts.signaturesValid) return `<li class="na">– ${esc(CHECK_WORDS[k])}: can't check, the signatures are broken</li>`;
     const okk = Boolean(j.facts[k]);
     const words = k === 'signaturesValid' ? `shop signatures on all ${pages} pages` : CHECK_WORDS[k];
     return `<li class="${okk ? 'ok' : 'bad'}">${okk ? '✓' : '✗'} ${esc(words)}</li>`;

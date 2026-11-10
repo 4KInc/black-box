@@ -330,5 +330,9 @@ test('the judges\' page: the three outcomes, each a live dispute with PayPal\'s 
   const broken = await (await fetch(`${base}/lab/run?case=P09&t=edit-page`)).text();
   assert.match(broken, /Decided again with your change: the verdict changed/);
   assert.match(broken, /<li class="bad">✗ record matches the PayPal payment \(custom_id\)<\/li>/);
+  // The banner and the case page agree: two checks failed, and the order-time check cannot be made.
+  assert.equal(broken.match(/<li class="bad">/g).length, 2);
+  assert.match(broken, /<li class="na">– pages signed before the order: can't check, the signatures are broken<\/li>/);
+  assert.match(broken, /2 of 6 trust checks failed\. Over budget\. All 5 shop checks are on, but the record is broken, so a person decides\./);
   assert.match(broken, /<dt>Before your change<\/dt><dd>Shop at fault · rule 2 · refund \$240\.00<\/dd><dt>Now<\/dt><dd class="diff">Needs a human · rule 1 · a person decides<\/dd>/);
 });

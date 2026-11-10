@@ -386,7 +386,7 @@ a.go{font:700 15px/1 var(--display);letter-spacing:.12em;text-transform:uppercas
 .labbar h2{margin:8px 0 6px;font:700 clamp(24px,3vw,32px)/1.05 var(--display);text-transform:uppercase}
 .labchecks{list-style:none;margin:12px 0;padding:0;display:flex;flex-wrap:wrap;gap:6px}
 .labchecks li{font:400 12px/1 var(--mono);padding:7px 9px;border:1px solid var(--rule-2);border-radius:3px}
-.labchecks li.ok{color:var(--green);border-color:oklch(.80 .17 150 / .4)}.labchecks li.bad{color:var(--red);border-color:oklch(.66 .21 27 / .6)}
+.labchecks li.ok{color:var(--green);border-color:oklch(.80 .17 150 / .4)}.labchecks li.bad{color:var(--red);border-color:oklch(.66 .21 27 / .6)}.labchecks li.na{color:var(--ink-3);border-style:dashed}
 .labrule{margin:0 0 10px;color:var(--ink)}
 .labvs{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 14px;margin:0 0 12px}
 .labvs dt{font:400 11px/1.6 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3)}
@@ -1037,7 +1037,9 @@ function plainWords(c, j) {
   const panel = [
     broken.length ? `${broken.length} of ${RECORD_CHECKS.length} trust checks failed.` : `All ${RECORD_CHECKS.length} trust checks pass.`,
     j.facts.mandateBroken ? 'Over budget.' : 'Within budget.',
-    shop === MERCHANT_CONDITIONS.length ? `All ${shop} shop checks are on: the shop is at fault.` : shop ? `${shop} of ${MERCHANT_CONDITIONS.length} shop checks are on, not enough to blame the shop.` : '',
+    shop === MERCHANT_CONDITIONS.length
+      ? (broken.length ? `All ${shop} shop checks are on, but the record is broken, so a person decides.` : `All ${shop} shop checks are on: the shop is at fault.`)
+      : shop ? `${shop} of ${MERCHANT_CONDITIONS.length} shop checks are on, not enough to blame the shop.` : '',
     j.facts.aiInjectionFlag ? 'The AI check flagged text about this item.' : '',
     j.facts.unattributedHiddenText ? "The AI read hidden text that can't be pinned on the shop." : '',
     j.facts.unclassifiedAgentText ? "The shop hid a note to AI agents that code can't classify." : '',
