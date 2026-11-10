@@ -13,10 +13,9 @@ capture, in filming order.
 | Demo | Hosted `/demo` (`/mandate/` and `/operator` ask for the operator password) |
 | P09 (live: the buyer's own words, hidden $119 note, $240 refunded) | Site `/bench/P09/` |
 | P08 (live: the agent paid from a saved wallet, $240 refunded) | Site `/bench/P08/` |
-| P06 (live: AGENT, $90 back, operator payout) | Site `/bench/P06/` |
-| P04 (live: USER, evidence sent) | Site `/bench/P04/` |
+| Judges (P09, P06, P04 side by side, with PayPal's IDs and a re-run button) | Site `/judge/` |
 | Study | Site `/study/` |
-| Lab | Hosted `/lab?case=P09` |
+| Lab (opened from the judges' page) | Hosted `/lab/run?case=P09&t=edit-page` |
 
 ---
 
@@ -82,23 +81,29 @@ $240.00 refund.
 
 ## 2:00 – 2:25 · Fair to both sides
 
-**On screen (2:00):** P06: **AGENT**; the PayPal panel shows $90.00 back to the buyer and the
-payout line "operator → merchant · batch ZLR5F7QM5LBQ4 SUCCESS".
+**On screen (2:00):** the judges' page (`/judge/`): the three cards side by side, red **The shop
+pays**, amber **The shopping app pays**, blue **The sale stands**. Move to card B: **AGENT · rule
+5**, then its PayPal tape: "PayPal refunds the buyer $90.00" and "Payouts: the shopping app repays
+the shop $90.00 · batch ZLR5F7QM5LBQ4 SUCCESS".
 
 **Voice-over:**
 > When nothing misled the agent, the app running it is at fault. The buyer gets the ninety dollars
 > over budget back, and the app repays the shop through PayPal Payouts.
 
-**On screen (2:13):** P04: **USER**, then the evidence section with the note sent to PayPal.
+**On screen (2:13):** card C: **USER · rule 6**, "Black Box sends provide-evidence · HTTP 200",
+"PayPal has the checked note and the record; no money moved". Then up to card A's **Bound to the
+payment** block: the record SHA-256 and "PayPal order custom_id ✓ the same".
 
 **Voice-over:**
 > And when the agent did what it was told, the sale stands: Black Box sends PayPal the evidence.
+> Every case carries PayPal's own IDs, and a fingerprint that matches the payment.
 
 ## 2:25 – 2:40 · Why trust it
 
-**On screen:** Lab with P09. Tick "Merchant: edit one letter of the stored product page", **Run the
-engine**. The banner: "Unchanged: MERCHANT · rule 2 … Now: NEEDS A HUMAN · rule 1", with the failed
-checks.
+**On screen:** on card A of the judges' page, click **Change one letter of the page →**. The hosted
+lab opens on P09 with that change made, and the banner reads: "Unchanged: MERCHANT · rule 2 …
+Now: NEEDS A HUMAN · rule 1", with the failed checks (hashesMatch, signaturesValid,
+signedBeforeOrder).
 
 **Voice-over:**
 > Code decides; an AI can only ask for a person. Change one letter of the record and the
@@ -108,12 +113,12 @@ checks.
 
 **On screen:** the site's front page, scrolled to "How it works": the three panels play in turn
 (the budget fills and Touch ID stamps, the pages drop into the PayPal payment, the outcome cycles
-through "The shop pays", "The shopping app pays", "The sale stands"). Caption with the demo URL,
-`black-box-342881585799.us-central1.run.app/demo`.
+through "The shop pays", "The shopping app pays", "The sale stands"). Caption with the judges' page,
+`4kinc.github.io/black-box/judge`, and the demo, `black-box-342881585799.us-central1.run.app/demo`.
 
 **Voice-over:**
 > Black Box is for PayPal, shops, and the apps that run AI shoppers. Every agent purchase should
-> leave a black box. Try it yourself: the link is below.
+> leave a black box. See all three outcomes yourself, and re-run the engine, at the link below.
 
 ---
 
@@ -134,10 +139,11 @@ through "The shop pays", "The shopping app pays", "The sale stands"). Caption wi
    7. The buyer's sandbox Activity showing the refund.
 5. *(fallback only)* **Site, P09**: the PayPal panel with the refund.
 6. **Site, P08** (`/bench/P08/`): verdict, the case story, the PayPal panel.
-7. **Site, P06** (`/bench/P06/`): verdict and the PayPal panel with the payout line.
-8. **Site, P04** (`/bench/P04/`): verdict and the evidence section.
-9. **Hosted lab** (`/lab?case=P09`): "edit one letter" ticked, Run, the banner and the checks.
-10. **Site front page**, "How it works": one full cycle of the three panels (9 seconds), for the
+7. **Site, judges' page** (`/judge/`): the three cards together; card B's PayPal tape with the $90
+   refund and the payout; card C's evidence lines; card A's record hash and "custom_id ✓ the same".
+8. **Hosted lab**, from card A's **Change one letter of the page →**: the banner and the failed
+   checks.
+9. **Site front page**, "How it works": one full cycle of the three panels (9 seconds), for the
     close.
 
 **Tips**
