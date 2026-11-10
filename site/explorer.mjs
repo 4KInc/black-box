@@ -202,9 +202,7 @@ const STYLE = `<style>
 
 export function explorerPage(data) {
   const n = (x) => x.toLocaleString('en-US');
-  const body = `${STYLE}<section class="hero top xp-hero"><div><h1>Every case,<br>every run</h1></div>
-<div><p>The dispute scenarios, the money in the ${n(new Set(data.ledger.map((r) => r.disputeId)).size)} live PayPal disputes, all ${n(data.decisions.rules.length)} combinations of the 16 facts, and every agent run from the study. Sort, filter, and pick a row for its details.</p>
-<p class="k" style="font-size:12px">Every verdict comes from the engine (<span class="mono">npm run bench</span>). The tables only show them.</p></div></section>
+  const body = `${STYLE}<section class="hero top xp-hero"><div><h1>Every case,<br>every run</h1></div></section>
 <section class="sec" aria-label="Explorer">
 <div class="xp-tabs" role="tablist">
 <button role="tab" data-tab="scenarios" aria-selected="true">Dispute scenarios<small>${n(data.scenarios.length)}</small></button>
