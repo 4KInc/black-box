@@ -84,6 +84,7 @@ test('approving a package the page did not show approves nothing; the shown one 
   await form(`/desk/${ID}/send`, { package: st.packageHash });
   assert.equal(uploads.length, 1);
   const page = await (await fetch(`${base}/desk/${ID}`, { headers: auth() })).text();
-  assert.match(page, /Sent to PayPal/);
+  assert.match(page, /<span class="dverdict">Sent to PayPal<\/span>/);
   assert.doesNotMatch(page, /<button class="send"/);
+  assert.match(await (await fetch(`${base}/desk`)).text(), /<span class="dv">Sent to PayPal<\/span>/);
 });

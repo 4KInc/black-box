@@ -135,7 +135,8 @@ function paypalPanel(pp) {
 // st = deskState() or a bench case shaped like it. opts: { scenario, manage, flash, status }
 export function deskCasePage(st, { scenario = null, manage = false, flash = '', status = '' } = {}) {
   const { pp, read, result } = st;
-  const [a, b, tag] = HEAD[result.decision];
+  const [a, b] = HEAD[result.decision];
+  const tag = st.sent ? 'Sent to PayPal' : HEAD[result.decision][2];
   const title = scenario ? `${scenario.id} · ${scenario.title}` : `${pp.disputeId}`;
   const sent = st.sent ? `Sent to PayPal ${esc(String(st.sent.at ?? '').slice(0, 16).replace('T', ' '))} UTC. PayPal decides the dispute.` : '';
   const state = result.decision !== 'send' ? 'Nothing is sent.'
@@ -169,9 +170,9 @@ ${sec('The sources', 'Lines highlighted green are the quotes a fact was kept fro
 // /desk: what it does, the live disputes (when hosted), and the scenarios.
 export function deskIndex(bench, { live = null } = {}) {
   const passed = bench.filter((r) => r.pass).length;
-  const card = (href, id, decision, title, line, ok = null) => `<a class="dcard d-${decision}" href="${href}"><div class="top"><span class="id">${esc(id)}</span><span class="dv">${HEAD[decision][2]}</span>${ok === null ? '' : `<span class="ok${ok ? '' : ' no'}">${ok ? '✓ as written' : '✗ wrong'}</span>`}</div><h3>${esc(title)}</h3><p>${esc(line)}</p></a>`;
+  const card = (href, id, decision, title, line, ok = null, sent = false) => `<a class="dcard d-${decision}" href="${href}"><div class="top"><span class="id">${esc(id)}</span><span class="dv">${sent ? 'Sent to PayPal' : HEAD[decision][2]}</span>${ok === null ? '' : `<span class="ok${ok ? '' : ' no'}">${ok ? '✓ as written' : '✗ wrong'}</span>`}</div><h3>${esc(title)}</h3><p>${esc(line)}</p></a>`;
   const liveList = live === null ? '' : sec('Live disputes', 'Disputes in the PayPal sandbox with no Black Box record, or a reason the recorder does not answer. Opening one needs the operator password.',
-    live.length ? `<div class="dcards">${live.map((st) => card(`/desk/${st.pp.disputeId}`, st.pp.disputeId.replace(/^PP-R-/, ''), st.result.decision, `${REASON_TEXT[st.pp.reason] ?? st.pp.reason} · ${fmt(st.pp.disputedCents)}`, st.sent ? 'Evidence sent: PayPal decides' : st.result.why)).join('')}</div>` : '<p class="k">None yet.</p>');
+    live.length ? `<div class="dcards">${live.map((st) => card(`/desk/${st.pp.disputeId}`, st.pp.disputeId.replace(/^PP-R-/, ''), st.result.decision, `${REASON_TEXT[st.pp.reason] ?? st.pp.reason} · ${fmt(st.pp.disputedCents)}`, st.sent ? 'Evidence sent: PayPal decides' : st.result.why, null, Boolean(st.sent))).join('')}</div>` : '<p class="k">None yet.</p>');
   return layout('Black Box · evidence desk', `${CSS}<section class="hero top"><div><h1>Evidence <em>desk</em></h1></div>
 <div><p>For every other dispute a shop gets: “item not received”, “refund not received”, “charged twice”. It builds the evidence PayPal asks for, shows where each fact came from, says what is missing, and never makes up a defence.</p>
 <div class="stats"><div class="stat"><b>${passed} of ${bench.length}</b><span>scenarios decided as written down</span></div></div></div></section>
