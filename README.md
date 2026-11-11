@@ -38,7 +38,7 @@ Everything is on that one address. A static copy of the read-only pages is mirro
 
 **Submission state:** tag `v1.0-submission`, 11 November 2026: 62 bench cases (nine live disputes,
 10 attacks), 11 evidence desk scenarios, 312 tests, 16 facts, 65,536 fact combinations checked,
-77 recordings. Hosted on Cloud Run revision `black-box-00085-2hq`.
+77 recordings. Hosted on Cloud Run revision `black-box-00086-x7g`.
 
 ## The problem
 
