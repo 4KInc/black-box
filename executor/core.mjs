@@ -56,7 +56,8 @@ export function actionDone(kind, dispute) {
     return closed ? null : false;
   }
   if (kind === 'make-offer') return dispute?.offer?.seller_offered_amount ? true : closed ? null : false;
-  if (kind === 'provide-evidence') return (dispute?.evidences ?? []).some((e) => e.source === 'SUBMITTED_BY_SELLER') ? true : closed ? null : false;
+  // A claim already under review takes it as supporting info instead (the evidence desk).
+  if (kind === 'provide-evidence') return [...(dispute?.evidences ?? []), ...(dispute?.supporting_info ?? [])].some((e) => e.source === 'SUBMITTED_BY_SELLER') ? true : closed ? null : false;
   if (kind === 'escalate') {
     const stage = dispute?.dispute_life_cycle_stage;
     return !stage ? null : stage !== 'INQUIRY' ? true : closed ? null : false;
@@ -189,8 +190,9 @@ export async function sendOnce(log, { disputeId, source, kind, step, payload, ca
 }
 
 // The evidence upload is multipart, so it does not go through lib/paypal.mjs's JSON client.
-export async function uploadEvidence(disputeId, form) {
-  const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form, signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS) });
+export async function uploadEvidence(disputeId, form, endpoint = 'provide-evidence') {
+  const path = endpoint === 'provide-supporting-info' ? `/v1/customer/disputes/${disputeId}/provide-supporting-info` : `/v1/customer/disputes/${disputeId}/provide-evidence`;
+  const r = await fetch(`${API}${path}`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form, signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS) });
   return { ok: r.ok, status: r.status, text: await r.text() };
 }
 

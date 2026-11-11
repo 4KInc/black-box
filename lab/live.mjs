@@ -294,8 +294,8 @@ export function createLive({
         if (req.method === 'GET' && !desk[2]) {
           const st = state();
           if (!st) return send(404, layout('Black Box · desk', '<section class="hero top"><div><h1>Not <em>yet</em></h1></div><div><p>The desk has not seen this dispute. It looks at new PayPal disputes every 30 seconds.</p><p><a href="/desk">All desk disputes</a></p></div></section>'));
-          const last = executionLog(root, id).read().findLast((e) => e.step === 'desk-decision' || e.step === 'hold' || e.step === 'provide-evidence');
-          return send(200, deskCasePage(st, { manage: true, flash: url.searchParams.get('m') ?? '', status: last?.step === 'provide-evidence' ? (last.status >= 200 && last.status < 300 ? 'evidence accepted by PayPal' : `PayPal answered ${last.status ?? 'nothing'}`) : '' }));
+          const last = executionLog(root, id).read().findLast((e) => e.step === 'desk-decision' || e.step === 'hold' || e.step === 'provide-evidence' || e.step === 'provide-supporting-info');
+          return send(200, deskCasePage(st, { manage: true, flash: url.searchParams.get('m') ?? '', status: last?.step === 'provide-evidence' || last?.step === 'provide-supporting-info' ? (last.status >= 200 && last.status < 300 ? 'evidence accepted by PayPal' : `PayPal answered ${last.status ?? 'nothing'}`) : '' }));
         }
         if (req.method !== 'POST' || !desk[2]) return send(405, 'Method not allowed.');
         if (!origins.has(req.headers.origin)) return send(403, 'Cross-site request refused.');

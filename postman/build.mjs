@@ -252,6 +252,14 @@ export const COLLECTION = {
           { key: 'file1', type: 'file', src: [] },
         ] },
       }),
+      request('Provide supporting info (evidence desk, claim under review)', 'POST', '/v1/customer/disputes/{{dispute_id}}/provide-supporting-info', {
+        source: 'desk/run.mjs (resolveDesk)',
+        description: 'The same approved package, when PayPal already has the claim under review and offers only `provide_supporting_info`: the statements as the note, every document in one text file.',
+        body: { mode: 'formdata', formdata: [
+          { key: 'input', type: 'text', contentType: 'application/json', value: JSON.stringify({ notes: 'The disputed payment is PayPal capture {{capture_id}} ...' }) },
+          { key: 'file1', type: 'file', src: [] },
+        ] },
+      }),
     ] },
   ],
 };

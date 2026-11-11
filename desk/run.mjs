@@ -99,7 +99,9 @@ export async function resolveDesk({ root, disputeId, dispute, order, log, source
   }
 
   const mapped = (a) => ({ busy: 'in-progress', done: 'already-done', held: 'held-for-person', unknown: 'outcome-unknown' })[a.status];
-  if (!links.includes('provide_evidence')) {
+  // A claim PayPal already has under review takes the same package as supporting info.
+  const supporting = !links.includes('provide_evidence') && links.includes('provide_supporting_info');
+  if (!links.includes('provide_evidence') && !supporting) {
     // PayPal takes evidence only on a claim: an approved package on an inquiry escalates it first.
     const escalated = attempts(log.read()).some((a) => a.kind === 'escalate' && a.state === 'succeeded');
     if (escalated || !links.includes('escalate')) return { ...out, status: 'not-ready' };
@@ -109,15 +111,16 @@ export async function resolveDesk({ root, disputeId, dispute, order, log, source
   }
 
   const note = deskNote(st.result.statements);
-  const input = JSON.stringify({ evidences: [{ ...st.result.evidence, notes: note, documents: [{ name: 'blackbox-evidence.txt' }] }] });
+  const endpoint = supporting ? 'provide-supporting-info' : 'provide-evidence';
+  const input = JSON.stringify(supporting ? { notes: note } : { evidences: [{ ...st.result.evidence, notes: note, documents: [{ name: 'blackbox-evidence.txt' }] }] });
   const file = deskFile({ note, statements: st.result.statements, docs: st.docs });
   const a = await sendOnce(log, {
-    disputeId, source, kind: 'provide-evidence', step: 'provide-evidence', payload: input + '\n' + file,
+    disputeId, source, kind: 'provide-evidence', step: endpoint, payload: input + '\n' + file,
     call: () => {
       const form = new FormData();
       form.append('input', new Blob([input], { type: 'application/json' }));
       form.append('file1', new Blob([file], { type: 'text/plain' }), 'blackbox-evidence.txt');
-      return (client.evidence ?? uploadEvidence)(disputeId, form);
+      return (client.evidence ?? uploadEvidence)(disputeId, form, endpoint);
     },
   });
   if (a.status !== 'sent') return { ...out, status: mapped(a), ...(a.why ? { why: a.why } : {}) };

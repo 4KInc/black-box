@@ -26,6 +26,7 @@ function world({ reason = 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED', links = ['provi
   const w = {
     root, dispute, order, posts, reads,
     upload: async () => { dispute.evidences = [...(dispute.evidences ?? []), { evidence_type: 'PROOF_OF_FULFILLMENT', source: 'SUBMITTED_BY_SELLER' }]; return { ok: true, status: 200, text: '{}' }; },
+    supporting: async () => { dispute.supporting_info = [...(dispute.supporting_info ?? []), { source: 'SUBMITTED_BY_SELLER' }]; return { ok: true, status: 200, text: '{}' }; },
     log: () => executionLog(root, ID).read(),
     done: () => rmSync(root, { recursive: true, force: true }),
   };
@@ -39,7 +40,7 @@ function world({ reason = 'MERCHANDISE_OR_SERVICE_NOT_RECEIVED', links = ['provi
     if (path.startsWith('/v2/payments/captures/')) return { ok: true, status: 200, data: { supplementary_data: { related_ids: { order_id: order.id } } } };
     return { ok: true, status: 200, data: structuredClone(order) };
   };
-  const client = { paypal, evidence: async (id, form) => { const input = JSON.parse(await form.get('input').text()); const file = await form.get('file1').text(); posts.push({ path: `/v1/customer/disputes/${id}/provide-evidence`, json: input, file }); return w.upload(); } };
+  const client = { paypal, evidence: async (id, form, endpoint) => { const input = JSON.parse(await form.get('input').text()); const file = await form.get('file1').text(); posts.push({ path: `/v1/customer/disputes/${id}/${endpoint}`, json: input, file }); return endpoint === 'provide-evidence' ? w.upload() : w.supporting(); } };
   const extract = async (doc) => { reads.push(doc.name); return { raw: DESK_SCENARIOS.flatMap((s) => s.docs).find((d) => d.text === doc.text)?.reply ?? '{"facts":[]}', model: 'scripted' }; };
   w.resolve = (opts = {}) => resolveDispute(ID, { root, execute: true, client, flag: async () => null, desk: (args) => resolveDesk({ ...args, extract, auto: false }), ...opts });
   return w;
@@ -149,6 +150,25 @@ test('an approved package on an inquiry escalates first, then sends', async () =
     assert.equal((await w.resolve()).status, 'escalated');
     assert.equal((await w.resolve()).status, 'executed');
     assert.deepEqual(w.posts.map((p) => p.path.split('/').at(-1)), ['escalate', 'provide-evidence']);
+  } finally { w.done(); }
+});
+
+test('a claim PayPal already has under review takes the approved package as supporting info, once', async () => {
+  // As the sandbox did it (PP-R-NVH-10198801): the inquiry became a claim under review, with
+  // provide_supporting_info the only way in.
+  const w = world({ links: ['provide_supporting_info'] });
+  try {
+    w.dispute.status = 'UNDER_REVIEW';
+    addDoc(w.root, ID, UPS.name, UPS.text);
+    approve(w.root, ID, (await w.resolve()).desk.packageHash);
+    assert.equal((await w.resolve()).status, 'executed');
+    const sent = w.posts.filter((p) => p.path.endsWith('/provide-supporting-info'));
+    assert.equal(sent.length, 1);
+    assert.ok(sent[0].json.notes.includes('1Z999AA10123456784'));
+    assert.ok(sent[0].file.includes(UPS.text));
+    assert.equal((await w.resolve()).status, 'already-done');
+    assert.equal(w.posts.length, 1);
+    assert.equal(deskState(w.root, ID, w.log()).sent.state, 'succeeded');
   } finally { w.done(); }
 });
 
