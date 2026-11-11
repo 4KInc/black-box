@@ -16,6 +16,10 @@ PayPal dispute action that follows.
   `provide-evidence`: a checked note and the sealed record.
 - **Anything it cannot prove,** such as a tampered record or a lie in someone else's review →
   no money moves and a person decides.
+- **Any other dispute a shop gets** ("item not received", "refund not received", "charged twice"),
+  with or without an agent → the [evidence desk](https://black-box-342881585799.us-central1.run.app/desk)
+  builds the evidence PayPal asks for from PayPal's own records and the shop's documents, shows
+  where every fact came from, says what is missing, and sends only what the merchant approves.
 
 **Judges, start here:** [the judges' page](https://black-box-342881585799.us-central1.run.app/judge) has the three
 outcomes as three live sandbox disputes, each with PayPal's order, capture, dispute and refund or
@@ -193,6 +197,38 @@ returned, including the refund transaction and money movements. "PayPal's respon
 data as a file in this repo. PayPal's own dispute pages are visible only when signed in to the
 sandbox accounts. Each live case is also checked in the bench (R03, R11, P03–P09). Every one was
 approved with the buyer's passkey and handled by the autopilot with no one at the keyboard.
+
+## The evidence desk
+
+The recorder answers one kind of dispute: an agent's purchase with a sealed record. A shop gets
+many others. The [evidence desk](https://black-box-342881585799.us-central1.run.app/desk) takes
+the disputes the responsibility engine does not (no Black Box record, or a reason it does not
+answer) and answers one question by code: does the evidence on hand prove what this dispute
+reason needs?
+
+| Reason | What must be shown | Evidence sent |
+|---|---|---|
+| Item not received | a tracking number and carrier; the carrier's own message saying delivered; delivery to the postcode on the PayPal order; after the order date | `PROOF_OF_FULFILLMENT` with `tracking_info` |
+| Refund not received, charged twice | a `COMPLETED` refund on this exact capture, in PayPal's own order, covering the disputed amount | `PROOF_OF_REFUND` with `refund_ids` |
+
+- **Every fact carries its source.** *Verified with PayPal* (the order's refunds, trackers and
+  shipping address), *from your records* (an export, read by code), or *from a document* (a
+  carrier email or support thread). For documents an AI points at the lines; code keeps a fact
+  only when the quote is in the file word for word and the value can be read from that quote. A
+  reading the file does not support is thrown out and shown (scenario D11).
+- **It never fills a gap.** PayPal's tracker status is whatever the merchant set, and the shop's
+  own export is what the shop believes, so neither proves delivery: only the carrier's message
+  does (D05). Missing proof means *missing*, with what to add. Proof against the shop (returned to
+  sender, no refund on this payment) means *refund the buyer* (D03, D07, D08). Sources that
+  disagree mean *a person decides* (D04).
+- **A document is data.** A line in a support thread telling "the AI" what to say is quoted on
+  the page and never acted on (D10).
+- **Nothing goes out without approval of the exact package,** and it goes out once: sending reuses
+  the executor's attempt, lock and reconcile path. The desk moves no money: a recommended refund is
+  the merchant's to make.
+
+`npm run desk-bench` runs its 11 scenarios offline; the AI's readings are replayed from the log
+and checked against each file again.
 
 ## How it works
 
@@ -399,6 +435,7 @@ Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
 npm test                    # 285 tests
+npm run desk-bench          # 11 evidence desk scenarios: not received, refund not received, charged twice
 npm run bench               # 62 cases: every verdict and rule, nine live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
 npm run site                # build the static site in _site/ (LAB_URL links its nav to a hosted lab)
@@ -502,6 +539,7 @@ run, is [scripts/deploy-live.md](scripts/deploy-live.md).
 | `flagger/` | AI flagger, grounded by exact quotes |
 | `evidence/` | the evidence note for PayPal: statements from code, wording checked against them |
 | `executor/` | dispute → record → verdict → PayPal action; webhook receiver, watcher, autopilot |
+| `desk/` | the evidence desk: sourced facts, the decision by code, its pages and its 11 scenarios |
 | `replay/` | the replay UI (no scripts; recorded pages sandboxed) |
 | `lab/` | the live lab (tamper with a case, or set facts by hand), the hosted entry point and the hosted live demo |
 | `bench/` | 62 cases, each with its expected verdict, rule, PayPal action and failing checks |

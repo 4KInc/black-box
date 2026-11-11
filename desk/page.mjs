@@ -163,7 +163,7 @@ ${manage && !st.sent && !st.approved && st.packageHash ? `<form class="dform" me
 ${sec(`What “${esc(REASON_TEXT[pp.reason] ?? pp.reason)}” needs`, 'Each requirement, and where its proof came from. Only the carrier\'s own message can show delivery.', checks)}
 ${pkg}
 ${sec('The sources', 'Lines highlighted green are the quotes a fact was kept from. Red lines addressed whoever reads the file: they are shown here and never acted on.', docs + add)}
-${scenario ? '' : `<p class="k" style="margin-top:28px"><a href="/desk">All desk disputes</a></p>`}`, { active: 'desk' });
+<p class="k" style="margin-top:28px">${scenario ? 'The documents are samples written for this scenario. ' : ''}<a href="/desk">All desk disputes</a></p>`, { active: 'desk' });
 }
 
 // /desk: what it does, the live disputes (when hosted), and the scenarios.
@@ -177,7 +177,7 @@ export function deskIndex(bench, { live = null } = {}) {
 <div class="stats"><div class="stat"><b>${passed} of ${bench.length}</b><span>scenarios decided as written down</span></div></div></div></section>
 ${sec('How it decides', '', `<ol class="dsteps">
 <li><b>Read PayPal first</b>The dispute, the order's shipping address, refunds and tracking on this exact payment.</li>
-<li><b>Read what the shop adds</b>A carrier email or a support thread. An AI points at the lines; code keeps a fact only if its quote is in the file and the value is in the quote.</li>
+<li><b>Read what the shop adds</b>A carrier email or a support thread. An AI points at the lines; code keeps a fact only if its quote is in the file and the value is in the quote. It cannot tell a forged email from a real one, so PayPal gets every document in full.</li>
 <li><b>Decide by code</b>Send, missing, refund the buyer, or a person. Delivery is proven only by the carrier's own message.</li>
 <li><b>Send once, on approval</b>The merchant approves the exact package. It goes out once, even if PayPal times out.</li></ol>`)}
 ${liveList}

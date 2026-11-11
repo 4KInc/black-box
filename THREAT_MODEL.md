@@ -155,10 +155,37 @@ It ends with what Black Box has to trust, and what it does not cover.
   planned action (evidence just after an inquiry was escalated, for one), nothing is sent and the
   autopilot checks again a minute later, ten times at most, before leaving the dispute to a person.
 
+## The evidence desk
+
+The desk works for the merchant, on disputes the recorder does not answer. What it protects
+against is the merchant's own evidence overreaching: claiming more than the documents show.
+
+- **An AI that misreads a document, or is told to.** The AI only proposes facts, each with a
+  quote. Code keeps a fact only when the quote is in the file word for word and code reads the
+  value from that quote (a tracking number in it, a date written in it, "delivered" in it). A line
+  addressed to the reader is quoted on the page and never followed (D10, D11).
+- **The merchant's own word as proof.** A merchant's export saying "delivered", or a PayPal
+  tracker the merchant set to SHIPPED, cannot prove delivery; only the carrier's own message
+  counts (D05).
+- **Refund IDs from elsewhere.** A refund counts only when PayPal's own order shows it on this
+  exact capture, completed (D07).
+- **Sending twice, or sending something else.** Approval is for one package hash; any new
+  document or PayPal fact makes a new package. Sending goes through the executor's attempt, lock
+  and reconcile path.
+
+**What the desk cannot do:** tell a genuine carrier email from a forged one. It checks that the
+documents say what the package claims, consistently with PayPal's own records; it does not ask
+the carrier. Every document goes to PayPal in full, with its SHA-256 hash, so PayPal's reviewer
+can check it against the carrier. The desk's own scenarios use sample documents written for the
+sandbox.
+
 ## Not covered
 
-- Delivery problems ("not received"): Black Box sends nothing and holds the dispute for a person;
-  the normal PayPal process applies (R05). Its evidence never speaks to delivery or condition.
+- Delivery problems on an agent's purchase go to the evidence desk when it is on; without it,
+  Black Box sends nothing and holds the dispute for a person (R05). The recorder's own evidence
+  never speaks to delivery or condition.
+- Item condition, digital goods, subscriptions and unauthorised payments without an agent record:
+  the desk holds these for a person.
 - Real money: everything runs in the PayPal sandbox.
 - Multi-item carts, shops that render with JavaScript, and agents that browse beyond one shop.
 - A general RFC 9421 implementation: the signature code covers only the profile Black Box uses.
