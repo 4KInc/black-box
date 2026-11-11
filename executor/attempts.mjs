@@ -1,12 +1,13 @@
 // What became of each action Black Box attempted on a dispute, read from its execution log
 // (records/executions/<dispute>.jsonl). No imports: the executor and the replay both read it.
 
-export const ACTION_STEP = /^(accept-claim|make-offer|provide-evidence)/;
+export const ACTION_STEP = /^(accept-claim|make-offer|provide-evidence|provide-supporting-info)/;
 const ok = (e) => e.status >= 200 && e.status < 300;
 const refused = (e) => e.status >= 400 && e.status < 500;
 
-// One action ID per kind of action on a dispute; a partial accept-claim is the same endpoint.
-export const actionKind = (step) => (step === 'escalate' ? 'escalate' : String(step).match(ACTION_STEP)?.[1] ?? step);
+// One action ID per kind of action on a dispute; a partial accept-claim is the same endpoint, and
+// evidence sent as supporting info (a claim under review) is the same action.
+export const actionKind = (step) => (step === 'escalate' ? 'escalate' : String(step).match(ACTION_STEP)?.[1]?.replace('provide-supporting-info', 'provide-evidence') ?? step);
 
 // The latest attempt at each action, with what became of it:
 //   'succeeded'  PayPal accepted it, or PayPal later showed it had happened (reconciled)

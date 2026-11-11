@@ -166,6 +166,8 @@ test('a claim PayPal already has under review takes the approved package as supp
     assert.equal(sent.length, 1);
     assert.ok(sent[0].json.notes.includes('1Z999AA10123456784'));
     assert.ok(sent[0].file.includes(UPS.text));
+    // The sent package shows as sent straight away, before PayPal is read again.
+    assert.equal(deskState(w.root, ID, w.log()).sent.state, 'succeeded');
     assert.equal((await w.resolve()).status, 'already-done');
     assert.equal(w.posts.length, 1);
     assert.equal(deskState(w.root, ID, w.log()).sent.state, 'succeeded');
