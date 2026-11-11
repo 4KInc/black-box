@@ -159,6 +159,9 @@ export function addDoc(root, disputeId, name, text) {
   const base = String(name ?? 'document').replace(/\.(txt|json)$/i, '').replace(/[^A-Za-z0-9._-]+/g, '-').replace(/^[-.]+/, '').slice(0, 60) || 'document';
   const dir = join(deskDir(root, disputeId), 'docs');
   mkdirSync(dir, { recursive: true });
+  // The same text twice (a double submit) would go to PayPal twice.
+  const same = readdirSync(dir).find((f) => readFileSync(join(dir, f), 'utf8') === body);
+  if (same) throw new Error(`Already added as ${same}.`);
   let file = `${base}.${kind}`;
   for (let i = 2; existsSync(join(dir, file)); i++) file = `${base}-${i}.${kind}`;
   writeFileSync(join(dir, file), body);

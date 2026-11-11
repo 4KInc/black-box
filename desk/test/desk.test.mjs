@@ -158,6 +158,7 @@ test('documents are stored under the dispute with safe names, and limits apply',
     assert.equal(addDoc(root, 'PP-R-DSK-001', '../../etc/passwd', 'hello'), 'etc-passwd.txt');
     assert.equal(addDoc(root, 'PP-R-DSK-001', 'ups email', 'delivered'), 'ups-email.txt');
     assert.equal(addDoc(root, 'PP-R-DSK-001', 'ups email', 'again'), 'ups-email-2.txt');
+    assert.throws(() => addDoc(root, 'PP-R-DSK-001', 'resent', 'delivered'), /Already added as ups-email\.txt/);
     assert.equal(addDoc(root, 'PP-R-DSK-001', 'export.json', '{"carrier":"UPS"}'), 'export.json');
     assert.throws(() => addDoc(root, 'PP-R-DSK-001', 'x.json', '{broken'));
     assert.throws(() => addDoc(root, 'PP-R-DSK-001', 'x', '   '));
