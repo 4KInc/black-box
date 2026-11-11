@@ -44,16 +44,23 @@ export function decide(pp, facts = [], { instructions = [] } = {}) {
   }
 
   // A refund on this very payment that covers the dispute answers any of the three reasons.
+  // PayPal times come in mixed offsets (-08:00 and Z), so compare them as instants.
+  const sinceOpened = (r) => Boolean(r.at && pp.openedAt) && Date.parse(r.at) >= Date.parse(pp.openedAt);
   const completed = pp.refunds.filter((r) => r.status === 'COMPLETED');
   const refunded = completed.reduce((s, r) => s + r.cents, 0);
-  const pending = pp.refunds.filter((r) => r.status === 'PENDING');
+  // A pending "refund" for exactly the disputed amount, made once the dispute opened, is PayPal
+  // holding the money for the dispute, not a refund from the merchant.
+  const isHold = (r) => r.status === 'PENDING' && r.cents === pp.disputedCents && sinceOpened(r);
+  const holds = pp.refunds.filter(isHold);
+  const pending = pp.refunds.filter((r) => r.status === 'PENDING' && !isHold(r));
+  for (const r of holds) check(`hold-${r.id}`, 'PayPal holds the disputed amount', 'info', `PayPal shows ${r.id} (${fmt(r.cents)}) pending since the dispute opened: its hold on the money while the dispute is open, not a refund from you.`, [paypal('refunds')]);
   const claimed = of('refund_id');
   const strays = claimed.filter((f) => !pp.refunds.some((r) => r.id === f.value));
   for (const f of strays) check(`refund-${f.value}`, `Refund ${f.value}`, 'info', `${f.source.name} names refund ${f.value}, but PayPal shows no such refund on this payment.`, [f]);
 
   // Still owed: the disputed amount less refunds made after the dispute opened (PayPal already left
   // earlier ones out of it), and never more than what the payment has not had back.
-  const after = completed.filter((r) => r.at && pp.openedAt && r.at > pp.openedAt).reduce((s, r) => s + r.cents, 0);
+  const after = completed.filter(sinceOpened).reduce((s, r) => s + r.cents, 0);
   const left = (pp.grossCents ?? pp.disputedCents) - refunded;
   const owed = Math.max(0, Math.min(pp.disputedCents - after, left));
 

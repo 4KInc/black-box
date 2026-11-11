@@ -106,15 +106,20 @@ test('PayPal facts: refunds on another capture do not count, and a tracker\'s nu
 test('a refund made before the dispute is not taken off twice; one made after it is', () => {
   // As the sandbox did it (PP-R-CTB-10198804): $89 paid, $40 refunded, then the dispute opened for
   // the $49 left, so $49 is owed, not $9.
+  // PayPal then holds the $49 as a pending refund, timed in another offset than the dispute.
   const live = structuredClone(scenario('D08'));
-  live.dispute.create_time = '2026-11-11T06:38:00Z';
+  const refunds = live.order.purchase_units[0].payments.refunds;
+  live.dispute.create_time = '2026-11-11T07:41:02.135Z';
   live.dispute.dispute_amount.value = '49.00';
-  live.order.purchase_units[0].payments.refunds[0].create_time = '2026-11-11T06:30:00Z';
+  refunds[0].create_time = '2026-11-10T22:56:51-08:00';
+  refunds.push({ ...structuredClone(refunds[0]), id: '33C176152H933054F', status: 'PENDING', amount: { currency_code: 'USD', value: '49.00' }, create_time: '2026-11-10T23:44:33-08:00' });
   const r = decide(paypalFacts(live));
   assert.equal(r.decision, 'concede');
   assert.equal(r.concede.refundCents, 4900);
+  assert.equal(r.checks.find((c) => c.id === 'hold-33C176152H933054F').state, 'info');
+  refunds.pop();
   // Refunding the $49 after the dispute opened covers it: proof of refund.
-  live.order.purchase_units[0].payments.refunds.push({ ...structuredClone(live.order.purchase_units[0].payments.refunds[0]), id: '2KD73019BX4428311', amount: { currency_code: 'USD', value: '49.00' }, create_time: '2026-11-11T07:00:00Z' });
+  refunds.push({ ...structuredClone(refunds[0]), id: '2KD73019BX4428311', amount: { currency_code: 'USD', value: '49.00' }, create_time: '2026-11-11T00:00:00-08:00' });
   assert.equal(decide(paypalFacts(live)).decision, 'send');
   // A dispute for less than what is left, refunded after it opened, is covered too.
   const part = structuredClone(scenario('D08'));
