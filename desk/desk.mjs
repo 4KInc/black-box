@@ -51,7 +51,13 @@ export function decide(pp, facts = [], { instructions = [] } = {}) {
   const strays = claimed.filter((f) => !pp.refunds.some((r) => r.id === f.value));
   for (const f of strays) check(`refund-${f.value}`, `Refund ${f.value}`, 'info', `${f.source.name} names refund ${f.value}, but PayPal shows no such refund on this payment.`, [f]);
 
-  if (refunded > 0 && refunded >= pp.disputedCents) {
+  // Still owed: the disputed amount less refunds made after the dispute opened (PayPal already left
+  // earlier ones out of it), and never more than what the payment has not had back.
+  const after = completed.filter((r) => r.at && pp.openedAt && r.at > pp.openedAt).reduce((s, r) => s + r.cents, 0);
+  const left = (pp.grossCents ?? pp.disputedCents) - refunded;
+  const owed = Math.max(0, Math.min(pp.disputedCents - after, left));
+
+  if (refunded > 0 && owed === 0) {
     check('refund', 'A refund on this payment covers the dispute', 'met', `PayPal shows ${completed.map((r) => `${r.id} (${fmt(r.cents)})`).join(', ')}, completed, on payment ${pp.captureId}: ${fmt(refunded)} of the ${fmt(pp.disputedCents)} disputed.`, [paypal('refunds')]);
     requested('PROOF_OF_REFUND');
     const statements = [
@@ -75,8 +81,7 @@ export function decide(pp, facts = [], { instructions = [] } = {}) {
       check('refund', 'A refund on this payment', 'missing', refunded ? `PayPal shows ${fmt(refunded)} refunded of ${fmt(pp.disputedCents)}.` : 'PayPal shows no refund on this payment.', [paypal('refunds')]);
       return out(DECISION.PERSON, 'Telling two charges apart needs a person: the desk only answers a duplicate that was refunded.');
     }
-    const owed = pp.disputedCents - refunded;
-    check('refund', 'A refund on this payment covers the dispute', 'against', refunded ? `PayPal shows only ${fmt(refunded)} refunded (${completed.map((r) => r.id).join(', ')}); ${fmt(owed)} of the ${fmt(pp.disputedCents)} was not.` : 'PayPal shows no refund on this payment.', [paypal('refunds'), ...strays]);
+    check('refund', 'A refund on this payment covers the dispute', 'against', refunded ? `PayPal shows only ${fmt(refunded)} refunded (${completed.map((r) => r.id).join(', ')})${pp.grossCents ? ` of the ${fmt(pp.grossCents)} paid` : ''}; ${fmt(owed)} of the ${fmt(pp.disputedCents)} disputed is still owed.` : 'PayPal shows no refund on this payment.', [paypal('refunds'), ...strays]);
     return out(DECISION.CONCEDE, refunded ? `Only ${fmt(refunded)} was refunded: the desk recommends refunding the other ${fmt(owed)}.` : 'PayPal shows no refund on this payment, whatever a document says: the desk recommends accepting the claim.', { concede: { refundCents: owed } });
   }
 

@@ -103,6 +103,26 @@ test('PayPal facts: refunds on another capture do not count, and a tracker\'s nu
   assert.equal(pp1.disputedCents, 8900);
 });
 
+test('a refund made before the dispute is not taken off twice; one made after it is', () => {
+  // As the sandbox did it (PP-R-CTB-10198804): $89 paid, $40 refunded, then the dispute opened for
+  // the $49 left, so $49 is owed, not $9.
+  const live = structuredClone(scenario('D08'));
+  live.dispute.create_time = '2026-11-11T06:38:00Z';
+  live.dispute.dispute_amount.value = '49.00';
+  live.order.purchase_units[0].payments.refunds[0].create_time = '2026-11-11T06:30:00Z';
+  const r = decide(paypalFacts(live));
+  assert.equal(r.decision, 'concede');
+  assert.equal(r.concede.refundCents, 4900);
+  // Refunding the $49 after the dispute opened covers it: proof of refund.
+  live.order.purchase_units[0].payments.refunds.push({ ...structuredClone(live.order.purchase_units[0].payments.refunds[0]), id: '2KD73019BX4428311', amount: { currency_code: 'USD', value: '49.00' }, create_time: '2026-11-11T07:00:00Z' });
+  assert.equal(decide(paypalFacts(live)).decision, 'send');
+  // A dispute for less than what is left, refunded after it opened, is covered too.
+  const part = structuredClone(scenario('D08'));
+  part.dispute.create_time = '2026-11-03T00:00:00Z';
+  part.dispute.dispute_amount.value = '40.00';
+  assert.equal(decide(paypalFacts(part)).decision, 'send');
+});
+
 test('sources that disagree on the parcel go to a person', () => {
   const s = scenario('D01');
   const pp = paypalFacts(s);

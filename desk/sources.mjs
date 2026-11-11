@@ -113,6 +113,10 @@ export function paypalFacts({ dispute, order }) {
     reason: dispute?.reason ?? null,
     status: dispute?.status ?? null,
     disputedCents: cents(dispute?.dispute_amount?.value ?? txn.gross_amount?.value ?? 0),
+    // What the buyer paid, and when the dispute was opened: PayPal leaves refunds made before the
+    // dispute out of its amount, so those must not be taken off it again.
+    grossCents: txn.gross_amount?.value != null ? cents(txn.gross_amount.value) : null,
+    openedAt: dispute?.create_time ?? null,
     currency: dispute?.dispute_amount?.currency_code ?? txn.gross_amount?.currency_code ?? 'USD',
     captureId,
     orderId: order?.id ?? null,
