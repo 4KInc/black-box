@@ -89,8 +89,12 @@ GitHub Pages (the static site), a Cloud Storage bucket for live runs, Secret Man
 - A live Payouts repayment from the operator (batch `ZLR5F7QM5LBQ4`).
 - 16 facts, six rules, exactly one rule for each of 65,536 combinations (property test).
 - A bench of 62 cases, each with its verdict, rule and PayPal action fixed in advance: 15 recorded
-  runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 285
+  runs, 8 honest price data, 13 reworded lies, 7 flagger cases, 9 passkey cases, 10 attacks. 312
   tests.
+- The evidence desk, for disputes with no agent ("item not received", "refund not received",
+  "charged twice"): 11 scenarios, and two live sandbox disputes. On PP-R-NVH-10198801 it sent the tracking
+  and a delivery email (a sample, marked as one) once, on the merchant's approval; on PP-R-CTB-10198804 it found only $40 of $89
+  refunded and recommended refunding the other $49, sending nothing.
 - A threat model ([THREAT_MODEL.md](https://github.com/4KInc/black-box/blob/main/THREAT_MODEL.md)) mapping each attack to its defence and the
   bench case that shows it.
 - WebAuthn passkeys for the mandate, checked against the payer PayPal reports; RFC 9421 page
@@ -178,8 +182,9 @@ open models) · APIMatic Context Plugin · Postman · AG Grid Community
 
 ```sh
 git clone https://github.com/4KInc/black-box && cd black-box
-npm test          # 285 tests, no keys
+npm test          # 312 tests, no keys
 npm run bench     # 62 cases, no keys
+npm run desk-bench  # 11 evidence desk scenarios, no keys
 npm run replay    # http://localhost:4030: every recording, the study, the bench and the lab
 ```
 

@@ -36,9 +36,9 @@ Everything is on that one address. A static copy of the read-only pages is mirro
 
 > Built for the PayPal AI Hackathon. Everything runs against the PayPal **sandbox**.
 
-**Submission state:** tag `v1.0-submission`, 8 November 2026: 62 bench cases (nine live disputes,
-10 attacks), 285 tests, 16 facts, 65,536 fact combinations checked, 77 recordings. Hosted on
-Cloud Run revision `black-box-00080-s45`.
+**Submission state:** tag `v1.0-submission`, 11 November 2026: 62 bench cases (nine live disputes,
+10 attacks), 11 evidence desk scenarios, 312 tests, 16 facts, 65,536 fact combinations checked,
+77 recordings. Hosted on Cloud Run revision `black-box-00085-2hq`.
 
 ## The problem
 
@@ -434,7 +434,7 @@ real case yourself.
 Node 24, no dependencies. The first four commands need no keys.
 
 ```sh
-npm test                    # 285 tests
+npm test                    # 312 tests
 npm run desk-bench          # 11 evidence desk scenarios: not received, refund not received, charged twice
 npm run bench               # 62 cases: every verdict and rule, nine live disputes, two shops, honest price data, reworded lies, the flagger, 10 attacks
 npm run replay              # :4030 every recording, the study, the bench and the lab
