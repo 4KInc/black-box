@@ -118,6 +118,10 @@ export function executionLog(root, disputeId) {
 //   'held-for-person' nothing sent, and nothing will be without a person: the dispute is closed or
 //                    in a state Black Box does not act in, an earlier attempt's outcome cannot be
 //                    told from PayPal, or the payload differs from that attempt's (why says which)
+// With the evidence desk (desk: resolveDesk from desk/run.mjs), a dispute the engine does not take
+// goes there instead of 'not-ours' or a hold, and may also end:
+//   'awaiting-documents' the evidence does not prove the reason yet; nothing sent
+//   'awaiting-approval'  the evidence package is ready and waits for the merchant's approval
 // The flagger runs when an Anthropic key is set and FLAGGER is not "off". It is the only check for
 // agent-directed lies code cannot see, so it fails closed: with no flagger answer, no money moves.
 // A hiding method code does not list leaves no finding at all, so code alone would make the agent's
@@ -131,13 +135,66 @@ const defaultNarrate = (statements) => (process.env.ANTHROPIC_API_KEY && process
 
 export { HELD_WHY };
 
+// Settles earlier attempts at these kinds of action from the dispute PayPal reports now: one PayPal
+// shows happened is logged as reconciled. Returns null when nothing is in doubt, or what to hold on
+// when an attempt's outcome is still unknown and PayPal does not clearly offer it again.
+export function reconcile(log, kinds, { dispute, links, source }) {
+  for (const k of kinds) {
+    const last = attempts(log.read()).findLast((a) => a.kind === k);
+    if (!last || last.state === 'succeeded' || !last.actionId) continue;
+    const done = actionDone(k, dispute);
+    if (done === true) log.write({ step: 'reconciled', source, actionId: last.actionId, kind: k, result: 'succeeded', why: 'PayPal shows it happened' });
+    else if (last.state === 'unknown' && !(done === false && links.includes(LINK_FOR[k] ?? k))) {
+      return { actionId: last.actionId, paypalStatus: dispute.status ?? null };
+    }
+  }
+  return null;
+}
+
+// One attempt at an action: the payload's hash is checked against the last attempt's, the attempt
+// is logged, the call made, and its result logged, all under the lock. Returns { status }:
+//   'sent' PayPal accepted it; 'busy' another run holds the lock; 'done' it already succeeded;
+//   'held' (with why) the payload differs from an earlier attempt; 'unknown' no known result.
+// A 4xx is a refusal and throws.
+export async function sendOnce(log, { disputeId, source, kind, step, payload, call }) {
+  const id = actionId(disputeId, kind);
+  const hash = payloadHash(payload);
+  if (!log.lock()) {
+    const age = log.lockAge();
+    if (age !== null && age < STALE_LOCK_MS) return { status: 'busy' };
+    log.write({ step: 'stale-lock', source, actionId: id, ageMs: age });
+    log.unlock();
+    if (!log.lock()) return { status: 'busy' };
+  }
+  try {
+    // Re-read under the lock: another run may have finished it since.
+    const last = attempts(log.read()).findLast((a) => a.actionId === id);
+    if (last?.state === 'succeeded') return { status: 'done' };
+    if (last && last.payloadHash !== hash) {
+      const why = 'the payload differs from the earlier attempt at this action';
+      log.write({ step: 'hold', source, why, actionId: id, earlier: last.payloadHash, now: hash });
+      return { status: 'held', why };
+    }
+    log.write({ step: 'attempt', source, actionId: id, kind, action: step, payloadHash: hash });
+    let r;
+    try { r = await call(); } catch (e) { r = { ok: false, status: null, error: e.message }; }
+    log.write({ step, source, actionId: id, payloadHash: hash, status: r.status ?? null, debug_id: r.debugId ?? null, request: typeof payload === 'string' ? null : payload, response: r.data ?? r.text ?? null, ...(r.error ? { error: r.error } : {}) });
+    if (r.ok) return { status: 'sent' };
+    if (r.status >= 400 && r.status < 500) throw Object.assign(new Error(`${step} failed (${r.status}, debug ${r.debugId}): ${JSON.stringify(r.data ?? r.text).slice(0, 400)}`), { refused: true });
+    log.write({ step: 'hold', source, why: 'outcome unknown', actionId: id, status: r.status ?? null, error: r.error ?? null });
+    return { status: 'unknown' };
+  } finally {
+    log.unlock();
+  }
+}
+
 // The evidence upload is multipart, so it does not go through lib/paypal.mjs's JSON client.
-async function uploadEvidence(disputeId, form) {
+export async function uploadEvidence(disputeId, form) {
   const r = await fetch(`${API}/v1/customer/disputes/${disputeId}/provide-evidence`, { method: 'POST', headers: { Authorization: `Bearer ${await accessToken()}` }, body: form, signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS) });
   return { ok: r.ok, status: r.status, text: await r.text() };
 }
 
-export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag, narrate = defaultNarrate, client = { paypal } }) {
+export async function resolveDispute(disputeId, { root, execute = false, source = 'cli', flag = defaultFlag, narrate = defaultNarrate, client = { paypal }, desk = null }) {
   const log = executionLog(root, disputeId);
   async function must(step, method, path, json) {
     const r = await client.paypal(method, path, json);
@@ -153,6 +210,15 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
 
   let record;
   try { record = txn?.custom ? loadRecord(join(root, 'records'), txn.custom) : null; } catch { record = null; }
+  // The evidence desk (desk/run.mjs), when given, takes what the engine does not: an order with no
+  // Black Box record, or a reason the engine does not answer.
+  if (desk && (!record || !IN_SCOPE_REASONS.includes(dispute.reason))) {
+    if (!txn?.seller_transaction_id) { log.write({ step: 'skip', source, why: 'no disputed transaction' }); return { ...base, status: 'not-ours' }; }
+    const capture = await must('get capture', 'GET', `/v2/payments/captures/${txn.seller_transaction_id}`);
+    const orderId = capture.supplementary_data?.related_ids?.order_id;
+    const order = orderId ? await must('get order', 'GET', `/v2/checkout/orders/${orderId}`) : null;
+    return desk({ root, disputeId, dispute, order, log, source, execute, client, base });
+  }
   if (!record) {
     log.write({ step: 'skip', source, why: txn?.custom ? `no stored record ${txn.custom}` : 'no custom_id on the disputed transaction' });
     return { ...base, status: 'not-ours' };
@@ -206,15 +272,8 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
   // Earlier attempts at the planned action (and at escalating, for evidence) come first: one that
   // succeeded means done; one whose outcome is unknown is settled from what PayPal shows now.
   const kind = p.action === 'accept-claim-partial' ? 'accept-claim' : p.action;
-  for (const k of kind === 'provide-evidence' ? ['escalate', kind] : [kind]) {
-    const last = attempts(log.read()).findLast((a) => a.kind === k);
-    if (!last || last.state === 'succeeded' || !last.actionId) continue;
-    const done = actionDone(k, dispute);
-    if (done === true) log.write({ step: 'reconciled', source, actionId: last.actionId, kind: k, result: 'succeeded', why: 'PayPal shows it happened' });
-    else if (last.state === 'unknown' && !(done === false && links.includes(LINK_FOR[k] ?? k))) {
-      return hold('outcome unknown', { actionId: last.actionId, paypalStatus: dispute.status ?? null });
-    }
-  }
+  const unsettled = reconcile(log, kind === 'provide-evidence' ? ['escalate', kind] : [kind], { dispute, links, source });
+  if (unsettled) return hold('outcome unknown', unsettled);
   if (log.alreadyExecuted()) return { ...out, status: 'already-done' };
   if (!ACTIONABLE_STATUS.has(dispute.status)) return hold(`the dispute is ${dispute.status ?? 'in an unknown state'}; Black Box acts only on an open dispute`);
 
@@ -237,34 +296,13 @@ export async function resolveDispute(disputeId, { root, execute = false, source 
   const after = await must('get dispute (after)', 'GET', `/v1/customer/disputes/${disputeId}`);
   return { ...out, status: 'executed', after };
 
-  // One attempt at an action: the payload's hash is checked against the last attempt's, the attempt
-  // is logged, the call made, and its result logged, all under the lock.
   async function send(k, step, payload, call) {
-    const id = actionId(disputeId, k);
-    const hash = payloadHash(payload);
-    if (!log.lock()) {
-      const age = log.lockAge();
-      if (age !== null && age < STALE_LOCK_MS) return { status: 'busy', result: { ...out, status: 'in-progress' } };
-      log.write({ step: 'stale-lock', source, actionId: id, ageMs: age });
-      log.unlock();
-      if (!log.lock()) return { status: 'busy', result: { ...out, status: 'in-progress' } };
-    }
-    try {
-      // Re-read under the lock: another run may have finished it since.
-      const last = attempts(log.read()).findLast((a) => a.actionId === id);
-      if (last?.state === 'succeeded') return { status: 'done', result: { ...out, status: 'already-done' } };
-      if (last && last.payloadHash !== hash) return { status: 'held', result: hold('the payload differs from the earlier attempt at this action', { actionId: id, earlier: last.payloadHash, now: hash }) };
-      log.write({ step: 'attempt', source, actionId: id, kind: k, action: step, payloadHash: hash });
-      let r;
-      try { r = await call(); } catch (e) { r = { ok: false, status: null, error: e.message }; }
-      log.write({ step, source, actionId: id, payloadHash: hash, status: r.status ?? null, debug_id: r.debugId ?? null, request: typeof payload === 'string' ? null : payload, response: r.data ?? r.text ?? null, ...(r.error ? { error: r.error } : {}) });
-      if (r.ok) return { status: 'sent' };
-      if (r.status >= 400 && r.status < 500) throw Object.assign(new Error(`${step} failed (${r.status}, debug ${r.debugId}): ${JSON.stringify(r.data ?? r.text).slice(0, 400)}`), { refused: true });
-      log.write({ step: 'hold', source, why: 'outcome unknown', actionId: id, status: r.status ?? null, error: r.error ?? null });
-      return { status: 'unknown', result: { ...out, status: 'outcome-unknown', why: 'outcome unknown' } };
-    } finally {
-      log.unlock();
-    }
+    const a = await sendOnce(log, { disputeId, source, kind: k, step, payload, call });
+    if (a.status === 'busy') return { status: 'busy', result: { ...out, status: 'in-progress' } };
+    if (a.status === 'done') return { status: 'done', result: { ...out, status: 'already-done' } };
+    if (a.status === 'held') return { status: 'held', result: { ...out, status: 'held-for-person', why: a.why } };
+    if (a.status === 'unknown') return { status: 'unknown', result: { ...out, status: 'outcome-unknown', why: 'outcome unknown' } };
+    return a;
   }
 
   // The one PayPal call the plan allows. Hoisted, so it reads in plan order above.

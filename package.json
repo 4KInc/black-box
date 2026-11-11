@@ -8,6 +8,7 @@
     "shop": "node shop/main.mjs",
     "replay": "node replay/server.mjs",
     "bench": "node bench/run.mjs",
+    "desk-bench": "node desk/bench.mjs",
     "watch": "node executor/watch.mjs",
     "webhook": "node executor/webhook.mjs",
     "mandate": "node mandate/server.mjs",

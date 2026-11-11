@@ -10,6 +10,9 @@
 //     but its result is not known) are re-checked later, like "not ready": the next run reads
 //     PayPal's dispute and settles the earlier attempt from it, never by sending blindly
 //   - "held-for-person" is final: nothing more is sent without a person
+//   - "awaiting-documents" and "awaiting-approval" (the evidence desk) wait for the merchant: they
+//     are not fetched again until reopen(disputeId), which the desk page calls when the merchant
+//     adds a document or approves a package
 //   - "held" (the flagger gave no answer, so nothing was sent) is retried with exponential backoff
 //     (heldBaseMs, doubling, capped at heldMaxMs), never given up on. Until its next step comes,
 //     every trigger for it (webhook, watcher poll) is answered from memory, so the hold is resolved,
@@ -106,6 +109,8 @@ export function createAutopilot({
     handle,
     handleWithRetry,
     status: (id) => settled.get(id) ?? null,
+    // The merchant acted on the desk page: look at the dispute again on the next trigger.
+    reopen: (id) => { settled.delete(id); tries.delete(id); held.delete(id); },
     stop: () => { for (const t of timers) clearTimeout(t); timers.clear(); },
   };
 }
