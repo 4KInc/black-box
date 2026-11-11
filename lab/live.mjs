@@ -20,6 +20,10 @@ import { paypal } from '../lib/paypal.mjs';
 import { enrolmentFrom } from '../mandate/server.mjs';
 import { layout } from '../replay/page.mjs';
 import { saveRecord } from '../recorder/recorder.mjs';
+import { executionLog } from '../executor/core.mjs';
+import { deskCasePage } from '../desk/page.mjs';
+import { approve, deskState } from '../desk/run.mjs';
+import { addDoc, MAX_DOC } from '../desk/sources.mjs';
 
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const sha256hex = (s) => createHash('sha256').update(s).digest('hex');
@@ -246,9 +250,9 @@ export function authorised(header, key) {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-async function readForm(req) {
+async function readForm(req, max = 16384) {
   let raw = '';
-  for await (const chunk of req) { raw += chunk; if (raw.length > 16384) throw new Error('form too large'); }
+  for await (const chunk of req) { raw += chunk; if (raw.length > max) throw new Error('form too large'); }
   return new URLSearchParams(raw);
 }
 
@@ -257,6 +261,7 @@ async function readForm(req) {
 export function createLive({
   root, replay, mandate, webhook = null, operatorKey, origin, shopUrl, env = process.env,
   runAgent = defaultRunAgent, llm = anthropic, payeeMerchantId = 'MCYKQUXGB936U', pay = paypal, now = () => Date.now(),
+  autopilot = null,
 }) {
   const origins = new Set([origin]);
   return createServer(async (req, res) => {
@@ -269,7 +274,9 @@ export function createLive({
         if (!webhook) return send(404, 'No webhook on this server.');
         return webhook.emit('request', req, res);
       }
-      const operator = url.pathname === '/operator' || url.pathname === '/operator/run' || url.pathname === '/wallet' || url.pathname.startsWith('/wallet/');
+      // An evidence desk dispute: its package, and the forms to add a document or approve sending.
+      const desk = url.pathname.match(/^\/desk\/([A-Z0-9][A-Z0-9-]{5,63})(\/doc|\/send)?$/);
+      const operator = url.pathname === '/operator' || url.pathname === '/operator/run' || url.pathname === '/wallet' || url.pathname.startsWith('/wallet/') || Boolean(desk);
       if (url.pathname === '/mandate' || url.pathname.startsWith('/mandate/') || operator) {
         if (!operatorKey) return send(404, 'Not enabled on this server.');
         if (!authorised(req.headers.authorization, operatorKey)) return locked();
@@ -280,6 +287,35 @@ export function createLive({
         if (req.method === 'POST' && !origins.has(req.headers.origin)) return send(403, 'Cross-site request refused.');
         req.url = req.url.slice('/mandate'.length);
         return mandate.emit('request', req, res);
+      }
+      if (desk) {
+        const id = desk[1];
+        const state = () => deskState(root, id, executionLog(root, id).read());
+        if (req.method === 'GET' && !desk[2]) {
+          const st = state();
+          if (!st) return send(404, layout('Black Box · desk', '<section class="hero top"><div><h1>Not <em>yet</em></h1></div><div><p>The desk has not seen this dispute. It looks at new PayPal disputes every 30 seconds.</p><p><a href="/desk">All desk disputes</a></p></div></section>'));
+          const last = executionLog(root, id).read().findLast((e) => e.step === 'desk-decision' || e.step === 'hold' || e.step === 'provide-evidence');
+          return send(200, deskCasePage(st, { manage: true, flash: url.searchParams.get('m') ?? '', status: last?.step === 'provide-evidence' ? (last.status >= 200 && last.status < 300 ? 'evidence accepted by PayPal' : `PayPal answered ${last.status ?? 'nothing'}`) : '' }));
+        }
+        if (req.method !== 'POST' || !desk[2]) return send(405, 'Method not allowed.');
+        if (!origins.has(req.headers.origin)) return send(403, 'Cross-site request refused.');
+        if (!state()) return send(404, 'The desk has not seen this dispute yet.');
+        const form = await readForm(req, MAX_DOC * 4);
+        let note;
+        if (desk[2] === '/doc') {
+          try { note = `Added ${addDoc(root, id, form.get('name') || 'document', form.get('text'))}.`; } catch (e) { note = e.message; }
+        } else {
+          const st = state();
+          if (!st.packageHash || form.get('package') !== st.packageHash) note = 'The package changed since this page was loaded: check it again before sending.';
+          else { approve(root, id, st.packageHash); note = 'Approved.'; }
+        }
+        // Look at the dispute again now: read the new document, or send the approved package.
+        if (autopilot) {
+          autopilot.reopen(id);
+          const out = await autopilot.handle(id, 'desk page');
+          note += ` ${({ 'awaiting-approval': 'Ready: approve it to send.', 'awaiting-documents': 'Still not proven.', executed: 'Sent to PayPal.', 'held-for-person': 'A person decides.', escalated: 'Escalated so PayPal takes evidence; it goes next.', error: `It did not run: ${out.error ?? ''}` })[out.status] ?? `Status: ${out.status}.`}`;
+        }
+        return send(303, '', { location: `/desk/${id}?m=${encodeURIComponent(note.trim())}` });
       }
       if (url.pathname === '/operator' && req.method === 'GET') return send(200, operatorPage(root, { env, shopUrl, now: now() }));
       if (url.pathname === '/wallet' && req.method === 'GET') return send(200, walletPage(root), { 'content-security-policy': WALLET_CSP });

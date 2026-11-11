@@ -679,7 +679,7 @@ export function layout(title, body, { active = '' } = {}) {
 <link rel="icon" href="${FAVICON}"><style>${CSS}</style></head><body>
 <a class="skip" href="#main">Skip to content</a>
 <header class="bar"><a class="mark" href="/"><span class="unit" aria-hidden="true"></span>BLACK BOX</a><span class="sub">flight recorder for AI shopping agents</span>
-<nav aria-label="Sections">${nav('/judge', 'Judges', 'judge')}${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${explorerHref ? nav(explorerHref, 'Explorer', 'explorer') : ''}${labHref ? nav(labHref, 'Lab', 'lab') : ''}${demoHref ? nav(demoHref, 'Live demo', 'demo') : ''}</nav></header>
+<nav aria-label="Sections">${nav('/judge', 'Judges', 'judge')}${nav('/', 'Recordings', 'recordings')}${nav('/study', 'Study', 'study')}${nav('/bench', 'Scenarios', 'bench')}${nav('/desk', 'Desk', 'desk')}${explorerHref ? nav(explorerHref, 'Explorer', 'explorer') : ''}${labHref ? nav(labHref, 'Lab', 'lab') : ''}${demoHref ? nav(demoHref, 'Live demo', 'demo') : ''}</nav></header>
 <main id="main">${body}</main>
 <footer class="site"><div><a class="mark" href="/"><span class="unit" aria-hidden="true"></span>BLACK BOX</a>
 <p>A flight recorder for AI shopping agents. Every payment and dispute here runs in the PayPal sandbox; no real money moves. Not a PayPal product.</p></div>

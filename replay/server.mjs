@@ -13,6 +13,8 @@ import { latestStudies } from './cases.mjs';
 import { caseReport, reportName } from './report.mjs';
 import { factsPage, labPage, labResult, runLab } from '../lab/lab.mjs';
 import { EXPLORER_CSP, explorerData, explorerPage } from '../site/explorer.mjs';
+import { runDeskBench } from '../desk/bench.mjs';
+import { deskCasePage, deskIndex, deskView, liveDesk } from '../desk/page.mjs';
 
 const ROOT = join(import.meta.dirname, '..');
 const PORT = Number(process.env.PORT ?? process.env.REPLAY_PORT ?? 4030);
@@ -94,6 +96,10 @@ export function createReplay({ root = ROOT, intro = '', live = false } = {}) {
       if (pathname === '/lab/facts') return send(200, factsPage(searchParams));
       if (pathname === '/bench') return send(200, benchPage(runBench(root)));
       if (pathname === '/judge') return send(200, judgePage(runBench(root)));
+      if (pathname === '/desk') return send(200, deskIndex(runDeskBench(), { live: live ? liveDesk(root) : null }));
+      const ds = pathname.match(/^\/desk\/scenario\/(D\d{2})$/);
+      const dr = ds && runDeskBench().find((r) => r.s.id === ds[1]);
+      if (dr) return send(200, deskCasePage(deskView(dr), { scenario: dr.s }));
       if (pathname === '/study') { const st = latestStudies(root); return st.length ? send(200, studyPage(st)) : send(404, notFoundPage('No study yet: run node study/run.mjs.')); }
       const b = pathname.match(/^\/bench\/([A-Z]\d{2})(\/page|\/record\.json|\/report\.pdf)?$/);
       const br = b && runBench(root).find((r) => r.def.id === b[1]);

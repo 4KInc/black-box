@@ -55,7 +55,12 @@ if (!LIVE_DIR) {
     appendFileSync(join(root, 'records', 'autopilot', 'hosted.jsonl'), JSON.stringify(line) + '\n');
     console.log(JSON.stringify(line));
   };
-  const autopilot = createAutopilot({ root, execute: env.AUTO_EXECUTE === 'on', report: log });
+  // The evidence desk takes disputes the recorder does not (DESK=off turns it off). It sends only a
+  // package the merchant approved on /desk/<dispute>, unless DESK_AUTO=on.
+  const { resolveDispute } = await import('../executor/core.mjs');
+  const { resolveDesk } = await import('../desk/run.mjs');
+  const desk = env.DESK === 'off' ? null : resolveDesk;
+  const autopilot = createAutopilot({ root, execute: env.AUTO_EXECUTE === 'on', report: log, resolve: (id, o) => resolveDispute(id, { ...o, desk }) });
   const warning = flaggerWarning(env);
   if (warning) console.warn(warning);
   const mandate = createMandateServer({
@@ -65,6 +70,6 @@ if (!LIVE_DIR) {
   const webhook = env.PAYPAL_WEBHOOK_ID ? createWebhookReceiver({ autopilot, verify: paypalVerifier(env.PAYPAL_WEBHOOK_ID), log }) : null;
   const every = Number(env.WATCH_EVERY ?? 30);
   setInterval(() => pollOnce(autopilot).catch((e) => log({ status: 'poll failed', error: e.message })), every * 1000);
-  createLive({ root, replay, mandate, webhook, operatorKey: env.OPERATOR_KEY, origin, shopUrl: env.SHOP_URL }).listen(PORT, HOST, () =>
+  createLive({ root, replay, mandate, webhook, operatorKey: env.OPERATOR_KEY, origin, shopUrl: env.SHOP_URL, autopilot }).listen(PORT, HOST, () =>
     console.log(`black box  http://${HOST}:${PORT}  live: ${origin}, shop ${env.SHOP_URL}, ${webhook ? 'webhook and ' : ''}polling every ${every}s, ${env.AUTO_EXECUTE === 'on' ? 'AUTO_EXECUTE=on: will act' : 'dry run'}`));
 }
