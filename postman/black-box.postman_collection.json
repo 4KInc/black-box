@@ -94,6 +94,11 @@
       "key": "payout_batch_id",
       "value": "",
       "type": "string"
+    },
+    {
+      "key": "hosted_url",
+      "value": "https://black-box-342881585799.us-central1.run.app",
+      "type": "string"
     }
   ],
   "item": [
@@ -834,6 +839,142 @@
             "header": [],
             "url": "{{base_url}}/v1/payments/payouts/{{payout_batch_id}}",
             "description": "The batch and item status, logged after a payout and on `--refresh`.\n\nSource: `executor/payout.mjs (reimburse, refreshPayout)`"
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Evidence desk (ordinary orders)",
+      "item": [
+        {
+          "name": "Create order shipped to an address",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const j = pm.response.json();",
+                  "if (j.id !== undefined) pm.collectionVariables.set('order_id', j.id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"intent\": \"CAPTURE\",\n  \"purchase_units\": [\n    {\n      \"reference_id\": \"default\",\n      \"description\": \"Harbor Wool Beanie (HB-NAVY)\",\n      \"amount\": {\n        \"currency_code\": \"USD\",\n        \"value\": \"89.00\",\n        \"breakdown\": {\n          \"item_total\": {\n            \"currency_code\": \"USD\",\n            \"value\": \"89.00\"\n          }\n        }\n      },\n      \"items\": [\n        {\n          \"name\": \"Harbor Wool Beanie\",\n          \"sku\": \"HB-NAVY\",\n          \"quantity\": \"1\",\n          \"category\": \"PHYSICAL_GOODS\",\n          \"unit_amount\": {\n            \"currency_code\": \"USD\",\n            \"value\": \"89.00\"\n          }\n        }\n      ],\n      \"shipping\": {\n        \"type\": \"SHIPPING\",\n        \"name\": {\n          \"full_name\": \"Sandbox Buyer\"\n        },\n        \"address\": {\n          \"address_line_1\": \"1200 SW Main St\",\n          \"admin_area_2\": \"Portland\",\n          \"admin_area_1\": \"OR\",\n          \"postal_code\": \"97201\",\n          \"country_code\": \"US\"\n        }\n      }\n    }\n  ],\n  \"payment_source\": {\n    \"paypal\": {\n      \"experience_context\": {\n        \"brand_name\": \"Driftwood Outfitters\",\n        \"user_action\": \"PAY_NOW\",\n        \"shipping_preference\": \"SET_PROVIDED_ADDRESS\",\n        \"return_url\": \"{{hosted_url}}/desk\",\n        \"cancel_url\": \"{{hosted_url}}/desk\"\n      }\n    }\n  }\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v2/checkout/orders",
+            "description": "An ordinary order with no Black Box record, for the sandbox buyer to pay and dispute. Its shipping address is what the desk checks delivery against.\n\nSource: `scripts/desk-live.mjs (orderBody)`"
+          }
+        },
+        {
+          "name": "Add tracking to the order",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"capture_id\": \"{{capture_id}}\",\n  \"tracking_number\": \"1Z999AA10123456784\",\n  \"carrier\": \"UPS\",\n  \"notify_payer\": false\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v2/checkout/orders/{{order_id}}/track",
+            "description": "The tracker shows on the order as `<capture ID>-<tracking number>`. Its status is what the merchant sets, not the carrier's, so the desk does not take it as proof of delivery.\n\nSource: `scripts/desk-live.mjs (track)`"
+          }
+        },
+        {
+          "name": "Refund a capture",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"amount\": {\n    \"currency_code\": \"USD\",\n    \"value\": \"40.00\"\n  },\n  \"note_to_payer\": \"Refund from Driftwood Outfitters\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": "{{base_url}}/v2/payments/captures/{{capture_id}}/refund",
+            "description": "A refund the desk later finds on the order (`purchase_units[].payments.refunds`).\n\nSource: `scripts/desk-live.mjs (refund)`"
+          }
+        },
+        {
+          "name": "Provide evidence (evidence desk)",
+          "request": {
+            "method": "POST",
+            "auth": {
+              "type": "bearer",
+              "bearer": [
+                {
+                  "key": "token",
+                  "value": "{{access_token}}",
+                  "type": "string"
+                }
+              ]
+            },
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "input",
+                  "type": "text",
+                  "contentType": "application/json",
+                  "value": "{\"evidences\":[{\"evidence_type\":\"PROOF_OF_FULFILLMENT\",\"evidence_info\":{\"tracking_info\":[{\"carrier_name\":\"UPS\",\"tracking_number\":\"1Z999AA10123456784\"}]},\"notes\":\"The disputed payment is PayPal capture {{capture_id}} ...\",\"documents\":[{\"name\":\"blackbox-evidence.txt\"}]}]}"
+                },
+                {
+                  "key": "file1",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": "{{base_url}}/v1/customer/disputes/{{dispute_id}}/provide-evidence",
+            "description": "Proof of delivery with `tracking_info`, or proof of refund with `refund_ids`, the statements as the note, and every document in one text file. Choose the file for `file1` in Postman.\n\nSource: `desk/run.mjs (resolveDesk)`"
           }
         }
       ]
